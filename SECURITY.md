@@ -14,4 +14,7 @@ A report holds:
 
 This covers the code in this repository at the newest commit on `main`: Proofpane Community and the open packages.
 
+Test on an installation of your own. Do not test against the hosted Proofpane Community, or against a deployment that
+someone else runs.
+
 No response time and no reward are offered: neither is decided.

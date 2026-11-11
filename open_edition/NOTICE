@@ -8,11 +8,12 @@ It includes xterm.js (web/vendor/xterm/), Copyright (c) 2017-2019 The xterm.js a
 SourceLair Private Company and Copyright (c) 2012-2013 Christopher Jeffrey, under the MIT License, whose text is in
 web/vendor/xterm/LICENSE and web/vendor/xterm/LICENSE-addon-fit.
 
-The ADE quotes, in proofpane_open/ade/risk_texts.py, eleven passages of Anthropic's published texts word for word,
-each with its address and the date it was read: three of the Consumer Terms of Service, one of the Commercial Terms of
-Service, three of the Usage Policy (one of its version effective 15 September 2025, two of its version effective 12
-November 2026), three of Claude Code's Legal and compliance page and one Help Center article. They are Anthropic's,
-and the license above does not extend to them.
+The ADE quotes, in proofpane_open/ade/risk_texts.py, twelve passages of Anthropic's published texts word for word, each
+with its address and the date it was read: four of the Consumer Terms of Service, two of the Commercial Terms of
+Service, two of the Usage Policy effective 12 November 2026, three of Claude Code's Legal and compliance page and one
+Help Center article. They are Anthropic's, and the license above does not extend to them. It also quotes four of the
+information privacy principles of New Zealand's Privacy Act 2020, section 22, as the New Zealand Legislation website
+gives them, with the address and the date they were read.
 
 The app built from ui/ (into web/app/, desktop/build/ui/ or phone/dist/) holds the code of npm packages, each under its
 own license. Each build writes THIRD_PARTY_LICENSES.txt beside the app, naming every package the build holds, with its
@@ -57,11 +58,15 @@ https://github.com/C2SP/wycheproof, testvectors_v1, unchanged), under the Apache
 LICENSE-APACHE-2.0 beside this one.
 
 Its tests also carry, from others:
-- tests/vectors/xwing_draft11.json: X-Wing's test vectors, copied from draft-connolly-cfrg-xwing-kem-11, Appendix C
-  (https://www.ietf.org/archive/id/draft-connolly-cfrg-xwing-kem-11.txt), under the terms that document states; the
-  file names its source and the sha256 of the text it was taken from.
-- tests/test_ade_push.py: values from RFC 8291's example (https://www.rfc-editor.org/rfc/rfc8291), under the terms
-  that RFC states.
+- tests/vectors/xwing_draft11.json, from draft-connolly-cfrg-xwing-kem-11, Appendix C
+  (https://www.ietf.org/archive/id/draft-connolly-cfrg-xwing-kem-11.txt): "Copyright (c) 2026 IETF Trust and the persons
+  identified as the document authors. All rights reserved." The file names its source and the sha256 of the text it was
+  taken from.
+- tests/test_ade_push.py, from RFC 8291, Section 5 and Appendix A (https://www.rfc-editor.org/rfc/rfc8291.txt):
+  "Copyright (c) 2017 IETF Trust and the persons identified as the document authors. All rights reserved."
+- Each of these two documents' notices says: "This document is subject to BCP 78 and the IETF Trust's Legal Provisions
+  Relating to IETF Documents (https://trustee.ietf.org/license-info) in effect on the date of publication of this
+  document."
 - tests/fixtures/mcp_registry_filesystem.json: a page of the Model Context Protocol registry's list of servers, with
   the descriptions their publishers gave them, which are their publishers' and to which the license above does not
   extend.

@@ -7,8 +7,8 @@ An agentic development environment, and the open packages it runs on, both open 
 - `oss/`: Proofpane's open packages, `proofpane-core`, `proofpane-verify`, `proofpane-sign` and Verify for pull
   requests (`oss/README.md`).
 
-The checks `.github/workflows/ci.yml` runs, on Python 3.12 and Node 22:
+The checks `.github/workflows/ci.yml` runs, on Python 3.12 and Node 22, each line from the repository's root:
 
-    cd open_edition && pip install -r requirements-dev.txt && pytest tests -q
+    (cd open_edition && pip install -r requirements-dev.txt && pytest tests -q)
     python oss/run_tests.py
-    cd open_edition/ui && npm ci && npm run typecheck && npm test
+    (cd open_edition/ui && npm ci && npm run typecheck && npm test)

@@ -5,9 +5,9 @@ through RiskTerms.tsx, which the teammate track's parts use too; the teammate tr
 from text(13) with an offer and a custody request.
 
 A text: {"point", "title", "design": [{"case", "text"}], "quotations": [{"id", "case",
-"source", "section", "address", "source_date", "read_on", "words", "unread"}], "unread", "digest"}. A quotation not yet
-read (the data-use clauses, and the Act's principles) has "words" null and "unread" the words
-that say it was not read for this release and where it is, and its text's "unread" is true. The data-use clauses are
+"source", "section", "address", "source_date", "read_on", "words", "unread"}], "unread", "digest"}. A quotation not
+read for a release has "words" null and "unread" the words that say so and where it is, and its text's "unread" is
+true; as built, every quotation was read. The data-use clauses are
 the two quotations of DATA_USE_IDS, which every text of DATA_USE_POINTS carries. A part whose "case" is not null is
 shown only where the page names that case, one of the point's CASES. The seat-settings text, the design's, is one
 text word for word the same in points 1 (case "onto_seat"), 3 (always), 4 (case "onto_seat"), 5 (case "onto_seat",
@@ -41,9 +41,10 @@ so no call to the API waits on one but that read, which the page alone holds bac
 Run as `python -m proofpane_open.ade.risk_texts --release-check YYYY-MM-DD`, the release's date: a release is not made
 while it exits non-zero. The release check is not given the operator, a deployment's setting. Besides a text with a
 clause not read, it names, on a line of its own, a text whose own words still hold the organisation notice's default
-words: its mark, "not read again", or the 2025 announcement they rest on (ITEM_19_MARKS). So the release is held back
-until those words are rewritten from the data-use clauses as read; whether the new words do come from the clauses is for
-whoever reads them to see. A text's own "unread" stays as it is, by its quotations alone."""
+words: its mark, "not read again", or the 2025 announcement they rest on (DEFAULT_NOTICE_MARKS). Those words were
+rewritten from the data-use clauses as read on 2026-11-11, and the check still names them, so that they cannot come
+back unseen; whether the words that replaced them do come from the clauses is for whoever reads them to see. A text's
+own "unread" stays as it is, by its quotations alone."""
 
 import datetime
 import os
@@ -74,136 +75,182 @@ OPERATOR_SETTING = "OPEN_EDITION_OPERATOR"
 
 # ---- the quotations -------------------------------------------------------------------------------------------------
 #
-# Each as the design holds it: fetched read-only on 2026-10-10, the curly apostrophes made straight. Each is read again
-# before the release and then carries that date (read_on), which the release check holds against the release's date. A
-# clause not read has no words and says so, naming where it is; reading it means filling in its words, its section and
-# the dates, and setting unread to None. Reading the data-use clauses also means setting the organisation notice's words
-# from them, until which the release check names each text that holds its default words (ITEM_19_MARKS). Each quotation
-# is pinned word for word, with its dates, in tests/test_risk_texts.py as the design holds it, and that test also holds
-# the texts as built (six with a clause not read and the notice's default words, and the release check failing on them):
-# a new reading changes those copies, and rewrites those tests, too.
+# Each as read at its address on 2026-11-11, the curly apostrophes made straight.
+# Each is read again before a release and then carries that date (read_on), which the release check holds against the
+# release's date. A clause that cannot be read for a release has no words, its read_on and source_date None, and in
+# unread words that say it was not read for this release, and where it is. Nothing here builds such words, so nothing
+# tests where they point; the release check names the clause in every text that quotes it, and the text. Each quotation
+# is pinned word for word, with its dates, in tests/test_risk_texts.py, and that test also holds the texts as built
+# (every clause read, the organisation notice's words on training set from the data-use clauses, the release check
+# passing for the day of the reading): a new reading changes those copies, and rewrites those tests, too.
 
-READ_2026_10_10 = "2026-10-10"
+READ_ON = "2026-11-11"
 CONSUMER_TERMS = "https://www.anthropic.com/legal/consumer-terms"
 COMMERCIAL_TERMS = "https://www.anthropic.com/legal/commercial-terms"
 CLAUDE_CODE_LEGAL = "https://code.claude.com/docs/en/legal-and-compliance"
-USAGE_POLICY_IN_FORCE = "https://www.anthropic.com/legal/archive/22742366-2ef0-4c7a-a833-6523f10d3944"
 USAGE_POLICY_LATER = "https://www.anthropic.com/legal/aup"
+# the article's address as its old one, .../11145838-using-claude-code-with-your-pro-or-max-plan, led on 2026-11-11
 USAGE_CREDITS_ARTICLE = ("https://support.claude.com/en/articles/"
-                         "11145838-using-claude-code-with-your-pro-or-max-plan")
-# the Act on New Zealand's legislation site: an address of this module's own, not a document's, since the design did
-# not fetch the Act's text and gives none, and not opened, since this build fetched nothing but the
-# installs it needs; each principle's words say so, and claim nothing of the Act that the design does not give
-PRIVACY_ACT = "https://www.legislation.govt.nz/act/public/2020/0031/latest/LMS23342.html"
+                         "11145838-use-claude-code-with-your-pro-max-or-ultra-plan")
+# the Act on New Zealand's legislation site, as its old address, /act/public/2020/0031/latest/LMS23342.html, led on
+# 2026-11-11: the whole Act, at section 22, the information privacy principles, by the page's own anchor
+PRIVACY_ACT = "https://www.legislation.govt.nz/act/public/2020/31/en/latest/#LMS23342"
 
 
-def _quoted(source, section, address, source_date, words, read_on=READ_2026_10_10):
+def _quoted(source, section, address, source_date, words, read_on=READ_ON):
     return {"source": source, "section": section, "address": address, "source_date": source_date,
             "read_on": read_on, "words": words, "unread": None}
 
 
-def _not_read(source, section, address, unread):
-    return {"source": source, "section": section, "address": address, "source_date": None, "read_on": None,
-            "words": None, "unread": unread}
-
-
-def _principle(n):
-    return _not_read(
-        "Privacy Act 2020 (New Zealand)", f"information privacy principle {n}", PRIVACY_ACT,
-        f"New Zealand's Privacy Act 2020, information privacy principle {n}, was not read for this release; it is in "
-        f"the Act, at {PRIVACY_ACT}, an address not opened for this release.")
-
-
 QUOTATIONS = {
     "automated-use": _quoted(
-        "Consumer Terms of Service", "3", CONSUMER_TERMS, "Effective October 8, 2025",
+        "Consumer Terms of Service", "3", CONSUMER_TERMS, "Effective Oct 8, 2025",
         "Except when you are accessing our Services via an Anthropic API Key or where we otherwise explicitly permit "
         "it, to access the Services through automated or non-human means, whether through a bot, script, or "
         "otherwise."),
     "sharing": _quoted(
-        "Consumer Terms of Service", "2", CONSUMER_TERMS, "Effective October 8, 2025",
-        "You may not share your Account login information, Anthropic API key, or Account credentials with anyone "
-        "else. You also may not make your Account available to anyone else."),
+        "Consumer Terms of Service", "2", CONSUMER_TERMS, "Effective Oct 8, 2025",
+        "You may not share your Account login information, Anthropic API key, or Account credentials with anyone else. "
+        "You also may not make your Account available to anyone else."),
     "interference": _quoted(
-        "Consumer Terms of Service", "3", CONSUMER_TERMS, "Effective October 8, 2025",
+        "Consumer Terms of Service", "3", CONSUMER_TERMS, "Effective Oct 8, 2025",
         "You also must not abuse, harm, interfere with, or disrupt our Services, including, for example, introducing "
         "viruses or malware, spamming or DDoSing Services, or bypassing any of our systems or protective measures."),
     "ordinary-use": _quoted(
         "Claude Code, Legal and compliance", None, CLAUDE_CODE_LEGAL, None,
-        "Advertised usage limits for Pro and Max plans assume ordinary, individual usage of Claude Code and the Agent "
-        "SDK."),
+        "Advertised usage limits for Pro, Max, and Ultra plans assume ordinary, individual usage of Claude Code and "
+        "the Agent SDK."),
     "oauth": _quoted(
         "Claude Code, Legal and compliance", None, CLAUDE_CODE_LEGAL, None,
-        "OAuth authentication is intended exclusively for purchasers of Claude Free, Pro, Max, Team, and Enterprise "
-        "subscription plans and is designed to support ordinary use of Claude Code and other native Anthropic "
-        "applications."),
+        "OAuth authentication is intended exclusively for purchasers of Claude Free, Pro, Max, Ultra, Team, and "
+        "Enterprise subscription plans and is designed to support ordinary use of Claude Code and other native "
+        "Anthropic applications."),
     "own-subscription": _quoted(
         "Claude Code, Legal and compliance", None, CLAUDE_CODE_LEGAL, None,
         "Nor does it prevent an end user from signing in to the unmodified Claude Code binary with their own Claude "
         "subscription, including where a platform hosts Claude Code as described under Can customers offer Claude "
         "Code in their products? above."),
-    # the Usage Policy's multiple-accounts clause, as in force when read and as posted to take effect later: both are
-    # shown, each with its date
-    "multiple-accounts-2025": _quoted(
-        "Usage Policy", None, USAGE_POLICY_IN_FORCE, "Effective September 15, 2025",
-        "Coordinate malicious activity across multiple accounts to avoid detection or circumvent product guardrails or "
-        "generating identical or similar inputs that otherwise violate our Usage Policy"),
+    # the Usage Policy's multiple-accounts clause, in the version effective 12 November 2026, which replaces the
+    # version of 15 September 2025
     "multiple-accounts-2026": _quoted(
-        "Usage Policy", None, USAGE_POLICY_LATER, "Effective November 12, 2026",
+        "Usage Policy", None, USAGE_POLICY_LATER, "Effective Nov 12, 2026",
         "Coordinate malicious activity across multiple accounts, or create multiple accounts, to avoid detection, "
         "circumvent product guardrails, or generate identical or similar inputs that otherwise violate our Usage "
         "Policy"),
     "bypass": _quoted(
-        "Usage Policy", None, USAGE_POLICY_LATER, "Effective November 12, 2026",
+        "Usage Policy", None, USAGE_POLICY_LATER, "Effective Nov 12, 2026",
         "Intentionally bypass or interfere with capabilities, restrictions, or guardrails established within our "
-        "products, including by circumvention of the account sign-up or log-in process or by instructing the model to "
-        "produce harmful outputs (e.g., jailbreaking or prompt injection), without prior authorization from "
+        "products, including by circumvention of the account sign-up or log-in process or by instructing the model "
+        "to produce harmful outputs (e.g., jailbreaking or prompt injection), without prior authorization from "
         "Anthropic"),
     "responsibility": _quoted(
-        "Commercial Terms of Service", "D.5", COMMERCIAL_TERMS, "Effective June 17, 2025",
+        "Commercial Terms of Service", "D.5", COMMERCIAL_TERMS, "Effective Jun 17, 2025",
         "Customer is responsible for all activity under its account."),
     "usage-credits": _quoted(
-        "Help Center, Use Claude Code with your Pro or Max plan", None, USAGE_CREDITS_ARTICLE,
-        "dateModified 2026-10-08T19:00:45Z",
+        "Help Center, Use Claude Code with your Pro, Max, or Ultra plan", None, USAGE_CREDITS_ARTICLE,
+        "dateModified 2026-10-30T19:29:25Z",
         "Enable usage credits to keep using Claude with your Pro plan after you reach your five-hour session limit or "
         "your weekly limit."),
-    # the data-use clauses: never read; a text that needs them says so, naming where they are
-    "data-use-consumer": _not_read(
-        "Consumer Terms of Service", None, CONSUMER_TERMS,
-        "Anthropic's Consumer Terms of Service on whether this work may be used to train models were not read for this "
-        f"release; they are at {CONSUMER_TERMS}."),
-    "data-use-commercial": _not_read(
-        "Commercial Terms of Service", None, COMMERCIAL_TERMS,
-        "Anthropic's Commercial Terms of Service on whether this work may be used to train models were not read for "
-        f"this release; they are at {COMMERCIAL_TERMS}."),
-    # the Act's principles the teammate's notice rests on (3, telling a person what is collected; 6
-    # and 7, seeing and correcting it; 9, keeping it no longer than its purpose needs), cited from the design's own
-    # reading, to be read with the data-use terms
-    "privacy-principle-3": _principle(3),
-    "privacy-principle-6": _principle(6),
-    "privacy-principle-7": _principle(7),
-    "privacy-principle-9": _principle(9),
+    # the data-use clauses, on whether this work may be used to train models: the organisation notice's words on
+    # training are set from them
+    "data-use-consumer": _quoted(
+        "Consumer Terms of Service", "4", CONSUMER_TERMS, "Effective Oct 8, 2025",
+        "We may use Materials to provide, maintain, and improve the Services and to develop other products and "
+        "services, including training our models, unless you opt out of training through your account settings. Even "
+        "if you opt out, we will use Materials for model training when: (1) you provide Feedback to us regarding any "
+        "Materials, or (2) your Materials are flagged for safety review to improve our ability to detect harmful "
+        "content, enforce our policies, or advance our safety research."),
+    "data-use-commercial": _quoted(
+        "Commercial Terms of Service", "B", COMMERCIAL_TERMS, "Effective Jun 17, 2025",
+        "Anthropic may not train models on Customer Content from Services."),
+    # the Act's principles the teammate's notice rests on (3, telling a person what is collected; 6 and 7, seeing and
+    # correcting it; 9, keeping it no longer than its purpose needs), each whole, its subclauses run on as the
+    # page numbers them
+    "privacy-principle-3": _quoted(
+        "Privacy Act 2020 (New Zealand)", "information privacy principle 3", PRIVACY_ACT,
+        "Version as at 8 October 2026",
+        "(1) If an agency collects personal information from the individual concerned, the agency must take any steps "
+        "that are, in the circumstances, reasonable to ensure that the individual concerned is aware of— (a) the "
+        "fact that the information is being collected; and (b) the purpose for which the information is being "
+        "collected; and (c) the intended recipients of the information; and (d) the name and address of— (i) the "
+        "agency that is collecting the information; and (ii) the agency that will hold the information; and (e) if "
+        "the collection of the information is authorised or required by or under law,— (i) the particular law by or "
+        "under which the collection of the information is authorised or required; and (ii) whether the supply of the "
+        "information by that individual is voluntary or mandatory; and (f) the consequences (if any) for that "
+        "individual if all or any part of the requested information is not provided; and (g) the rights of access "
+        "to, and correction of, information provided by the IPPs. (2) The steps referred to in subclause (1) must be "
+        "taken before the information is collected or, if that is not practicable, as soon as practicable after the "
+        "information is collected. (3) An agency is not required to take the steps referred to in subclause (1) in "
+        "relation to the collection of information from an individual if the agency has taken those steps on a "
+        "recent previous occasion in relation to the collection, from that individual, of the same information or "
+        "information of the same kind. (4) It is not necessary for an agency to comply with subclause (1) if the "
+        "agency believes, on reasonable grounds,— (a) that non-compliance would not prejudice the interests of the "
+        "individual concerned; or (b) that non-compliance is necessary— (i) to avoid prejudice to the maintenance of "
+        "the law by any public sector agency, including prejudice to the prevention, detection, investigation, "
+        "prosecution, and punishment of offences; or (ii) for the enforcement of a law that imposes a pecuniary "
+        "penalty; or (iii) for the protection of public revenue; or (iv) for the conduct of proceedings before any "
+        "court or tribunal (being proceedings that have been commenced or are reasonably in contemplation); or (c) "
+        "that compliance would prejudice the purposes of the collection; or (d) that compliance is not reasonably "
+        "practicable in the circumstances of the particular case; or (e) that the information— (i) will not be used "
+        "in a form in which the individual concerned is identified; or (ii) will be used for statistical or research "
+        "purposes and will not be published in a form that could reasonably be expected to identify the individual "
+        "concerned."),
+    "privacy-principle-6": _quoted(
+        "Privacy Act 2020 (New Zealand)", "information privacy principle 6", PRIVACY_ACT,
+        "Version as at 8 October 2026",
+        "(1) An individual is entitled to receive from an agency upon request— (a) confirmation of whether the agency "
+        "holds any personal information about them; and (b) access to their personal information. (2) If an "
+        "individual concerned is given access to personal information, the individual must be advised that, under "
+        "IPP 7, the individual may request the correction of that information. (3) This IPP is subject to the "
+        "provisions of Part 4."),
+    "privacy-principle-7": _quoted(
+        "Privacy Act 2020 (New Zealand)", "information privacy principle 7", PRIVACY_ACT,
+        "Version as at 8 October 2026",
+        "(1) An individual whose personal information is held by an agency is entitled to request the agency to "
+        "correct the information. (2) An agency that holds personal information must, on request or on its own "
+        "initiative, take such steps (if any) that are reasonable in the circumstances to ensure that, having regard "
+        "to the purposes for which the information may lawfully be used, the information is accurate, up to date, "
+        "complete, and not misleading. (3) When requesting the correction of personal information, or at any later "
+        "time, an individual is entitled to— (a) provide the agency with a statement of the correction sought to the "
+        "information (a statement of correction); and (b) request the agency to attach the statement of correction "
+        "to the information if the agency does not make the correction sought. (4) If an agency that holds personal "
+        "information is not willing to correct the information as requested and has been provided with a statement "
+        "of correction, the agency must take such steps (if any) that are reasonable in the circumstances to ensure "
+        "that the statement of correction is attached to the information in a manner that ensures that it will "
+        "always be read with the information. (5) If an agency corrects personal information or attaches a statement "
+        "of correction to personal information, that agency must, so far as is reasonably practicable, inform every "
+        "other person to whom the agency has disclosed the information. (6) Subclauses (1) to (4) are subject to the "
+        "provisions of Part 4."),
+    "privacy-principle-9": _quoted(
+        "Privacy Act 2020 (New Zealand)", "information privacy principle 9", PRIVACY_ACT,
+        "Version as at 8 October 2026",
+        "An agency that holds personal information must not keep that information for longer than is required for the "
+        "purposes for which the information may lawfully be used."),
 }
 
 # ---- the design's own statements ------------------------------------------------------------------------------------
 
-# the design has the organisation notice say what crossing onto a personal plan does to training in default words,
-# "marked as not read again", until the data-use clauses are read and the notice's words are set from them. Those words
-# rest on Anthropic's 2025 announcement: the release check names a text whose own words still hold either the mark or
-# that announcement, so that taking the mark out alone does not let the release through. Matched without regard to
-# case. Point 11's "whose terms were not read" (another vendor's, which no release reads) holds neither, and neither
-# makes a text's "unread" true, which says only whether a quotation of it is unread.
+# the design had the organisation notice say what crossing onto a personal plan does to training in default words,
+# "marked as not read again", until the data-use clauses were read and the notice's words set from them, as they were on
+# 2026-11-11. Those words rested on Anthropic's 2025 announcement: the release check names a text whose own words hold
+# either the mark or that announcement, so that taking the mark out alone does not let the release through. Matched
+# without regard to case. Point 11's "whose terms were not read" (another vendor's, which no release reads) holds
+# neither, and neither makes a text's "unread" true, which says only whether a quotation of it is unread.
 NOT_READ_AGAIN = "not read again"
-ITEM_19_MARKS = (NOT_READ_AGAIN, "announced in 2025")
+DEFAULT_NOTICE_MARKS = (NOT_READ_AGAIN, "announced in 2025")
 # the design's organisation notice without its first sentence ("This task started on <...> and would go on <...>."),
 # whose places say which way the task goes and have no placeholder; the clause it quotes
-# is the quotation "responsibility"; and the notice's default words, with its mark (ITEM_19_MARKS)
+# is the quotation "responsibility"; and its words on training, set from the data-use clauses as read
 ORGANISATION = (
     "Work on a Team or Enterprise seat goes into that organisation, under its agreement with Anthropic; work from such "
     "a seat taken to a personal account leaves it. On a Team seat, work falls under the organisation's commercial "
-    "terms; on a personal plan, under the consumer terms, where (as Anthropic announced in 2025, not read again here) "
-    "the account's own setting decides whether its chats may be used to train models. So a crossing onto a personal "
-    "plan may put work started under the commercial terms under that setting.")
+    "terms, under which Anthropic may not train models on Customer Content from Services. On a personal plan, it falls "
+    "under the consumer terms, under which Anthropic may use Materials to train its models unless the account holder "
+    "opts out of training through the account's settings; even if the account holder opts out, Anthropic will use "
+    "Materials for model training when the account holder gives Anthropic Feedback regarding any Materials, or when "
+    "the account holder's Materials are flagged for safety review to improve Anthropic's ability to detect harmful "
+    "content, enforce its policies, or advance its safety research. As this notice reads the two, a crossing onto a "
+    "personal plan may put work started under the commercial terms where Anthropic may use it to train its models.")
 # the seat-settings text, word for word the same wherever it is shown
 SEAT_SETTINGS = (
     "If this organisation has its own settings for Claude Code, Claude Code applies them to the work done on its seats "
@@ -285,7 +332,7 @@ CUSTODIAN = (
     "custody only from someone you trust, and give those agents the narrowest allow rules they need.")
 
 _ORGANISATION_QUOTED = ("responsibility",) + DATA_USE_IDS
-_RELAY_QUOTED = ("ordinary-use", "multiple-accounts-2025", "multiple-accounts-2026", "bypass", "interference")
+_RELAY_QUOTED = ("ordinary-use", "multiple-accounts-2026", "bypass", "interference")
 _UNWATCHED_QUOTED = ("automated-use", "oauth")
 _PRINCIPLES = ("privacy-principle-3", "privacy-principle-6", "privacy-principle-7", "privacy-principle-9")
 
@@ -443,10 +490,11 @@ def _raw(point):
             "unread": any(q["unread"] is not None for q in quotations)}
 
 
-def _item_19_marks(design) -> list:
-    """The marks of ITEM_19_MARKS that some part of a text's own words still holds, in that order: the organisation
-    notice's default words, not yet rewritten from the data-use clauses as read. Empty for a text that holds neither."""
-    return [mark for mark in ITEM_19_MARKS if any(mark in part["text"].lower() for part in design)]
+def _default_notice_marks(design) -> list:
+    """The marks of DEFAULT_NOTICE_MARKS that some part of a text's own words still holds, in that order: the
+    organisation notice's default words, not yet rewritten from the data-use clauses as read. Empty for a text that
+    holds neither."""
+    return [mark for mark in DEFAULT_NOTICE_MARKS if any(mark in part["text"].lower() for part in design)]
 
 
 def _digest(raw):
@@ -507,11 +555,11 @@ def release_check(release_date) -> list:
     """Each problem that holds a release back, one line each, naming the point and the quotation: a quotation with no
     source, no address or no read_on, one read before `release_date` (an ISO date, YYYY-MM-DD), one with neither words
     nor unread, one not read (its unread not None, an empty mark among them, as its text's unread counts it), a text
-    whose unread is true, a text whose own words still hold the organisation notice's default words (ITEM_19_MARKS, each
-    mark it holds named, on a line of its own), a text of DATA_USE_POINTS without both quotations of DATA_USE_IDS, and a
-    point of RISK_POINTS with no text. An empty list when there is none; ValueError for a release's date that is not an
-    ISO date. It reads the texts with their placeholders as written, so neither the operator nor the record's keeping,
-    deployment settings, changes what it finds."""
+    whose unread is true, a text whose own words still hold the organisation notice's default words
+    (DEFAULT_NOTICE_MARKS, each mark it holds named, on a line of its own), a text of DATA_USE_POINTS without both
+    quotations of DATA_USE_IDS, and a point of RISK_POINTS with no text. An empty list when there is none; ValueError
+    for a release's date that is not an ISO date. It reads the texts with their placeholders as written, so neither the
+    operator nor the record's keeping, deployment settings, changes what it finds."""
     release = _date(release_date)
     if release is None:
         raise ValueError("The release's date is an ISO date, YYYY-MM-DD.")
@@ -541,7 +589,7 @@ def release_check(release_date) -> list:
                 problems.append(f"{where}: not read for this release ({q['unread'] or 'its mark is empty'})")
         if raw["unread"]:
             problems.append(f"point {point}: its text says a clause was not read for this release")
-        marks = _item_19_marks(raw["design"])
+        marks = _default_notice_marks(raw["design"])
         if marks:
             problems.append(f"point {point}: its own words still hold the organisation notice's default words ("
                             + " and ".join(f'"{mark}"' for mark in marks)

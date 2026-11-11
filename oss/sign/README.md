@@ -17,7 +17,9 @@ allows `cryptography` under `sign/` and nowhere else.
 ## Vectors
 
 `vectors/composite/id-MLDSA65-Ed25519-SHA512.json` is the draft's own test case for this algorithm (Appendix E),
-made by the draft's reference implementation, with the draft's URL and the sha256 of the text it was taken from.
+made by the draft's reference implementation, with the draft's URL and the sha256 of the text it was taken from,
+and, as its `legend`, section 6.d's text of the IETF Trust's Legal Provisions Relating to IETF Documents, its
+year 2026.
 `tools/extract_composite_vector.py` writes it from that text. The tests verify its two signatures (one with an empty
 context, one with the draft's context), refuse each under the other's context, and check that its private key gives
 its public key and signs for it.

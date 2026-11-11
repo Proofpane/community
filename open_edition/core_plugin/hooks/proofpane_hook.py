@@ -844,7 +844,9 @@ def prompt_check(record, env=None):
     it read, a systemMessage naming what it could not read; with room, None, nothing to say. Where the check could not
     be made, the prompt goes on and a systemMessage says why (_unchecked). The request is made in a thread of its own,
     waited for no longer than the wait, since urllib's timeout covers each socket operation, not a whole request, and
-    nothing a name lookup takes; a thread still waiting is left behind, and the process ends without it."""
+    nothing a name lookup takes; a thread still waiting is left behind, and the process ends without it. Its socket is
+    given a second past the wait: given the wait itself, it ran out with the wait, and on a loaded machine could be
+    seen first, a product reached and slow then said to be not reached."""
     wait = CHECK_WAIT
     kind = spend_kind(env)
     got = {}
@@ -853,7 +855,8 @@ def prompt_check(record, env=None):
     def ask():
         try:
             got["status"], got["answer"] = _post(record["cloud"] + CHECK_PATH,
-                                                 {"device_id": record["device_id"], "token": record["token"]}, wait)
+                                                 {"device_id": record["device_id"], "token": record["token"]},
+                                                 wait + 1.0)
         except Exception:  # noqa: BLE001  a request that breaks is a check not made
             got["broke"] = True
         finally:

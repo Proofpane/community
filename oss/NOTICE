@@ -3,9 +3,13 @@ Copyright 2026 PROOFPANE LIMITED
 
 Licensed under the Apache License, Version 2.0: the LICENSE file beside this one.
 
-sign/vectors/composite/id-MLDSA65-Ed25519-SHA512.json holds the test vectors of draft-ietf-lamps-pq-composite-sigs-19,
-Appendix E, as the IETF published that draft
-(https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-19.txt); the file names its source, that address
-and the sha256 of the text it was taken from. core/vectors/jcs/objects.json includes the two examples of RFC 8785,
-sections 3.2.2 and 3.2.3 (https://www.rfc-editor.org/rfc/rfc8785). Each of these is under the terms its document
-states.
+sign/vectors/composite/id-MLDSA65-Ed25519-SHA512.json, from draft-ietf-lamps-pq-composite-sigs-19, Appendix E
+(https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-19.txt): "Copyright (c) 2026 IETF Trust and the
+persons identified as the document authors. All rights reserved." The file names its source, that address and the sha256
+of the text it was taken from, and holds the fields m, ctx, pk, sk, s and sWithContext of its test case
+id-MLDSA65-Ed25519-SHA512.
+core/vectors/jcs/objects.json, from RFC 8785, sections 3.2.2 and 3.2.3 (https://www.rfc-editor.org/rfc/rfc8785.txt):
+"Copyright (c) 2020 IETF Trust and the persons identified as the document authors. All rights reserved."
+Each of these two documents' notices says: "This document is subject to BCP 78 and the IETF Trust's Legal Provisions
+Relating to IETF Documents (https://trustee.ietf.org/license-info) in effect on the date of publication of this
+document."

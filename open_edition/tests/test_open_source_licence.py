@@ -28,11 +28,55 @@ def test_the_licence_is_the_apache_licence_s_text():
     assert re.match(r"\s*Apache License\s+Version 2\.0, January 2004\s+http://www\.apache\.org/licenses/", licence)
 
 
+# A copyright line NOTICE quotes from a document, whole: it is taken out before NOT_OPEN reads the rest, and a line of
+# Community's own is still found
+IETF_COPYRIGHT = re.compile(r"Copyright \(c\) \d{4} IETF Trust and the persons identified as the document authors\. "
+                            r"All rights reserved\.")
+
+
 def test_the_notice_names_the_apache_licence_and_nothing_else_for_community():
-    notice = _text("NOTICE")
+    notice = " ".join(_text("NOTICE").split())
     assert "Licensed under the Apache License, Version 2.0: the LICENSE file beside this one" in notice
-    found = NOT_OPEN.search(notice)
+    # the words are still found anywhere but in such a line
+    assert NOT_OPEN.search(IETF_COPYRIGHT.sub("", "Copyright 2026 PROOFPANE LIMITED. All rights reserved."))
+    assert not NOT_OPEN.search(IETF_COPYRIGHT.sub("", "Copyright (c) 2026 IETF Trust and the persons identified as the "
+                                                      "document authors. All rights reserved."))
+    found = NOT_OPEN.search(IETF_COPYRIGHT.sub("", notice))
     assert found is None, found and found.group(0)
+
+
+# What NOTICE says of the two documents the tests carry from: each by its name, address and own copyright line, quoted,
+# and the documents' own sentence on the provisions, quoted
+IETF_CARRIED = (
+    "tests/vectors/xwing_draft11.json, from draft-connolly-cfrg-xwing-kem-11, Appendix C "
+    "(https://www.ietf.org/archive/id/draft-connolly-cfrg-xwing-kem-11.txt): \"Copyright (c) 2026 IETF Trust and the "
+    "persons identified as the document authors. All rights reserved.\"",
+    "tests/test_ade_push.py, from RFC 8291, Section 5 and Appendix A (https://www.rfc-editor.org/rfc/rfc8291.txt): "
+    "\"Copyright (c) 2017 IETF Trust and the persons identified as the document authors. All rights reserved.\"",
+    "Each of these two documents' notices says: \"This document is subject to BCP 78 and the IETF Trust's Legal "
+    "Provisions Relating to IETF Documents (https://trustee.ietf.org/license-info) in effect on the date of "
+    "publication of this document.\"",
+)
+# Section 6.d's text of the IETF Trust's Legal Provisions Relating to IETF Documents, its year 2017: the notice over RFC
+# 8291's values in tests/test_ade_push.py, word for word
+SECTION_6_D = (
+    "Copyright (c) 2017 IETF Trust and the persons identified as authors of the code. All rights reserved. "
+    "Redistribution and use in source and binary forms, with or without modification, is permitted pursuant to, and "
+    "subject to the license terms contained in, the Revised BSD License set forth in Section 4.c of the IETF Trust’s "
+    "Legal Provisions Relating to IETF Documents (http://trustee.ietf.org/license-info).")
+
+
+def test_the_notice_names_each_document_the_tests_carry_from_in_its_own_words():
+    notice = " ".join(_text("NOTICE").split())
+    for words in IETF_CARRIED:
+        assert words in notice, words
+    assert "under the terms that" not in notice, "neither document states terms of its own"
+
+
+def test_rfc_8291_s_values_carry_the_trust_s_section_6_d_notice():
+    lines = _text("tests", "test_ade_push.py").split("\n")
+    comments = " ".join(line.strip()[1:].strip() for line in lines if line.strip().startswith("#"))
+    assert SECTION_6_D in " ".join(comments.split())
 
 
 def test_the_readme_says_community_is_open_source_under_the_apache_licence():

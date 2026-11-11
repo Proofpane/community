@@ -21,6 +21,7 @@ import subprocess
 import sys
 import threading
 import time
+import types
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
@@ -344,6 +345,82 @@ def test_the_hook_as_claude_code_starts_it_keeps_its_default_wait(tmp_path, proo
     out, took = _start(tmp_path)
     assert out == {"systemMessage": GOES_ON.format(f"no answer within {WAIT:g} seconds")}
     assert WAIT <= took < WAIT + 2, took
+
+
+LATE = 0.5          # how late the hook's own wait wakes in the late case: half the second its request's socket is given
+CHECKED = ("http://127.0.0.1:9" + CHECK_PATH, {"device_id": DEVICE, "token": TOKEN})     # the check's request, whole
+
+
+def _late_wake(wait, release):
+    """The hook's threading and its _post as on a loaded machine, without a clock: its Event's timed wait wakes LATE
+    seconds past the wait, once the request's call has begun; the request's socket runs out first where the timeout the
+    hook gave it falls within the wait and that lateness, answered (None, None) as _call answers urllib's timeout, and
+    is otherwise still waiting when the hook wakes, until the case releases it. (the threading, the _post, what they
+    saw: each timed wait's timeout, and each request's url, body and timeout)."""
+    seen = {"waited": [], "posted": [], "called": threading.Event(), "ended": None}
+
+    def post(url, body, timeout=hook.TIMEOUT):
+        seen["posted"].append((url, body, timeout))
+        seen["ended"] = timeout <= wait + LATE
+        seen["called"].set()
+        if not seen["ended"]:
+            release.wait(10)
+        return None, None
+
+    class Late(threading.Event):
+        def wait(self, timeout=None):
+            if timeout is None:
+                return super().wait()
+            seen["waited"].append(timeout)
+            assert seen["called"].wait(10), "the hook made no request"
+            return super().wait(10) if seen["ended"] else self.is_set()
+
+    late = types.SimpleNamespace(**{n: getattr(threading, n) for n in dir(threading) if not n.startswith("__")})
+    late.Event = Late
+    return late, post, seen
+
+
+def test_a_check_slower_than_its_wait_is_said_to_be_slow_when_the_hook_wakes_late(tmp_path, monkeypatch):
+    # Proofpane reached and slow, and the hook's own wait woken half a second late: the request's socket must still be
+    # waiting then, or the person is told Proofpane could not be reached when it was reached and was slow. Decided by
+    # the timeouts alone, whatever the machine's load; the real socket's slow answer is the case above
+    release = threading.Event()
+    late, post, seen = _late_wake(0.5, release)
+    _record(tmp_path, "http://127.0.0.1:9")
+    monkeypatch.setattr(hook, "CHECK_WAIT", 0.5, raising=False)
+    monkeypatch.setattr(hook, "threading", late)        # the hook's view of threading alone: its Events wake late
+    monkeypatch.setattr(hook, "_post", post)
+    try:
+        out = _check(tmp_path)
+    finally:
+        release.set()
+    assert seen["waited"] == [0.5]                      # the lateness reached the hook's own wait, and once
+    assert [(url, body) for url, body, _ in seen["posted"]] == [CHECKED]
+    assert out == {"systemMessage": GOES_ON.format("no answer within 0.5 seconds")}
+
+
+@pytest.mark.parametrize("wait", [WAIT, 0.5, 7.0], ids=["the default wait", "the wait these cases set",
+                                                         "a wait past TIMEOUT"])
+def test_the_check_s_request_is_given_at_least_a_second_past_the_wait_at_each_wait(tmp_path, monkeypatch, wait):
+    # the timeout the hook gives the check's request, for its socket: at least a second past the wait, so that the wait,
+    # not the socket, is what runs out on a product reached and slow. A wait past TIMEOUT fails a socket given TIMEOUT
+    # or the larger of the two; the wait these cases set fails one given twice the wait
+    given, called = [], threading.Event()
+
+    def post(url, body, timeout=hook.TIMEOUT):
+        given.append((url, body, timeout))
+        called.set()
+        return 200, budget_answer()
+
+    _record(tmp_path, "http://127.0.0.1:9")
+    monkeypatch.setattr(hook, "CHECK_WAIT", wait, raising=False)
+    monkeypatch.setattr(hook, "_post", post)
+    out = _check(tmp_path)
+    assert called.wait(10), "the hook made no request"
+    assert [(url, body) for url, body, _ in given] == [CHECKED]          # the check's own request, and nothing else
+    assert given[0][2] >= wait + 1.0, given
+    # with room, nothing to say; at 0.5 the hook may stop waiting before its request's thread has run
+    assert out is None or (wait == 0.5 and out == {"systemMessage": GOES_ON.format("no answer within 0.5 seconds")})
 
 
 @pytest.mark.parametrize("where, why", [("spend_kind", "the hook broke while checking"),

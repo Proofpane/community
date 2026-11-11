@@ -56,9 +56,17 @@ class PushService:
         return self.status
 
 
+# The keys, the salt, the message and the result below are from RFC 8291, Section 5 and Appendix A
+# (https://www.rfc-editor.org/rfc/rfc8291.txt), with section 6.d's text of the IETF Trust's Legal Provisions Relating to
+# IETF Documents, its year 2017:
+#
+# Copyright (c) 2017 IETF Trust and the persons identified as authors of the code. All rights reserved.
+# Redistribution and use in source and binary forms, with or without modification, is permitted pursuant to, and
+# subject to the license terms contained in, the Revised BSD License set forth in Section 4.c of the IETF Trust’s
+# Legal Provisions Relating to IETF Documents (http://trustee.ietf.org/license-info).
 def test_the_encryption_is_rfc_8291_s_own_example():
-    as_private = ec.derive_private_key(int.from_bytes(push.unb64u("yfWPiYE-n46HLnH0KqZOF1fJJU3MYrct3AELtAQ-oRw"), "big"),
-                                       ec.SECP256R1())
+    as_private = ec.derive_private_key(
+        int.from_bytes(push.unb64u("yfWPiYE-n46HLnH0KqZOF1fJJU3MYrct3AELtAQ-oRw"), "big"), ec.SECP256R1())
     body = push.encrypt(push.unb64u("V2hlbiBJIGdyb3cgdXAsIEkgd2FudCB0byBiZSBhIHdhdGVybWVsb24"),
                         "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4",
                         "BTBZMqHH6r4Tts7J_aSIgg", as_private=as_private, salt=push.unb64u("DGv6ra1nlYgDCS1FRnbzlw"))

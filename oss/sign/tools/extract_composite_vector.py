@@ -17,6 +17,12 @@ import sys
 
 URL = "https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-19.txt"
 CASE = "id-MLDSA65-Ed25519-SHA512"
+# Section 6.d's text of the IETF Trust's Legal Provisions Relating to IETF Documents, its year 2026, word for word: the
+# vector carries it as its "legend"
+LEGEND = ("Copyright (c) 2026 IETF Trust and the persons identified as authors of the code. All rights reserved. "
+          "Redistribution and use in source and binary forms, with or without modification, is permitted pursuant to, "
+          "and subject to the license terms contained in, the Revised BSD License set forth in Section 4.c of the IETF "
+          "Trust’s Legal Provisions Relating to IETF Documents (http://trustee.ietf.org/license-info).")
 LENGTHS = {"pk": 1984, "sk": 64, "s": 3373, "sWithContext": 3373}
 OUT = os.path.join(os.path.dirname(__file__), "..", "vectors", "composite", CASE + ".json")
 
@@ -37,7 +43,7 @@ def main(path):
     case_at = body.index(f'"tcId": "{CASE}"')
     case = body[case_at:body.index('"tcId":', case_at + 10)]
     vector = {"source": "draft-ietf-lamps-pq-composite-sigs-19, Appendix E", "url": URL,
-              "source_sha256": hashlib.sha256(raw).hexdigest(), "tcId": CASE,
+              "source_sha256": hashlib.sha256(raw).hexdigest(), "tcId": CASE, "legend": LEGEND,
               "m": _field(body[start:start + 2000], "m"), "ctx": _field(body[start:start + 2000], "ctx")}
     for name, length in LENGTHS.items():
         vector[name] = _field(case, name)

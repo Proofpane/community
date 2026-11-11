@@ -1,9 +1,11 @@
 """The risk points' texts: each risk point has its text; each quotation of a provider's terms carries its source's
-address, the date the source gives and the date it was read, word for word as this file holds it until it is read
-again; a text whose clause has not been read says so, naming where it is; a text's digest changes with its words; the
-release check fails on an old read date, an unread clause and the dropped data-use clauses, naming each, and passes
-when every source was read on or after the release's date; the Privacy Act's principles are among the sources it
-checks. Then the route, GET /api/ade/risks, which serves the texts and nothing else: no route knows of a pop-up.
+address, the date the source gives and the date it was read, word for word as this file holds it until it is read again;
+a text with a clause marked not read says so, its "unread" true; a text's digest changes with its words; the release
+check fails on an old read date, an unread clause and the dropped data-use clauses, naming each, and passes when every
+source was read on or after the release's date; the Privacy Act's principles are among the sources it checks. As built,
+every clause was read on READ, the organisation notice's words on training are set from the data-use clauses as read,
+and the release check passes for that day and holds back a release the day after it. Then the route,
+GET /api/ade/risks, which serves the texts and nothing else: no route knows of a pop-up.
 
 The quoted words and the texts' statements below are pinned here, not read from the module: a change to the module's
 words fails here until this file changes too, and so do the four parts the module words itself (its docstring names
@@ -31,15 +33,16 @@ from proofpane_open.ade import risk_texts, task_shapes, tasks
 from proofpane_core.canonical import canonicalize
 
 OPERATOR = "OPEN_EDITION_OPERATOR"
-READ = "2026-10-10"                     # when the quoted documents were fetched
-RELEASE = "2026-10-12"
+READ = "2026-11-11"                     # when the quoted documents were fetched: sixteen quotations, six pages
+RELEASE = "2026-11-13"                  # a release after that reading
 
 CONSUMER_TERMS = "https://www.anthropic.com/legal/consumer-terms"
 COMMERCIAL_TERMS = "https://www.anthropic.com/legal/commercial-terms"
 CLAUDE_CODE_LEGAL = "https://code.claude.com/docs/en/legal-and-compliance"
-USAGE_POLICY_IN_FORCE = "https://www.anthropic.com/legal/archive/22742366-2ef0-4c7a-a833-6523f10d3944"
 USAGE_POLICY_LATER = "https://www.anthropic.com/legal/aup"
-USAGE_CREDITS_ARTICLE = "https://support.claude.com/en/articles/11145838-using-claude-code-with-your-pro-or-max-plan"
+USAGE_CREDITS_ARTICLE = ("https://support.claude.com/en/articles/"
+                         "11145838-use-claude-code-with-your-pro-max-or-ultra-plan")
+PRIVACY_ACT = "https://www.legislation.govt.nz/act/public/2020/31/en/latest/#LMS23342"
 
 # ---- the pinned words -----------------------------------------------------------------------------------------------
 
@@ -50,73 +53,127 @@ Quoted = collections.namedtuple("Quoted", "document section address source_date 
 # made straight.
 QUOTED = {
     "automated-use": Quoted(
-        ("Consumer Terms of Service",), "3", CONSUMER_TERMS, "Effective October 8, 2025",
+        ("Consumer Terms of Service",), "3", CONSUMER_TERMS, "Effective Oct 8, 2025",
         "Except when you are accessing our Services via an Anthropic API Key or where we otherwise explicitly permit "
         "it, to access the Services through automated or non-human means, whether through a bot, script, or "
         "otherwise."),
     "sharing": Quoted(
-        ("Consumer Terms of Service",), "2", CONSUMER_TERMS, "Effective October 8, 2025",
-        "You may not share your Account login information, Anthropic API key, or Account credentials with anyone "
-        "else. You also may not make your Account available to anyone else."),
+        ("Consumer Terms of Service",), "2", CONSUMER_TERMS, "Effective Oct 8, 2025",
+        "You may not share your Account login information, Anthropic API key, or Account credentials with anyone else. "
+        "You also may not make your Account available to anyone else."),
     "interference": Quoted(
-        ("Consumer Terms of Service",), "3", CONSUMER_TERMS, "Effective October 8, 2025",
+        ("Consumer Terms of Service",), "3", CONSUMER_TERMS, "Effective Oct 8, 2025",
         "You also must not abuse, harm, interfere with, or disrupt our Services, including, for example, introducing "
         "viruses or malware, spamming or DDoSing Services, or bypassing any of our systems or protective measures."),
     "ordinary-use": Quoted(
         ("Claude Code", "Legal and compliance"), None, CLAUDE_CODE_LEGAL, None,
-        "Advertised usage limits for Pro and Max plans assume ordinary, individual usage of Claude Code and the Agent "
-        "SDK."),
+        "Advertised usage limits for Pro, Max, and Ultra plans assume ordinary, individual usage of Claude Code and "
+        "the Agent SDK."),
     "oauth": Quoted(
         ("Claude Code", "Legal and compliance"), None, CLAUDE_CODE_LEGAL, None,
-        "OAuth authentication is intended exclusively for purchasers of Claude Free, Pro, Max, Team, and Enterprise "
-        "subscription plans and is designed to support ordinary use of Claude Code and other native Anthropic "
-        "applications."),
+        "OAuth authentication is intended exclusively for purchasers of Claude Free, Pro, Max, Ultra, Team, and "
+        "Enterprise subscription plans and is designed to support ordinary use of Claude Code and other native "
+        "Anthropic applications."),
     "own-subscription": Quoted(
         ("Claude Code", "Legal and compliance"), None, CLAUDE_CODE_LEGAL, None,
         "Nor does it prevent an end user from signing in to the unmodified Claude Code binary with their own Claude "
         "subscription, including where a platform hosts Claude Code as described under Can customers offer Claude "
         "Code in their products? above."),
-    "multiple-accounts-2025": Quoted(
-        ("Usage Policy",), None, USAGE_POLICY_IN_FORCE, "Effective September 15, 2025",
-        "Coordinate malicious activity across multiple accounts to avoid detection or circumvent product guardrails "
-        "or generating identical or similar inputs that otherwise violate our Usage Policy"),
     "multiple-accounts-2026": Quoted(
-        ("Usage Policy",), None, USAGE_POLICY_LATER, "Effective November 12, 2026",
+        ("Usage Policy",), None, USAGE_POLICY_LATER, "Effective Nov 12, 2026",
         "Coordinate malicious activity across multiple accounts, or create multiple accounts, to avoid detection, "
         "circumvent product guardrails, or generate identical or similar inputs that otherwise violate our Usage "
         "Policy"),
     "bypass": Quoted(
-        ("Usage Policy",), None, USAGE_POLICY_LATER, "Effective November 12, 2026",
+        ("Usage Policy",), None, USAGE_POLICY_LATER, "Effective Nov 12, 2026",
         "Intentionally bypass or interfere with capabilities, restrictions, or guardrails established within our "
         "products, including by circumvention of the account sign-up or log-in process or by instructing the model "
         "to produce harmful outputs (e.g., jailbreaking or prompt injection), without prior authorization from "
         "Anthropic"),
     "responsibility": Quoted(
-        ("Commercial Terms of Service",), "D.5", COMMERCIAL_TERMS, "Effective June 17, 2025",
+        ("Commercial Terms of Service",), "D.5", COMMERCIAL_TERMS, "Effective Jun 17, 2025",
         "Customer is responsible for all activity under its account."),
     "usage-credits": Quoted(
-        ("Help Center", "Use Claude Code with your Pro or Max plan"), None, USAGE_CREDITS_ARTICLE,
-        "dateModified 2026-10-08T19:00:45Z",
+        ("Help Center", "Use Claude Code with your Pro, Max, or Ultra plan"), None, USAGE_CREDITS_ARTICLE,
+        "dateModified 2026-10-30T19:29:25Z",
         "Enable usage credits to keep using Claude with your Pro plan after you reach your five-hour session limit or "
         "your weekly limit."),
+    "data-use-consumer": Quoted(
+        ("Consumer Terms of Service",), "4", CONSUMER_TERMS, "Effective Oct 8, 2025",
+        "We may use Materials to provide, maintain, and improve the Services and to develop other products and "
+        "services, including training our models, unless you opt out of training through your account settings. Even "
+        "if you opt out, we will use Materials for model training when: (1) you provide Feedback to us regarding any "
+        "Materials, or (2) your Materials are flagged for safety review to improve our ability to detect harmful "
+        "content, enforce our policies, or advance our safety research."),
+    "data-use-commercial": Quoted(
+        ("Commercial Terms of Service",), "B", COMMERCIAL_TERMS, "Effective Jun 17, 2025",
+        "Anthropic may not train models on Customer Content from Services."),
+    "privacy-principle-3": Quoted(
+        ("Privacy Act 2020",), "information privacy principle 3", PRIVACY_ACT, "Version as at 8 October 2026",
+        "(1) If an agency collects personal information from the individual concerned, the agency must take any steps "
+        "that are, in the circumstances, reasonable to ensure that the individual concerned is aware of— (a) the "
+        "fact that the information is being collected; and (b) the purpose for which the information is being "
+        "collected; and (c) the intended recipients of the information; and (d) the name and address of— (i) the "
+        "agency that is collecting the information; and (ii) the agency that will hold the information; and (e) if "
+        "the collection of the information is authorised or required by or under law,— (i) the particular law by or "
+        "under which the collection of the information is authorised or required; and (ii) whether the supply of the "
+        "information by that individual is voluntary or mandatory; and (f) the consequences (if any) for that "
+        "individual if all or any part of the requested information is not provided; and (g) the rights of access "
+        "to, and correction of, information provided by the IPPs. (2) The steps referred to in subclause (1) must be "
+        "taken before the information is collected or, if that is not practicable, as soon as practicable after the "
+        "information is collected. (3) An agency is not required to take the steps referred to in subclause (1) in "
+        "relation to the collection of information from an individual if the agency has taken those steps on a "
+        "recent previous occasion in relation to the collection, from that individual, of the same information or "
+        "information of the same kind. (4) It is not necessary for an agency to comply with subclause (1) if the "
+        "agency believes, on reasonable grounds,— (a) that non-compliance would not prejudice the interests of the "
+        "individual concerned; or (b) that non-compliance is necessary— (i) to avoid prejudice to the maintenance of "
+        "the law by any public sector agency, including prejudice to the prevention, detection, investigation, "
+        "prosecution, and punishment of offences; or (ii) for the enforcement of a law that imposes a pecuniary "
+        "penalty; or (iii) for the protection of public revenue; or (iv) for the conduct of proceedings before any "
+        "court or tribunal (being proceedings that have been commenced or are reasonably in contemplation); or (c) "
+        "that compliance would prejudice the purposes of the collection; or (d) that compliance is not reasonably "
+        "practicable in the circumstances of the particular case; or (e) that the information— (i) will not be used "
+        "in a form in which the individual concerned is identified; or (ii) will be used for statistical or research "
+        "purposes and will not be published in a form that could reasonably be expected to identify the individual "
+        "concerned."),
+    "privacy-principle-6": Quoted(
+        ("Privacy Act 2020",), "information privacy principle 6", PRIVACY_ACT, "Version as at 8 October 2026",
+        "(1) An individual is entitled to receive from an agency upon request— (a) confirmation of whether the agency "
+        "holds any personal information about them; and (b) access to their personal information. (2) If an "
+        "individual concerned is given access to personal information, the individual must be advised that, under "
+        "IPP 7, the individual may request the correction of that information. (3) This IPP is subject to the "
+        "provisions of Part 4."),
+    "privacy-principle-7": Quoted(
+        ("Privacy Act 2020",), "information privacy principle 7", PRIVACY_ACT, "Version as at 8 October 2026",
+        "(1) An individual whose personal information is held by an agency is entitled to request the agency to "
+        "correct the information. (2) An agency that holds personal information must, on request or on its own "
+        "initiative, take such steps (if any) that are reasonable in the circumstances to ensure that, having regard "
+        "to the purposes for which the information may lawfully be used, the information is accurate, up to date, "
+        "complete, and not misleading. (3) When requesting the correction of personal information, or at any later "
+        "time, an individual is entitled to— (a) provide the agency with a statement of the correction sought to the "
+        "information (a statement of correction); and (b) request the agency to attach the statement of correction "
+        "to the information if the agency does not make the correction sought. (4) If an agency that holds personal "
+        "information is not willing to correct the information as requested and has been provided with a statement "
+        "of correction, the agency must take such steps (if any) that are reasonable in the circumstances to ensure "
+        "that the statement of correction is attached to the information in a manner that ensures that it will "
+        "always be read with the information. (5) If an agency corrects personal information or attaches a statement "
+        "of correction to personal information, that agency must, so far as is reasonably practicable, inform every "
+        "other person to whom the agency has disclosed the information. (6) Subclauses (1) to (4) are subject to the "
+        "provisions of Part 4."),
+    "privacy-principle-9": Quoted(
+        ("Privacy Act 2020",), "information privacy principle 9", PRIVACY_ACT, "Version as at 8 October 2026",
+        "An agency that holds personal information must not keep that information for longer than is required for the "
+        "purposes for which the information may lawfully be used."),
 }
 
 DATA_USE = ("data-use-consumer", "data-use-commercial")
 # the Act's principles the teammate's notice rests on: 3, telling a person what is collected; 6 and
 # 7, seeing and correcting it; 9, keeping it no longer than its purpose needs
 PRINCIPLES = tuple(f"privacy-principle-{n}" for n in (3, 6, 7, 9))
-# the clauses not read: words that name the document, and where it is (none for the Act, since its text was not
-# fetched)
-NOT_READ = {
-    "data-use-consumer": (("Consumer Terms of Service",), CONSUMER_TERMS),
-    "data-use-commercial": (("Commercial Terms of Service",), COMMERCIAL_TERMS),
-    **{principle: (("Privacy Act 2020",), None) for principle in PRINCIPLES},
-}
-IDS = tuple(QUOTED) + tuple(NOT_READ)
+IDS = tuple(QUOTED)
 
 ORGANISATION_CLAUSES = (("responsibility", None),) + tuple((qid, None) for qid in DATA_USE)
-RELAY_CLAUSES = tuple((qid, None) for qid in ("ordinary-use", "multiple-accounts-2025", "multiple-accounts-2026",
-                                              "bypass", "interference"))
+RELAY_CLAUSES = tuple((qid, None) for qid in ("ordinary-use", "multiple-accounts-2026", "bypass", "interference"))
 UNWATCHED_CLAUSES = (("automated-use", None), ("oauth", None))
 
 
@@ -247,8 +304,18 @@ OTHER_ACCOUNT = (
     "reading, not its words. Continuing a session on another of your accounts is your choice.")
 CODEX = ("OpenAI's terms of use and usage policies were not read for this: their pages refused the reading. Read them "
          "before relying on it.")
-# the organisation notice says this in those words, its default words until the data-use clauses are read
+# the organisation notice says this in those words, set from the data-use clauses as read
 CROSSING_TERMS = (
+    "On a Team seat, work falls under the organisation's commercial terms, under which Anthropic may not train models "
+    "on Customer Content from Services. On a personal plan, it falls under the consumer terms, under which Anthropic "
+    "may use Materials to train its models unless the account holder opts out of training through the account's "
+    "settings; even if the account holder opts out, Anthropic will use Materials for model training when the account "
+    "holder gives Anthropic Feedback regarding any Materials, or when the account holder's Materials are flagged for "
+    "safety review to improve Anthropic's ability to detect harmful content, enforce its policies, or advance its "
+    "safety research. As this notice reads the two, a crossing onto a personal plan may put work started under the "
+    "commercial terms where Anthropic may use it to train its models.")
+# its default words before the data-use clauses were read, which the release check names if they come back
+DEFAULT_CROSSING_TERMS = (
     "On a Team seat, work falls under the organisation's commercial terms; on a personal plan, under the consumer "
     "terms, where (as Anthropic announced in 2025, not read again here) the account's own setting decides whether "
     "its chats may be used to train models. So a crossing onto a personal plan may put work started under the "
@@ -288,11 +355,6 @@ OTHER_VENDOR = (
     "The task's code and text go to that vendor, whose terms were not read for this. Claude Code's estimate of cost "
     "prices by Anthropic's models, so for another vendor it is a guess, and that vendor's own spending limit is the "
     "one to trust.")
-# What a reading of the data-use clauses puts in place of the organisation notice's default words (the notice's words
-# set from them): a stand-in, since what the clauses say is not known until they are read
-SET_FROM_THE_CLAUSES = ("Under the data-use clauses as read, the words that say what a crossing does to the use of "
-                        "this work for training.")
-
 # each statement, and the point and case of the one part of that point that holds it, in every point that does
 STATEMENTS = {
     "seat-settings": (SEAT_SETTINGS, {1: "onto_seat", 3: None, 4: "onto_seat", 5: "onto_seat", 6: "seat",
@@ -420,25 +482,28 @@ def changed_points(monkeypatch, point, change):
     monkeypatch.setattr(risk_texts, "POINTS", points)
 
 
-def all_read(monkeypatch, on, item_19_set=True, **fields_by_id):
-    """risk_texts.QUOTATIONS as a copy in which every quotation was read on `on`: words set (a clause not read gets
-    words of the test's own), nothing marked unread; then each id of `fields_by_id` given those fields. With
-    `item_19_set`, risk_texts.POINTS as a copy in which the organisation notice's words were set from the data-use
-    clauses as read: its default words, marked as not read again, replaced in every part."""
+def all_read(monkeypatch, on, default_words=False, **fields_by_id):
+    """risk_texts.QUOTATIONS as a copy in which every quotation was read on `on`: words kept (one a call before left
+    without words gets words of the test's own), nothing marked unread; then each id of `fields_by_id` given those
+    fields; and risk_texts.POINTS as a copy in which the organisation notice's words on training are the ones set from
+    the data-use clauses, or, with `default_words`, its default words again, as they were before the clauses were read,
+    whichever a call before left there."""
     quotations = {qid: dict(q, words=q["words"] or f"The words of {qid}, as read.", unread=None, read_on=on)
                   for qid, q in risk_texts.QUOTATIONS.items()}
     for qid, fields in fields_by_id.items():
         quotations[qid] = dict(quotations[qid], **fields)
     monkeypatch.setattr(risk_texts, "QUOTATIONS", quotations)
-    if item_19_set:
-        points = copy.deepcopy(risk_texts.POINTS)
-        held = 0
-        for spec in points.values():
-            for i, (case, words) in enumerate(spec["design"]):
-                held += CROSSING_TERMS in words or SET_FROM_THE_CLAUSES in words      # set already by a call before
-                spec["design"][i] = (case, words.replace(CROSSING_TERMS, SET_FROM_THE_CLAUSES))
+    points = copy.deepcopy(risk_texts.POINTS)
+    held = 0
+    for spec in points.values():
+        for i, (case, words) in enumerate(spec["design"]):
+            held += CROSSING_TERMS in words or DEFAULT_CROSSING_TERMS in words
+            words = (words.replace(CROSSING_TERMS, DEFAULT_CROSSING_TERMS) if default_words
+                     else words.replace(DEFAULT_CROSSING_TERMS, CROSSING_TERMS))
+            spec["design"][i] = (case, words)
+    if default_words:
         assert held == 7, held                  # points 1, 3, 4, 5, 12, 13 and 17: else the module's words moved
-        monkeypatch.setattr(risk_texts, "POINTS", points)
+    monkeypatch.setattr(risk_texts, "POINTS", points)
 
 
 _NAMED_ID = re.compile(r"(?<![a-z0-9-])(" + "|".join(re.escape(i) for i in sorted(IDS, key=len, reverse=True))
@@ -457,13 +522,14 @@ def day_after(day, n=1):
     return (datetime.date.fromisoformat(day) + datetime.timedelta(days=n)).isoformat()
 
 
-# the texts that hold the organisation notice, and with it its default words, as built
+# the texts that hold the organisation notice, and with it its words on training
 HOLDERS = (1, 3, 4, 5, 12, 13, 17)
-# what of those default words the release check looks for, in its order: the mark, and the announcement they rest on
-ITEM_19_DEFAULT = ("not read again", "announced in 2025")
+# what of the notice's default words the release check looks for, in its order: the mark, and the announcement they
+# rest on
+DEFAULT_MARKS = ("not read again", "announced in 2025")
 
 
-def item_19_line(point, *marks):
+def default_words_line(point, *marks):
     """The release check's line for a text whose own words still hold the organisation notice's default words, naming
     the marks it holds, and saying no more than that."""
     return (f"point {point}: its own words still hold the organisation notice's default words ("
@@ -485,6 +551,12 @@ def test_the_module_s_names_for_the_texts():
     assert set(risk_texts.PLACEHOLDERS) == {"owner", "operator", "home_group", "record_keeping"}
     assert risk_texts.TEXT_TAG == b"proofpane-risk-text/1"
     assert risk_texts.OPERATOR_SETTING == OPERATOR
+    # the marks of the organisation notice's default words, by a name that says what it holds
+    assert getattr(risk_texts, "DEFAULT_NOTICE_MARKS", None) == DEFAULT_MARKS
+    assert not hasattr(risk_texts, "ITEM_19_MARKS")
+    # the date every quotation was read, by a name that holds no date of its own
+    assert getattr(risk_texts, "READ_ON", None) == READ
+    assert not hasattr(risk_texts, "READ_2026_11_11")
 
 
 # ---- each point's text ----------------------------------------------------------------------------------------------
@@ -557,43 +629,35 @@ def test_each_point_quotes_its_clauses_under_their_cases():
         assert carried == collections.Counter(QUOTES[t["point"]]), t["point"]
 
 
-def test_a_clause_not_read_says_so_and_names_where_it_is():
-    seen = {}
+def test_every_clause_is_read_as_built_and_none_says_otherwise():
+    seen = set()
     for t in risk_texts.texts():
         for q in t["quotations"]:
-            if q["id"] not in NOT_READ:
-                continue
-            documents, address = NOT_READ[q["id"]]
-            for words in documents:
-                assert words in q["source"], (q["id"], q["source"])
-            assert q["words"] is None and q["read_on"] is None and q["source_date"] is None, q
-            assert q["address"] == address if address else q["address"].startswith("https://"), q
-            assert "not read for this release" in q["unread"], q
-            assert q["address"] in q["unread"], q
-            if q["id"] in DATA_USE:
-                assert "whether this work may be used to train models" in q["unread"], q
-            else:
-                n = q["id"].rsplit("-", 1)[1]
-                # the Act on New Zealand's legislation site, at the address the module gives it, said to be an address
-                # not opened, since the Act's text was not fetched
-                parts = urllib.parse.urlsplit(q["address"])
-                assert (parts.scheme, parts.netloc) == ("https", "www.legislation.govt.nz"), q
-                assert parts.path.startswith("/act/public/2020/0031/"), q
-                # the principle cited, and nothing more of the Act (no section of it)
-                assert q["section"] == f"information privacy principle {n}", q
-                assert q["unread"] == (f"New Zealand's Privacy Act 2020, information privacy principle {n}, was not "
-                                       f"read for this release; it is in the Act, at {q['address']}, an address not "
-                                       "opened for this release."), q
-            seen.setdefault(q["id"], q["unread"])
-            assert q["unread"] == seen[q["id"]]
-    assert set(seen) == set(NOT_READ)
+            assert q["words"] and q["unread"] is None and q["read_on"] == READ, q
+            seen.add(q["id"])
+    assert seen == set(IDS) and len(IDS) == 16
 
 
-def test_a_text_that_carries_a_clause_not_read_is_unread_and_no_other_is():
+def test_the_act_s_principles_are_read_at_the_act_s_own_page():
+    # where the module's old address led on the day of the reading: the whole Act, at section 22, the information
+    # privacy principles, by its own anchor; each principle cited by its number, and nothing more of the Act
+    for principle in PRINCIPLES:
+        q = risk_texts.QUOTATIONS[principle]
+        parts = urllib.parse.urlsplit(q["address"])
+        assert (parts.scheme, parts.netloc, parts.path, parts.fragment) == (
+            "https", "www.legislation.govt.nz", "/act/public/2020/31/en/latest/", "LMS23342"), q
+        assert q["section"] == f"information privacy principle {principle.rsplit('-', 1)[1]}", q
+        assert q["source_date"] == "Version as at 8 October 2026", q
+
+
+def test_no_text_is_unread_as_built_and_one_whose_clause_is_marked_unread_is(monkeypatch):
     texts = risk_texts.texts()
     for t in texts:
         assert t["unread"] == any(q["unread"] is not None for q in t["quotations"]), t["point"]
-    assert {t["point"] for t in texts if t["unread"]} == {1, 3, 4, 5, 12, 13, 17}
+    assert {t["point"] for t in texts if t["unread"]} == set()
+    changed_quotations(monkeypatch, "data-use-consumer", words=None, read_on=None, source_date=None,
+                       unread="Not read for this release; it is elsewhere.")
+    assert {t["point"] for t in risk_texts.texts() if t["unread"]} == CARRIERS["data-use-consumer"]
 
 
 def test_every_text_that_needs_them_carries_both_data_use_clauses():
@@ -695,9 +759,9 @@ def test_point_17_carries_point_2_s_clauses_turned_to_a_session_and_the_codex_no
     assert part_of(seventeen, "other_account") == first + " Continuing a session on another of your accounts is your choice."
     assert part_of(seventeen, "codex") == CODEX and "OpenAI" not in str(seventeen["quotations"])
     assert not [q for q in seventeen["quotations"] if q["case"] in (None, "codex", "onto_seat")]
-    # it carries the data-use clauses under its case, as point 13 does, so it is unread until they are read, and it is
-    # not among the texts the release check requires them of
-    assert seventeen["unread"] is True
+    # it carries the data-use clauses under its case "other_group", as point 13 does, and it is not among the texts the
+    # release check requires them of
+    assert set(DATA_USE) <= {q["id"] for q in seventeen["quotations"] if q["case"] == "other_group"}
     assert 17 not in risk_texts.DATA_USE_POINTS
 
 
@@ -716,7 +780,7 @@ def test_the_notice_under_the_privacy_act_is_the_pinned_one_for_an_offer_and_for
 
 # the organisation notice as the texts hold it: without its first sentence, whose two places say which way
 # the task goes and have no placeholder, and with the clause it quotes in brackets shown
-# as the quotation "responsibility"; then its default words
+# as the quotation "responsibility"; then its words on training, set from the data-use clauses as read
 _NOTICE_FIRST, _NOTICE_REST = ORGANISATION_NOTICE.split(". ", 1)
 ORGANISATION_PART = _NOTICE_REST.replace(f" ('{RESPONSIBILITY}')", "") + " " + CROSSING_TERMS
 RELAY_TEXT = RELAY + " " + RELAY_LAST
@@ -1083,8 +1147,9 @@ def test_the_release_check_names_a_point_with_no_text(monkeypatch):
 
 @pytest.mark.parametrize("principle", PRINCIPLES)
 def test_the_release_check_holds_the_act_s_principles_to_the_same_rule(monkeypatch, principle):
-    original = risk_texts.QUOTATIONS[principle]
-    all_read(monkeypatch, RELEASE, **{principle: dict(original)})
+    # a reading of the principle left half done: its words gone and a mark that says so, its dates kept
+    all_read(monkeypatch, RELEASE,
+             **{principle: {"words": None, "unread": "Not read for this release; it is elsewhere."}})
     unread = risk_texts.release_check(RELEASE)
     assert unread and all(principle in line or "point 13:" in line for line in unread), unread
     assert {named(line) for line in unread} == {(13, principle), (13, None)}
@@ -1094,31 +1159,46 @@ def test_the_release_check_holds_the_act_s_principles_to_the_same_rule(monkeypat
     assert all("before" in line for line in early)
 
 
-def test_the_release_check_on_the_texts_as_built_names_the_old_reading_and_every_clause_not_read(capsys):
-    problems = risk_texts.release_check(RELEASE)
-    lines = collections.defaultdict(list)
-    for line in problems:
-        lines[named(line)].append(line)
-    expected = {(point, qid) for qid in IDS for point in CARRIERS[qid]} | {(p, None) for p in HOLDERS}
-    assert set(lines) == expected
-    for qid in QUOTED:
-        for point in CARRIERS[qid]:
-            assert any("before" in line and READ in line for line in lines[(point, qid)]), (point, qid)
-    for qid in NOT_READ:
-        for point in CARRIERS[qid]:
-            assert any("not read" in line for line in lines[(point, qid)]), (point, qid)
-    # each text with a clause not read says so, and on a line of its own, the default words it still holds
-    for point in HOLDERS:
-        assert lines[(point, None)] == [f"point {point}: its text says a clause was not read for this release",
-                                        item_19_line(point, *ITEM_19_DEFAULT)], point
-    # read on the day it was read: the date passes, the clauses not read still hold the release back
-    on_the_day = risk_texts.release_check(READ)
-    assert not any("before" in line for line in on_the_day), on_the_day
-    assert {named(line) for line in on_the_day} == {(point, qid) for qid in NOT_READ for point in CARRIERS[qid]} | {
-        (p, None) for p in HOLDERS}
-    assert risk_texts.main(["--release-check", RELEASE]) == 1
+def test_the_release_check_passes_on_the_texts_as_built_for_the_day_of_the_reading(capsys):
+    assert risk_texts.release_check(READ) == []
+    assert risk_texts.main(["--release-check", READ]) == 0
+    assert capsys.readouterr().out.splitlines() == [
+        f"The release check finds nothing to hold the release of {READ} back."]
+    # a release the day after the reading: every quotation read before it is named, in each text that carries it, and
+    # nothing else is; the command line prints each of those lines, then their count
+    later = risk_texts.release_check(day_after(READ))
+    assert {named(line) for line in later} == {(point, qid) for qid in IDS for point in CARRIERS[qid]}
+    assert len(later) == sum(len(CARRIERS[qid]) for qid in IDS)
+    assert all("before" in line and READ in line for line in later), later
+    assert risk_texts.main(["--release-check", day_after(READ)]) == 1
     out = capsys.readouterr().out.splitlines()
-    assert set(problems) <= set(out)
+    assert out == later + [f"{len(later)} problems hold the release of {day_after(READ)} back."]
+
+
+@pytest.mark.parametrize("qid", DATA_USE + PRINCIPLES)
+def test_one_clause_marked_not_read_on_the_texts_as_built_holds_the_release_back(monkeypatch, qid):
+    # the near-miss of the reading: the texts as built, but one clause as it was before it was read
+    changed_quotations(monkeypatch, qid, words=None, read_on=None, source_date=None,
+                       unread="Not read for this release; it is elsewhere.")
+    problems = risk_texts.release_check(READ)
+    assert {named(line) for line in problems} == ({(point, qid) for point in CARRIERS[qid]}
+                                                  | {(point, None) for point in CARRIERS[qid]})
+    assert risk_texts.main(["--release-check", READ]) == 1
+
+
+@pytest.mark.parametrize("qid", DATA_USE + PRINCIPLES)
+def test_one_clause_read_but_still_marked_not_read_holds_the_release_back(monkeypatch, qid):
+    # the nearer miss: a reading that filled the words and the date but left the mark; the mark alone holds the release
+    # back, on a line that names the clause not read in each text that carries it
+    mark = "Not read for this release; it is elsewhere."
+    changed_quotations(monkeypatch, qid, unread=mark)
+    assert risk_texts.QUOTATIONS[qid]["words"] and risk_texts.QUOTATIONS[qid]["read_on"] == READ
+    problems = risk_texts.release_check(READ)
+    assert {named(line) for line in problems} == ({(point, qid) for point in CARRIERS[qid]}
+                                                  | {(point, None) for point in CARRIERS[qid]})
+    for point in CARRIERS[qid]:
+        assert f"point {point}, quotation {qid}: not read for this release ({mark})" in problems, point
+    assert risk_texts.main(["--release-check", READ]) == 1
 
 
 def test_the_release_check_names_point_16_as_it_names_point_7(monkeypatch):
@@ -1190,16 +1270,16 @@ def test_main_counts_one_problem_as_one(monkeypatch, capsys):
 
 
 def test_the_default_words_hold_the_release_back_until_they_are_set_from_the_data_use_clauses(monkeypatch, capsys):
-    # every clause read on the release's date, but the organisation notice still in its default words (the clauses
-    # read, with the notice's words set from them): the check names each text that holds them, on
+    # every clause read on the release's date, but the organisation notice's default words put back in place of the
+    # words set from the clauses as read: the check names each text that holds them, on
     # a line of its own that says no more than what it found, and the release is held back (it fails while any
     # text says so); a text's "unread" stays as the module gives it, by its quotations alone, so none is unread
-    all_read(monkeypatch, RELEASE, item_19_set=False)
+    all_read(monkeypatch, RELEASE, default_words=True)
     assert not any(t["unread"] for t in risk_texts.texts())
-    assert risk_texts.release_check(RELEASE) == [item_19_line(point, *ITEM_19_DEFAULT) for point in HOLDERS]
+    assert risk_texts.release_check(RELEASE) == [default_words_line(point, *DEFAULT_MARKS) for point in HOLDERS]
     assert risk_texts.main(["--release-check", RELEASE]) == 1
     assert capsys.readouterr().out.splitlines()[-1] == f"{len(HOLDERS)} problems hold the release of {RELEASE} back."
-    # set from the clauses, they pass
+    # as the module sets them from the clauses, they pass
     all_read(monkeypatch, RELEASE)
     assert risk_texts.release_check(RELEASE) == []
 
@@ -1219,11 +1299,11 @@ def test_a_rewording_that_keeps_a_default_mark_still_holds_the_release_back(monk
     all_read(monkeypatch, RELEASE)
 
     def marked_again(spec):
-        spec["design"] = [(case, part.replace(SET_FROM_THE_CLAUSES, words)) for case, part in spec["design"]]
+        spec["design"] = [(case, part.replace(CROSSING_TERMS, words)) for case, part in spec["design"]]
 
     changed_points(monkeypatch, 12, marked_again)
     assert risk_texts.text(12)["unread"] is False
-    assert risk_texts.release_check(RELEASE) == [item_19_line(12, *marks)]
+    assert risk_texts.release_check(RELEASE) == [default_words_line(12, *marks)]
 
 
 @pytest.mark.parametrize("words", [
@@ -1237,23 +1317,28 @@ def test_words_set_from_the_clauses_may_say_they_were_read_again(monkeypatch, wo
     all_read(monkeypatch, RELEASE)
     points = copy.deepcopy(risk_texts.POINTS)
     for spec in points.values():
-        spec["design"] = [(case, part.replace(SET_FROM_THE_CLAUSES, words)) for case, part in spec["design"]]
+        spec["design"] = [(case, part.replace(CROSSING_TERMS, words)) for case, part in spec["design"]]
     monkeypatch.setattr(risk_texts, "POINTS", points)
     assert sum(words in part["text"] for t in risk_texts.texts() for part in t["design"]) == len(HOLDERS)
     assert risk_texts.release_check(RELEASE) == []
 
 
-def test_the_command_line_holds_the_release_back_on_the_texts_as_built():
+def test_the_command_line_passes_on_the_texts_as_built_for_the_day_of_the_reading_and_no_later():
     env = dict(os.environ)
     env.pop(OPERATOR, None)
-    run = subprocess.run([sys.executable, "-m", "proofpane_open.ade.risk_texts", "--release-check", RELEASE], cwd=ROOT,
-                         env=env, capture_output=True, text=True, timeout=120)
-    assert run.returncode == 1, run.stderr
-    assert "data-use-consumer" in run.stdout and "privacy-principle-3" in run.stdout
-    assert [line for line in run.stdout.splitlines() if "default words" in line] == [
-        item_19_line(point, *ITEM_19_DEFAULT) for point in HOLDERS]
-    bad = subprocess.run([sys.executable, "-m", "proofpane_open.ade.risk_texts", "--release-check", "20261012"],
-                         cwd=ROOT, env=env, capture_output=True, text=True, timeout=120)
+
+    def run(*args):
+        return subprocess.run([sys.executable, "-m", "proofpane_open.ade.risk_texts", *args], cwd=ROOT, env=env,
+                              capture_output=True, text=True, timeout=120)
+
+    on_the_day = run("--release-check", READ)
+    assert on_the_day.returncode == 0, on_the_day.stdout + on_the_day.stderr
+    assert on_the_day.stdout.splitlines() == [f"The release check finds nothing to hold the release of {READ} back."]
+    later = run("--release-check", day_after(READ))
+    assert later.returncode == 1, later.stderr
+    assert "data-use-consumer" in later.stdout and "privacy-principle-3" in later.stdout
+    assert not [line for line in later.stdout.splitlines() if "default words" in line or "not read" in line]
+    bad = run("--release-check", "20261012")
     assert bad.returncode == 2 and "--release-check" in bad.stderr
 
 
