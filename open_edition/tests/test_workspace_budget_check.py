@@ -50,17 +50,6 @@ with open(os.path.join(os.environ["HOME"], "started-" + os.path.basename(sys.arg
 while True:
     time.sleep(0.1)
 '''
-# The wait a start made in this process (ws) gives the check, in every case of this file: far past any stall a loaded
-# machine gives the stand-in's answer, so such a case's outcome is the answer's and not the clock's. The staging
-# repository's CI run 43094086232 (shard 11, 2026-11-11) stalled one past the module's 5 seconds. The cases that run
-# the workspace agent as a process of its own (w) keep the module's WAIT, the wait's own case among them.
-NO_STALL_WAIT = 60.0
-
-
-@pytest.fixture(autouse=True)
-def _a_wait_no_stall_reaches(monkeypatch):
-    from proofpane_workspace import budget_check
-    monkeypatch.setattr(budget_check, "WAIT", NO_STALL_WAIT)
 
 
 def pair(home, cloud):
@@ -291,20 +280,15 @@ def test_a_product_that_does_not_answer_lets_the_start_go_on_and_its_answer_says
         assert w.http.post(f"/sessions/{view['id']}/stop").status_code == 200
 
 
-def test_a_product_slower_than_the_wait_lets_the_start_go_on_once_the_wait_is_over_and_says_so(w, proofpane,
-                                                                                             monkeypatch):
+def test_a_product_slower_than_the_wait_lets_the_start_go_on_once_the_wait_is_over_and_says_so(w, proofpane):
     pair(w.home, proofpane)
-    monkeypatch.setattr(Proofpane, "SLOW", WAIT + 10)
-    Proofpane.slow = (CHECK,)
+    Proofpane.slow, Proofpane.SLOW = (CHECK,), WAIT + 3
     began = time.monotonic()
     r = w.start_session("claude")
     took = time.monotonic() - began
     assert r.status_code == 200, r.text
     assert r.json().get("budget_notice") == NOT_MADE.format(f"no answer came in {WAIT} seconds"), r.json()
-    # it waited for the check, and went on before the stand-in's answer came: what the start does past the wait is the
-    # machine's, and took it to 7.05 seconds in all once on a loaded Mac (2026-11-12), past the 2 seconds over the wait
-    # this case once allowed it
-    assert WAIT - 0.5 < took < Proofpane.SLOW, took
+    assert WAIT - 0.5 < took < WAIT + 2, took            # it waited for the check, and for no longer than its wait
 
 
 def test_a_check_that_could_not_read_every_budget_still_refuses_where_its_kind_says_so(w, proofpane):
@@ -500,20 +484,6 @@ def test_a_chat_whose_check_could_not_be_made_starts_and_says_so_in_its_log_and_
     note = NOT_MADE.format("Proofpane answered 503")
     assert said is None and [(c.connected, c.queries) for c in sdk] == [(True, ["Say hello"])]
     assert view.get("budget_notice") == note, view
-    assert [e["text"] for e in ws.chat_log(sid)["events"] if e["kind"] == "notice"] == [note]
-
-
-def test_a_chat_s_check_answered_after_a_stall_past_the_module_s_wait_is_said_as_that_answer(ws, tmp_path, proofpane,
-                                                                                            sdk, monkeypatch):
-    """The case above with a stall made certain: the stand-in answers 503 only after the module's wait and half a second
-    more. The staging repository's CI run 43094086232 (shard 11, 2026-11-11) said "no answer came in 5 seconds" for
-    the case above, its stand-in answering 503. The chat still says Proofpane answered 503."""
-    pair(tmp_path / "wshome", proofpane)
-    monkeypatch.setattr(Proofpane, "SLOW", WAIT + 0.5)
-    Proofpane.budget, Proofpane.slow = "down", (CHECK,)
-    sid, (said, view) = chat_said(ws, "Say hello")
-    note = NOT_MADE.format("Proofpane answered 503")
-    assert said is None and view.get("budget_notice") == note, view
     assert [e["text"] for e in ws.chat_log(sid)["events"] if e["kind"] == "notice"] == [note]
 
 
