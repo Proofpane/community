@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "phone",
+  "description": "On the phones, the app's own pages may ask for Face ID, Touch ID or the passcode before an approval.",
+  "platforms": [
+    "iOS",
+    "android"
+  ],
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "biometric:default"
+  ]
+}

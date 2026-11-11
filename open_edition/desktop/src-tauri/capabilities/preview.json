@@ -1,0 +1,19 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "preview",
+  "description": "A session's preview window: the app being built, served on this Mac. Its pages may send a pick to the main window (design_pick) and call nothing else of the app's.",
+  "windows": [
+    "preview-*"
+  ],
+  "remote": {
+    "urls": [
+      "http://localhost:*",
+      "https://localhost:*",
+      "http://127.0.0.1:*",
+      "https://127.0.0.1:*"
+    ]
+  },
+  "permissions": [
+    "allow-design-pick"
+  ]
+}

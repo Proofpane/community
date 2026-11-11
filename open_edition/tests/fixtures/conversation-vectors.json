@@ -1,0 +1,886 @@
+[
+ {
+  "name": "a mirror's notes: what the owner typed, the session's words in two parts joined, and the mirror's word",
+  "kind": "events",
+  "events": [
+   {
+    "seq": 1,
+    "time": "2026-10-08T10:01:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "fix the tests",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "owner"
+   },
+   {
+    "seq": 2,
+    "time": "2026-10-08T10:02:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "(1 of 2) the first half, ",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "session"
+   },
+   {
+    "seq": 3,
+    "time": "2026-10-08T10:03:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "(2 of 2) the second half",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "session"
+   },
+   {
+    "seq": 4,
+    "time": "2026-10-08T10:04:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "left out: a tool's output",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "info"
+   }
+  ],
+  "want": [
+   {
+    "who": "owner, as the session reports it",
+    "text": "fix the tests"
+   },
+   {
+    "who": "session",
+    "text": "the first half, the second half"
+   },
+   {
+    "who": "note",
+    "text": "left out: a tool's output"
+   }
+  ]
+ },
+ {
+  "name": "the owner's signed commands, the session's replies and questions to the owner or all; the rest left out",
+  "kind": "events",
+  "events": [
+   {
+    "seq": 5,
+    "time": "2026-10-08T10:05:00Z",
+    "kind": "instruction",
+    "from": "owner",
+    "to": "mac",
+    "ref": null,
+    "text": "run the suite",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "owner",
+    "to_id": null,
+    "state": "taken"
+   },
+   {
+    "seq": 6,
+    "time": "2026-10-08T10:06:00Z",
+    "kind": "done",
+    "from": "mac",
+    "to": "owner",
+    "ref": 5,
+    "text": "done: 12 passed",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null
+   },
+   {
+    "seq": 7,
+    "time": "2026-10-08T10:07:00Z",
+    "kind": "question",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "which cap?",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null
+   },
+   {
+    "seq": 8,
+    "time": "2026-10-08T10:08:00Z",
+    "kind": "step",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "reading files",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null
+   },
+   {
+    "seq": 9,
+    "time": "2026-10-08T10:09:00Z",
+    "kind": "question",
+    "from": "mac",
+    "to": "cloud-1",
+    "ref": null,
+    "text": "a question to another session",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null
+   },
+   {
+    "seq": 10,
+    "time": "2026-10-08T10:10:00Z",
+    "kind": "answer",
+    "from": "owner",
+    "to": "mac",
+    "ref": 7,
+    "text": "per user",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "owner",
+    "to_id": null,
+    "state": "answered"
+   },
+   {
+    "seq": 11,
+    "time": "2026-10-08T10:11:00Z",
+    "kind": "question",
+    "from": "mac",
+    "to": "all",
+    "ref": null,
+    "text": "anyone?",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null
+   },
+   {
+    "seq": 12,
+    "time": "2026-10-08T10:12:00Z",
+    "kind": "done",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "done with nothing it refers to",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null
+   }
+  ],
+  "want": [
+   {
+    "who": "owner, signed",
+    "text": "run the suite"
+   },
+   {
+    "who": "session",
+    "text": "done: 12 passed"
+   },
+   {
+    "who": "session",
+    "text": "which cap?"
+   },
+   {
+    "who": "owner, signed",
+    "text": "per user"
+   },
+   {
+    "who": "session",
+    "text": "anyone?"
+   }
+  ]
+ },
+ {
+  "name": "parts are joined only in order and only within one mirror's kind",
+  "kind": "events",
+  "events": [
+   {
+    "seq": 13,
+    "time": "2026-10-08T10:13:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "(1 of 2) one ",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "owner"
+   },
+   {
+    "seq": 14,
+    "time": "2026-10-08T10:14:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "(2 of 2) two",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "session"
+   },
+   {
+    "seq": 15,
+    "time": "2026-10-08T10:15:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "(2 of 3) out of order",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "session"
+   }
+  ],
+  "want": [
+   {
+    "who": "owner, as the session reports it",
+    "text": "one "
+   },
+   {
+    "who": "session",
+    "text": "two"
+   },
+   {
+    "who": "session",
+    "text": "out of order"
+   }
+  ]
+ },
+ {
+  "name": "a machine's session: its copy up to the first mirrored note, then the notes",
+  "kind": "machine",
+  "talk": [
+   {
+    "who": "owner",
+    "text": "hello",
+    "at": 100
+   },
+   {
+    "who": "session",
+    "text": "hi",
+    "at": 101
+   },
+   {
+    "who": "owner",
+    "text": "later",
+    "at": 200
+   }
+  ],
+  "notes": [
+   {
+    "seq": 20,
+    "time": "2026-10-08T10:20:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "later, mirrored",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "owner",
+    "said_at": 150000
+   }
+  ],
+  "want": [
+   {
+    "who": "owner, as the session reports it",
+    "text": "hello"
+   },
+   {
+    "who": "session",
+    "text": "hi"
+   },
+   {
+    "who": "owner, as the session reports it",
+    "text": "later, mirrored"
+   }
+  ]
+ },
+ {
+  "name": "a message whose first entry's time is known is cut by it",
+  "kind": "machine",
+  "talk": [
+   {
+    "who": "owner",
+    "text": "began before",
+    "at": 200,
+    "ms": 140000
+   },
+   {
+    "who": "session",
+    "text": "began after",
+    "at": 140,
+    "ms": 160000
+   }
+  ],
+  "notes": [
+   {
+    "seq": 21,
+    "time": "2026-10-08T10:21:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "the note",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "session",
+    "said_at": 150000
+   }
+  ],
+  "want": [
+   {
+    "who": "owner, as the session reports it",
+    "text": "began before"
+   },
+   {
+    "who": "session",
+    "text": "the note"
+   }
+  ]
+ },
+ {
+  "name": "a message with no time goes only where no note says when it was said",
+  "kind": "machine",
+  "talk": [
+   {
+    "who": "owner",
+    "text": "untimed",
+    "at": null
+   }
+  ],
+  "notes": [
+   {
+    "seq": 22,
+    "time": "2026-10-08T10:22:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "x",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "session",
+    "said_at": 5000
+   }
+  ],
+  "want": [
+   {
+    "who": "session",
+    "text": "x"
+   }
+  ]
+ },
+ {
+  "name": "with no notes, the whole copy",
+  "kind": "machine",
+  "talk": [
+   {
+    "who": "owner",
+    "text": "untimed",
+    "at": null
+   },
+   {
+    "who": "session",
+    "text": "reply",
+    "at": 9
+   }
+  ],
+  "notes": [],
+  "want": [
+   {
+    "who": "owner, as the session reports it",
+    "text": "untimed"
+   },
+   {
+    "who": "session",
+    "text": "reply"
+   }
+  ]
+ },
+ {
+  "name": "with no copy, the notes alone",
+  "kind": "machine",
+  "talk": null,
+  "notes": [
+   {
+    "seq": 23,
+    "time": "2026-10-08T10:23:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "only a note",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "owner",
+    "said_at": 7000
+   }
+  ],
+  "want": [
+   {
+    "who": "owner, as the session reports it",
+    "text": "only a note"
+   }
+  ]
+ },
+ {
+  "name": "a live view's steps: the page shows them apart, and the connector's conversation leaves them out",
+  "kind": "events",
+  "events": [
+   {
+    "seq": 1,
+    "time": "2026-11-06T18:01:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "how is the build?",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "owner"
+   },
+   {
+    "seq": 2,
+    "time": "2026-11-06T18:02:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "Checking the tests.",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "session"
+   },
+   {
+    "seq": 3,
+    "time": "2026-11-06T18:03:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "Bash: pytest -q\nRead: /work/app.py",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "step"
+   },
+   {
+    "seq": 4,
+    "time": "2026-11-06T18:04:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "12 passed.",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "session"
+   }
+  ],
+  "want": [
+   {
+    "who": "owner, as the session reports it",
+    "text": "how is the build?"
+   },
+   {
+    "who": "session",
+    "text": "Checking the tests."
+   },
+   {
+    "who": "session",
+    "text": "12 passed."
+   }
+  ]
+ },
+ {
+  "name": "a live view's round, one note: its words as the page joins them, its calls the page's alone",
+  "kind": "events",
+  "events": [
+   {
+    "seq": 1,
+    "time": "2026-11-06T21:40:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "{\"items\": [[\"owner\", \"go\"], [\"session\", \"Reading.\"], [\"calls\", [\"Bash: cat a.md\"]], [\"session\", \"Done.\"]]}",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "live"
+   }
+  ],
+  "want": [
+   {
+    "who": "owner, as the session reports it",
+    "text": "go"
+   },
+   {
+    "who": "session",
+    "text": "Reading."
+   },
+   {
+    "who": "session",
+    "text": "Done."
+   }
+  ],
+  "steps": [
+   "Bash: cat a.md"
+  ]
+ },
+ {
+  "name": "a message in numbered parts across two rounds' notes is one again",
+  "kind": "events",
+  "events": [
+   {
+    "seq": 1,
+    "time": "2026-11-06T21:40:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "{\"items\": [[\"owner\", \"go\"], [\"session\", \"(1 of 2) first half, \"]]}",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "live"
+   },
+   {
+    "seq": 2,
+    "time": "2026-11-06T21:40:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "{\"items\": [[\"session\", \"(2 of 2) second half.\"], [\"calls\", [\"Bash: ls\"]]]}",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "live"
+   }
+  ],
+  "want": [
+   {
+    "who": "owner, as the session reports it",
+    "text": "go"
+   },
+   {
+    "who": "session",
+    "text": "first half, second half."
+   }
+  ],
+  "steps": [
+   "Bash: ls"
+  ]
+ },
+ {
+  "name": "a live note that is not a round's items says it could not be read",
+  "kind": "events",
+  "events": [
+   {
+    "seq": 1,
+    "time": "2026-11-06T21:40:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "not a round",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "live"
+   },
+   {
+    "seq": 2,
+    "time": "2026-11-06T21:40:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "{\"items\": []}",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "live"
+   },
+   {
+    "seq": 3,
+    "time": "2026-11-06T21:40:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "{\"items\": [[\"calls\", \"Bash: ls\"]]}",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "live"
+   }
+  ],
+  "want": [
+   {
+    "who": "note",
+    "text": "A live update that could not be read."
+   },
+   {
+    "who": "note",
+    "text": "A live update that could not be read."
+   },
+   {
+    "who": "note",
+    "text": "A live update that could not be read."
+   }
+  ],
+  "steps": []
+ },
+ {
+  "name": "a round the ADE says a Stop posted again whole is left out, so each turn shows once",
+  "kind": "events",
+  "events": [
+   {
+    "seq": 1,
+    "time": "2026-11-06T23:50:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "{\"items\": [[\"owner\", \"go\"], [\"session\", \"Reading.\"], [\"calls\", [\"Bash: cat a.md\"]]]}",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "live",
+    "posted_again": true
+   },
+   {
+    "seq": 2,
+    "time": "2026-11-06T23:50:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "go",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "owner"
+   },
+   {
+    "seq": 3,
+    "time": "2026-11-06T23:50:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "Reading.",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "session"
+   },
+   {
+    "seq": 4,
+    "time": "2026-11-06T23:50:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "Bash: cat a.md",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "step"
+   },
+   {
+    "seq": 5,
+    "time": "2026-11-06T23:50:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "Done.",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "session"
+   }
+  ],
+  "want": [
+   {
+    "who": "owner, as the session reports it",
+    "text": "go"
+   },
+   {
+    "who": "session",
+    "text": "Reading."
+   },
+   {
+    "who": "session",
+    "text": "Done."
+   }
+  ],
+  "steps": [
+   "Bash: cat a.md"
+  ]
+ },
+ {
+  "name": "a round the ADE does not say a Stop posted again stands, whatever notes of its session follow",
+  "kind": "events",
+  "events": [
+   {
+    "seq": 1,
+    "time": "2026-11-06T23:50:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "{\"items\": [[\"session\", \"Working.\"]]}",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "live"
+   },
+   {
+    "seq": 2,
+    "time": "2026-11-06T23:50:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "Working. Then more.",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "session"
+   }
+  ],
+  "want": [
+   {
+    "who": "session",
+    "text": "Working."
+   },
+   {
+    "who": "session",
+    "text": "Working. Then more."
+   }
+  ],
+  "steps": []
+ },
+ {
+  "name": "in a session's own view too, a round the ADE says a Stop posted again is left out",
+  "kind": "machine",
+  "talk": null,
+  "notes": [
+   {
+    "seq": 1,
+    "time": "2026-11-06T23:50:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "{\"items\": [[\"owner\", \"go\"], [\"session\", \"Reading.\"]]}",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "live",
+    "session": "s1",
+    "posted_again": true
+   },
+   {
+    "seq": 2,
+    "time": "2026-11-06T23:50:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "go",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "owner",
+    "session": "s1"
+   },
+   {
+    "seq": 3,
+    "time": "2026-11-06T23:50:00Z",
+    "kind": "note",
+    "from": "mac",
+    "to": "owner",
+    "ref": null,
+    "text": "Reading. Done.",
+    "needs_turn": false,
+    "closed_by": null,
+    "from_id": "L1",
+    "to_id": null,
+    "mirror": "session",
+    "session": "s1"
+   }
+  ],
+  "want": [
+   {
+    "who": "owner, as the session reports it",
+    "text": "go"
+   },
+   {
+    "who": "session",
+    "text": "Reading. Done."
+   }
+  ],
+  "steps": []
+ }
+]

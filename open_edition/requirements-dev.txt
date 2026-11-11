@@ -1,0 +1,8 @@
+-r requirements.txt
+# the workspace agent's own, the Claude Agent SDK among them: the tests start real agents and their chats
+-r proofpane_workspace/requirements.txt
+pytest>=8
+httpx>=0.27
+# the second screen's signing core, which the tests drive through python-fido2 against a software key
+# (tests/ctap_soft.py); the version requirements-sign.txt pins, since the core refuses any other
+fido2==2.2.1

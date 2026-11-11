@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 24 24" fill="none">
+  <!--
+    Proofpane "P-in-the-Pane" glyph (v8).
+    Upper pane is split vertically; lower P is one closed compound
+    shape so the stem and bowl cannot anti-alias apart.
+  -->
+
+  <!-- Outer pane -->
+  <rect x="2.5" y="2.5" width="19" height="19" rx="1.8"
+        stroke="#22d3ee" stroke-width="1.8"/>
+
+  <!-- Horizontal muntin -->
+  <line x1="2.5" y1="11" x2="21.5" y2="11"
+        stroke="#22d3ee" stroke-width="1.5"/>
+
+  <!-- Upper vertical muntin -->
+  <line x1="12" y1="2.5" x2="12" y2="11"
+        stroke="#22d3ee" stroke-width="1.5"/>
+
+  <!-- P - one closed compound path with the counter cut out. -->
+  <path fill-rule="evenodd" fill="#22d3ee" d="
+    M 14 12.75
+    L 18.5 12.75
+    A 1 1 0 0 1 19.5 13.75
+    L 19.5 16.85
+    A 1 1 0 0 1 18.5 17.85
+    L 15.5 17.85
+    L 15.5 19.75
+    L 14 19.75
+    Z
+    M 15.5 14.25
+    L 17.65 14.25
+    A 0.35 0.35 0 0 1 18 14.6
+    L 18 16
+    A 0.35 0.35 0 0 1 17.65 16.35
+    L 15.5 16.35
+    Z
+  "/>
+
+</svg>

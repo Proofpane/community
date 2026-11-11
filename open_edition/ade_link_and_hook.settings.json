@@ -1,0 +1,207 @@
+{
+  "env": {
+    "CLAUDE_CODE_SHELL_PREFIX": "",
+    "CLAUDE_CODE_SIMPLE": "0",
+    "LD_PRELOAD": "",
+    "LD_LIBRARY_PATH": "",
+    "LD_AUDIT": "",
+    "DYLD_INSERT_LIBRARIES": "",
+    "DYLD_LIBRARY_PATH": "",
+    "DYLD_FRAMEWORK_PATH": "",
+    "DYLD_FALLBACK_LIBRARY_PATH": "",
+    "DYLD_FALLBACK_FRAMEWORK_PATH": "",
+    "DYLD_VERSIONED_LIBRARY_PATH": "",
+    "DYLD_VERSIONED_FRAMEWORK_PATH": "",
+    "DYLD_IMAGE_SUFFIX": "",
+    "GCONV_PATH": "",
+    "LOCPATH": "",
+    "OPENSSL_CONF": "",
+    "RES_OPTIONS": "",
+    "PROOFPANE_ADE_URL": "ADE_ADDRESS",
+    "PROOFPANE_ADE_TOKEN_FILE": "/absolute/path/to/home/.proofpane-ade/hook-token",
+    "PROOFPANE_ADE_TOKEN": "",
+    "PROOFPANE_ADE_GATE": "",
+    "PROOFPANE_ADE_WINDOWS": "",
+    "PROOFPANE_ADE_WAIT": "",
+    "PROOFPANE_ADE_PROXY": "",
+    "PROOFPANE_ADE_CA_FILE": ""
+  },
+  "disableAllHooks": false,
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|compact|clear|fork",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python -I -X utf8 \"/absolute/path/to/home/.proofpane-ade/ade_link.py\" --dir \"/absolute/path/to/home/.proofpane-ade/NAME\" resume",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python",
+            "args": ["-I", "-X", "utf8", "/absolute/path/to/home/.proofpane-ade/ade_link.py",
+                     "--dir", "/absolute/path/to/home/.proofpane-ade/NAME", "pretool", "--link", "LINK_ID"],
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python -I -X utf8 \"/absolute/path/to/home/.proofpane-ade/ade_link.py\" --dir \"/absolute/path/to/home/.proofpane-ade/NAME\" pretool --link LINK_ID; rc=$?; { [ $rc -eq 0 ] || [ $rc -eq 2 ]; } && exit $rc; d=\"/absolute/path/to/home/.proofpane-ade/NAME\"; held=; [ -e \"$d/config.json\" ] || held=1; for f in \"$d\"/stop_seen* \"$d\"/carrying.json \"$d\"/carrying.held; do { [ -e \"$f\" ] || [ -L \"$f\" ]; } && held=1; done; if [ -n \"$held\" ]; then echo \"ADE: the stop hook could not run (exit $rc), and a stop is recorded, a remote command is carried out, or the link's directory is missing: every tool is held\" >&2; exit 2; fi; exit 0",
+            "timeout": 15
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/python3",
+            "args": ["-I", "-X", "utf8", "/absolute/path/to/open_edition/ade_hook.py"],
+            "timeout": 90
+          },
+          {
+            "type": "command",
+            "command": "p='/absolute/path/to/python3'; h='/absolute/path/to/open_edition/ade_hook.py'; [ -f \"$p\" ] && [ -x \"$p\" ] && [ -f \"$h\" ] && exit 0; echo \"ADE: the approval hook cannot start: $p is not an executable file or $h is not a file, so every Bash command is held until .claude/settings.local.json names both\" >&2; exit 2",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python",
+            "args": ["-I", "-X", "utf8", "-c",
+                     "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')",
+                     "/absolute/path/to/home/.proofpane-ade/ade_link.py",
+                     "--dir", "/absolute/path/to/home/.proofpane-ade/NAME", "permission"],
+            "timeout": 1860
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python",
+            "args": ["-I", "-X", "utf8", "-c",
+                     "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')",
+                     "/absolute/path/to/home/.proofpane-ade/ade_link.py",
+                     "--dir", "/absolute/path/to/home/.proofpane-ade/NAME", "permission"],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python",
+            "args": ["-I", "-X", "utf8", "-c",
+                     "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')",
+                     "/absolute/path/to/home/.proofpane-ade/ade_link.py",
+                     "--dir", "/absolute/path/to/home/.proofpane-ade/NAME", "permission"],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python -I -X utf8 \"/absolute/path/to/home/.proofpane-ade/ade_link.py\" --dir \"/absolute/path/to/home/.proofpane-ade/NAME\" turn end || true",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python",
+            "args": ["-I", "-X", "utf8", "-c",
+                     "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')",
+                     "/absolute/path/to/home/.proofpane-ade/ade_link.py",
+                     "--dir", "/absolute/path/to/home/.proofpane-ade/NAME", "permission"],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python",
+            "args": ["-I", "-X", "utf8", "-c",
+                     "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')",
+                     "/absolute/path/to/home/.proofpane-ade/ade_link.py",
+                     "--dir", "/absolute/path/to/home/.proofpane-ade/NAME", "permission"],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python",
+            "args": ["-I", "-X", "utf8", "-c",
+                     "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')",
+                     "/absolute/path/to/home/.proofpane-ade/ade_link.py",
+                     "--dir", "/absolute/path/to/home/.proofpane-ade/NAME", "permission"],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python",
+            "args": ["-I", "-X", "utf8", "-c",
+                     "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')",
+                     "/absolute/path/to/home/.proofpane-ade/ade_link.py",
+                     "--dir", "/absolute/path/to/home/.proofpane-ade/NAME", "permission"],
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostModelSwitch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python",
+            "args": ["-I", "-X", "utf8", "-c",
+                     "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')",
+                     "/absolute/path/to/home/.proofpane-ade/ade_link.py",
+                     "--dir", "/absolute/path/to/home/.proofpane-ade/NAME", "permission"],
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,283 @@
+{
+ "from": "Written by open_edition/tests/test_workspace_map_served.py from what the app's two map routes answer with the real workspace agent behind them: the map, then each session's calls and turns, the sessions in the order they were made. Its session ids and times are made fixed and each list kept to its first three items; the page's test, ui/src/sessionMapServed.test.ts, reads it with sessionMap.ts's mapOf and callsOf.",
+ "map": {
+  "at": 1760730000,
+  "sessions": [
+   {
+    "id": "aaaaaaaaaaa1",
+    "title": "Map the parser",
+    "program": "claude",
+    "repo": "demo",
+    "branch": "pp/aaaaaaaaaaa1",
+    "account": {
+     "kind": "claude",
+     "id": "default"
+    },
+    "model": "Opus 5.5",
+    "effort": "max",
+    "state": "working",
+    "started_at": 1760720000,
+    "updated_at": 1760729990,
+    "context_tokens": 724500,
+    "agents_read": "yes",
+    "agents": [
+     {
+      "id": "agent-a1",
+      "name": "reviewer",
+      "agent_type": "Explore",
+      "status": "running",
+      "started_at": 1760720000,
+      "ended_at": null,
+      "tokens": 200600,
+      "model": "claude-opus-5-5",
+      "effort": "high"
+     },
+     {
+      "id": "agent-b2",
+      "name": "Plan the change zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+      "agent_type": "Plan",
+      "status": "completed",
+      "started_at": 1760720000,
+      "ended_at": 1760725000,
+      "tokens": 5,
+      "model": null,
+      "effort": null
+     },
+     {
+      "id": "agent-h1",
+      "name": null,
+      "agent_type": "Plan",
+      "status": "running",
+      "started_at": 1760720000,
+      "ended_at": null,
+      "tokens": null,
+      "model": null,
+      "effort": null
+     }
+    ],
+    "agents_more": 0
+   },
+   {
+    "id": "bbbbbbbbbbb2",
+    "title": "Plan on a budget",
+    "program": "claude",
+    "repo": "demo",
+    "branch": "pp/bbbbbbbbbbb2",
+    "account": {
+     "kind": "claude",
+     "id": "default"
+    },
+    "model": "Sonnet 5.5",
+    "effort": "high",
+    "state": "working",
+    "started_at": 1760720000,
+    "updated_at": 1760729990,
+    "context_tokens": 120000,
+    "agents_read": "yes",
+    "agents": [
+     {
+      "id": "agent-c1",
+      "name": "on a budget",
+      "agent_type": "general-purpose",
+      "status": "running",
+      "started_at": 1760720000,
+      "ended_at": null,
+      "tokens": 48200,
+      "model": "claude-sonnet-5-5",
+      "effort": 31999
+     },
+     {
+      "id": "agent-p1",
+      "name": "Read part agent-p1",
+      "agent_type": "Explore",
+      "status": null,
+      "started_at": 1760720000,
+      "ended_at": null,
+      "tokens": 120,
+      "model": "claude-haiku-5-5",
+      "effort": "medium"
+     },
+     {
+      "id": "agent-e1",
+      "name": "ended well",
+      "agent_type": "Explore",
+      "status": null,
+      "started_at": 1760720000,
+      "ended_at": 1760725000,
+      "tokens": 3300,
+      "model": "claude-haiku-5-5",
+      "effort": "high"
+     }
+    ],
+    "agents_more": 4
+   },
+   {
+    "id": "ccccccccccc3",
+    "title": "A shell",
+    "program": "shell",
+    "repo": "demo",
+    "branch": "pp/ccccccccccc3",
+    "account": null,
+    "model": null,
+    "effort": null,
+    "state": "running",
+    "started_at": 1760720000,
+    "updated_at": 1760729990,
+    "context_tokens": null,
+    "agents_read": "no",
+    "agents": [],
+    "agents_more": 0
+   }
+  ]
+ },
+ "session_maps": [
+  {
+   "at": 1760730000,
+   "session": "aaaaaaaaaaa1",
+   "calls_read": "yes",
+   "main": {
+    "calls": [
+     {
+      "tool": "Read",
+      "target": "/w/src/a.py",
+      "failed": false,
+      "at": 1760730000
+     }
+    ],
+    "more": 0
+   },
+   "agents": [
+    {
+     "id": "agent-a1",
+     "calls": [
+      {
+       "tool": "Bash",
+       "target": "grep",
+       "failed": false,
+       "at": 1760730000
+      },
+      {
+       "tool": "Bash",
+       "target": "pytest",
+       "failed": true,
+       "at": 1760730000
+      }
+     ],
+     "more": 0
+    },
+    {
+     "id": "agent-b2",
+     "calls": [
+      {
+       "tool": "Bash",
+       "target": null,
+       "failed": false,
+       "at": 1760730000
+      },
+      {
+       "tool": "Bash",
+       "target": null,
+       "failed": false,
+       "at": 1760730000
+      },
+      {
+       "tool": "Bash",
+       "target": null,
+       "failed": false,
+       "at": 1760730000
+      }
+     ],
+     "more": 0
+    },
+    {
+     "id": "agent-h1",
+     "calls": [],
+     "more": 0
+    }
+   ],
+   "turns_read": "yes",
+   "turns": [
+    {
+     "requests": 2,
+     "input_tokens": 2406,
+     "output_tokens": 100,
+     "agent": null
+    },
+    {
+     "requests": 1,
+     "input_tokens": 1207,
+     "output_tokens": 50,
+     "agent": null
+    },
+    {
+     "requests": 1,
+     "input_tokens": 1203,
+     "output_tokens": 50,
+     "agent": "agent-a1"
+    }
+   ],
+   "cut": false
+  },
+  {
+   "at": 1760730000,
+   "session": "bbbbbbbbbbb2",
+   "calls_read": "yes",
+   "main": {
+    "calls": [
+     {
+      "tool": "Read",
+      "target": "/w/part/2600.py",
+      "failed": false,
+      "at": 1760730000
+     },
+     {
+      "tool": "Read",
+      "target": "/w/part/2601.py",
+      "failed": false,
+      "at": 1760730000
+     },
+     {
+      "tool": "Read",
+      "target": "/w/part/2602.py",
+      "failed": false,
+      "at": 1760730000
+     }
+    ],
+    "more": 2600
+   },
+   "agents": [
+    {
+     "id": "agent-c1",
+     "calls": [],
+     "more": 0
+    },
+    {
+     "id": "agent-f00",
+     "calls": [],
+     "more": 0
+    },
+    {
+     "id": "agent-f01",
+     "calls": [],
+     "more": 0
+    }
+   ],
+   "turns_read": "missing",
+   "turns": [],
+   "cut": true
+  },
+  {
+   "at": 1760730000,
+   "session": "ccccccccccc3",
+   "calls_read": "no",
+   "main": {
+    "calls": [],
+    "more": 0
+   },
+   "agents": [],
+   "turns_read": "no",
+   "turns": [],
+   "cut": false
+  }
+ ]
+}

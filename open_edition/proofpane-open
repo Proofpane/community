@@ -1,0 +1,5 @@
+#!/bin/sh
+# The command line from any directory and with no PATH, as a `fly ssh console` session runs it:
+#     fly ssh console -a <app> -C "/usr/local/bin/proofpane-open invite you@example.com"
+umask 077
+cd /app/open_edition && exec /usr/local/bin/python -m proofpane_open "$@"

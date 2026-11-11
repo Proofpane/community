@@ -1,0 +1,1 @@
+{"event":{"kind":"tool.denied","path":"~/.ssh/id_ed25519","rule":"deny.paths","tool":"Read"},"hash":"sha256:9f4897d4abe6ab0f9cf91f964382c74be4a50c5682288a752cc69f338cc82adf","prev":"sha256:0000000000000000000000000000000000000000000000000000000000000000","seq":0,"ts":"2026-09-24T00:00:00.000000Z","v":2}

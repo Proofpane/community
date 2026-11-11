@@ -1,0 +1,60 @@
+{
+  "about": "The challenge a passkey signs in a ceremony whose challenge the server picked (signing in, a confirmation, end-to-end encryption's touches): sha256 of signed_bytes, which are the ASCII proofpane-confirm/1, a zero byte, the purpose's ASCII, a zero byte, and the server's challenge (base64url here, bytes there). The page derives it (ui/src/passkey.ts, derivedChallenge; challenges.test.ts), the server checks it (passkeys.derived_challenge; test_signing_domains.py), and both are held to this file. Each server_challenge but the last two is the sha256 of the ASCII 'proofpane-confirm/1 vectors: ' and its purpose.",
+  "tag": "proofpane-confirm/1",
+  "vectors": [
+    {
+      "purpose": "sign-in",
+      "server_challenge": "oXwejVoaXfU6vvsigZ6QcGUsScdZ-0Ezatqi3Pldnn0",
+      "signed_bytes": "70726f6f6670616e652d636f6e6669726d2f31007369676e2d696e00a17c1e8d5a1a5df53abefb22819e9070652c49c759fb41336adaa2dcf95d9e7d",
+      "challenge": "8OEcNbZ3CyKpdRxEEY60mefspCLgiP_TXRmzRaABo20"
+    },
+    {
+      "purpose": "confirm",
+      "server_challenge": "qMbcNtGtLhhFeRceC2hEhUM1Q_feo1o8m2m4FwpqLrg",
+      "signed_bytes": "70726f6f6670616e652d636f6e6669726d2f3100636f6e6669726d00a8c6dc36d1ad2e184579171e0b684485433543f7dea35a3c9b69b8170a6a2eb8",
+      "challenge": "EdjfdfNF5Te_o2gp1yV7vEfl3GDrPvRtEk8PVqzcMB4"
+    },
+    {
+      "purpose": "e2e-cancel",
+      "server_challenge": "5IujPDDAuZwDm-DbFrLHg4uCWiUKA6sXJSH8AE3aA8g",
+      "signed_bytes": "70726f6f6670616e652d636f6e6669726d2f31006532652d63616e63656c00e48ba33c30c0b99c039be0db16b2c7838b825a250a03ab172521fc004dda03c8",
+      "challenge": "aAZSipWfNxalhz5Crk4xuXdJUXDqM_sJ9OR5JEu91Cc"
+    },
+    {
+      "purpose": "e2e-enrol-touch",
+      "server_challenge": "pbXV-GcbfFO6Bn35-d9q2fO0Kwyy3PXoi6bNi5JfPos",
+      "signed_bytes": "70726f6f6670616e652d636f6e6669726d2f31006532652d656e726f6c2d746f75636800a5b5d5f8671b7c53ba067df9f9df6ad9f3b42b0cb2dcf5e88ba6cd8b925f3e8b",
+      "challenge": "uNam56xYuGDhzV8weN-7-Mi3pPAMJyu6ircuevCXQD8"
+    },
+    {
+      "purpose": "e2e-enrol-own",
+      "server_challenge": "OUbxO3ipFmpGriGNqh3BB1rzWaBg9N2LTOLSKJTzeDk",
+      "signed_bytes": "70726f6f6670616e652d636f6e6669726d2f31006532652d656e726f6c2d6f776e003946f13b78a9166a46ae218daa1dc1075af359a060f4dd8b4ce2d22894f37839",
+      "challenge": "8vos0mhbqvm2r8edCBMfbqgA4GFavNCl3J_YYeUzu7A"
+    },
+    {
+      "purpose": "e2e-anchor-touch",
+      "server_challenge": "5S7sm4z_cpXP7QUUDjnEHdotuhGQL37R2NqSOv_X-vA",
+      "signed_bytes": "70726f6f6670616e652d636f6e6669726d2f31006532652d616e63686f722d746f75636800e52eec9b8cff7295cfed05140e39c41dda2dba11902f7ed1d8da923affd7faf0",
+      "challenge": "f62dI496QRXt_1_pmxla5PbRRsY0b-R_8D8AK7ThWBA"
+    },
+    {
+      "purpose": "confirm",
+      "server_challenge": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "signed_bytes": "70726f6f6670616e652d636f6e6669726d2f3100636f6e6669726d000000000000000000000000000000000000000000000000000000000000000000",
+      "challenge": "7kzgRN0TjJUuaNivTBZ4t-IRYnZ8miBdo1DlOG7csHY"
+    },
+    {
+      "purpose": "confirm",
+      "server_challenge": "AAAA",
+      "signed_bytes": "70726f6f6670616e652d636f6e6669726d2f3100636f6e6669726d00000000",
+      "challenge": "Lb8o3drQdpjrIepb-WgnNmIeyXO8_toMGAFzxboDa2w"
+    },
+    {
+      "purpose": "e2e-upgrade-touch",
+      "server_challenge": "-BbN6oGLZnCjACv8zTGi87nLa-4jqpAOKmRZ8MZ0yq4",
+      "signed_bytes": "70726f6f6670616e652d636f6e6669726d2f31006532652d757067726164652d746f75636800f816cdea818b6670a3002bfccd31a2f3b9cb6bee23aa900e2a6459f0c674caae",
+      "challenge": "QGp2aG1j0hlokZU56Ew3ZNKGHouER239sGKNvKoo4Q8"
+    }
+  ]
+}

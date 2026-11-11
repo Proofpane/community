@@ -1,0 +1,96 @@
+{
+  "about": "The challenge a passkey signs for a step of the owner's (a command, a resume, a move, a statement of the encryption keys): sha256 of signed_bytes, which are the ASCII proofpane-step/1, a zero byte, and the step's canonical JSON (RFC 8785) in UTF-8. The page makes it (ui/src/passkey.ts, stepChallenge; challenges.test.ts), the server checks it (passkeys.step_challenge in check_command; test_signing_domains.py) and the link client checks it (ade_link.step_challenge in _verify_assertion; test_signing_domains.py), and all three are held to this file. In older releases a step's challenge was the sha256 of its canonical JSON alone (old_challenge here): the page no longer makes that form and the server and the link client no longer take it, so nothing a passkey signed in an older release, a touch over a challenge the server picked included, stands for a step. Computed with Python's hashlib and json alone.",
+  "tag": "proofpane-step/1",
+  "vectors": [
+    {
+      "payload": {
+        "v": 2,
+        "deployment": "pp.example",
+        "purpose": "instruction",
+        "account": "u-1",
+        "nonce": "bm9uY2U.bWFj",
+        "id": "0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f",
+        "to": "abababababababababababababababab",
+        "text": "run the tests",
+        "created_at": 1790000000,
+        "expires_at": 1790003600
+      },
+      "canonical": "{\"account\":\"u-1\",\"created_at\":1790000000,\"deployment\":\"pp.example\",\"expires_at\":1790003600,\"id\":\"0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f\",\"nonce\":\"bm9uY2U.bWFj\",\"purpose\":\"instruction\",\"text\":\"run the tests\",\"to\":\"abababababababababababababababab\",\"v\":2}",
+      "signed_bytes": "70726f6f6670616e652d737465702f31007b226163636f756e74223a22752d31222c22637265617465645f6174223a313739303030303030302c226465706c6f796d656e74223a2270702e6578616d706c65222c22657870697265735f6174223a313739303030333630302c226964223a223066306630663066306630663066306630663066306630663066306630663066222c226e6f6e6365223a22626d39755932552e6257466a222c22707572706f7365223a22696e737472756374696f6e222c2274657874223a2272756e20746865207465737473222c22746f223a226162616261626162616261626162616261626162616261626162616261626162222c2276223a327d",
+      "challenge": "jJhgvydliQ1bt5vFZn1CenzBNmEF9ys2O25mV8iDFd0",
+      "old_challenge": "h7MkySTyI4syL0NTuy0lKu3uibqYaHjnTZ8hIEyA8ro"
+    },
+    {
+      "payload": {
+        "v": 2,
+        "deployment": "pp.example",
+        "purpose": "resume",
+        "account": "u-1",
+        "nonce": "bm9uY2U.bWFj",
+        "id": "1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e",
+        "to": "abababababababababababababababab",
+        "text": "",
+        "created_at": 1790000001,
+        "expires_at": 1790000601
+      },
+      "canonical": "{\"account\":\"u-1\",\"created_at\":1790000001,\"deployment\":\"pp.example\",\"expires_at\":1790000601,\"id\":\"1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e\",\"nonce\":\"bm9uY2U.bWFj\",\"purpose\":\"resume\",\"text\":\"\",\"to\":\"abababababababababababababababab\",\"v\":2}",
+      "signed_bytes": "70726f6f6670616e652d737465702f31007b226163636f756e74223a22752d31222c22637265617465645f6174223a313739303030303030312c226465706c6f796d656e74223a2270702e6578616d706c65222c22657870697265735f6174223a313739303030303630312c226964223a223165316531653165316531653165316531653165316531653165316531653165222c226e6f6e6365223a22626d39755932552e6257466a222c22707572706f7365223a22726573756d65222c2274657874223a22222c22746f223a226162616261626162616261626162616261626162616261626162616261626162222c2276223a327d",
+      "challenge": "IL0q62nL4lvE4c6He_S_oKkzvLc_4fh680pU1WEFZM8",
+      "old_challenge": "WlE2oz3pp_6YloWqj64qpsTQm3jR4151ghKEGN9Yuu0"
+    },
+    {
+      "payload": {
+        "v": 2,
+        "deployment": "pp.example",
+        "purpose": "move",
+        "account": "u-1",
+        "nonce": "bm9uY2U.bWFj",
+        "id": "2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d",
+        "to": "abababababababababababababababab",
+        "session": "s-1",
+        "created_at": 1790000000,
+        "expires_at": 1790003600
+      },
+      "canonical": "{\"account\":\"u-1\",\"created_at\":1790000000,\"deployment\":\"pp.example\",\"expires_at\":1790003600,\"id\":\"2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d\",\"nonce\":\"bm9uY2U.bWFj\",\"purpose\":\"move\",\"session\":\"s-1\",\"to\":\"abababababababababababababababab\",\"v\":2}",
+      "signed_bytes": "70726f6f6670616e652d737465702f31007b226163636f756e74223a22752d31222c22637265617465645f6174223a313739303030303030302c226465706c6f796d656e74223a2270702e6578616d706c65222c22657870697265735f6174223a313739303030333630302c226964223a223264326432643264326432643264326432643264326432643264326432643264222c226e6f6e6365223a22626d39755932552e6257466a222c22707572706f7365223a226d6f7665222c2273657373696f6e223a22732d31222c22746f223a226162616261626162616261626162616261626162616261626162616261626162222c2276223a327d",
+      "challenge": "8L7j2PuwnRtdQQGFzrycuBNJQW4hBOUUraiKHCR2F2U",
+      "old_challenge": "KOmJwAXhIDJy7yRhlh51qAwzeBXYEXkJSlQLWce9S_0"
+    },
+    {
+      "payload": {
+        "v": 2,
+        "deployment": "pp.example",
+        "purpose": "e2e-off",
+        "account": "u-1",
+        "nonce": "bm9uY2U.bWFj",
+        "id": "3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c",
+        "seq": 2,
+        "prev": "4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b",
+        "created_at": 1790000000,
+        "expires_at": 1790000600
+      },
+      "canonical": "{\"account\":\"u-1\",\"created_at\":1790000000,\"deployment\":\"pp.example\",\"expires_at\":1790000600,\"id\":\"3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c\",\"nonce\":\"bm9uY2U.bWFj\",\"prev\":\"4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b4b\",\"purpose\":\"e2e-off\",\"seq\":2,\"v\":2}",
+      "signed_bytes": "70726f6f6670616e652d737465702f31007b226163636f756e74223a22752d31222c22637265617465645f6174223a313739303030303030302c226465706c6f796d656e74223a2270702e6578616d706c65222c22657870697265735f6174223a313739303030303630302c226964223a223363336333633363336333633363336333633363336333633363336333633363222c226e6f6e6365223a22626d39755932552e6257466a222c2270726576223a2234623462346234623462346234623462346234623462346234623462346234623462346234623462346234623462346234623462346234623462346234623462222c22707572706f7365223a226532652d6f6666222c22736571223a322c2276223a327d",
+      "challenge": "_8BfzX9Z_nrXifSMe07spfVcHkdRVEC0rMPTPTNr7lE",
+      "old_challenge": "XsDlWVOWi_K2nXJTffGMt2f4ppxoDVC7qOHpAD2dug0"
+    },
+    {
+      "payload": {
+        "v": 2,
+        "deployment": "pp.example",
+        "purpose": "instruction",
+        "account": "u-1",
+        "nonce": "bm9uY2U.bWFj",
+        "id": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
+        "to": "abababababababababababababababab",
+        "text": "café ✓ \"quoted\"\nnext line",
+        "created_at": 1790000000,
+        "expires_at": 1790003600
+      },
+      "canonical": "{\"account\":\"u-1\",\"created_at\":1790000000,\"deployment\":\"pp.example\",\"expires_at\":1790003600,\"id\":\"5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a\",\"nonce\":\"bm9uY2U.bWFj\",\"purpose\":\"instruction\",\"text\":\"café ✓ \\\"quoted\\\"\\nnext line\",\"to\":\"abababababababababababababababab\",\"v\":2}",
+      "signed_bytes": "70726f6f6670616e652d737465702f31007b226163636f756e74223a22752d31222c22637265617465645f6174223a313739303030303030302c226465706c6f796d656e74223a2270702e6578616d706c65222c22657870697265735f6174223a313739303030333630302c226964223a223561356135613561356135613561356135613561356135613561356135613561222c226e6f6e6365223a22626d39755932552e6257466a222c22707572706f7365223a22696e737472756374696f6e222c2274657874223a22636166c3a920e29c93205c2271756f7465645c225c6e6e657874206c696e65222c22746f223a226162616261626162616261626162616261626162616261626162616261626162222c2276223a327d",
+      "challenge": "ZkJkz8-30xtzQ6Ko_Ldkd-ggDJLGRLW8F_rwLxv_q3Y",
+      "old_challenge": "RKA4wdynmZRYmALm0f0QqiOBjI2AJpUxKwl_3HUFcyE"
+    }
+  ]
+}

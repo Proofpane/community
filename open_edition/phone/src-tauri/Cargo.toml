@@ -1,0 +1,28 @@
+[package]
+name = "proofpane-community-phone"
+version = "0.1.0"
+description = "Proofpane Community on a phone: the ADE of a hosted workspace"
+authors = ["PROOFPANE LIMITED"]
+license = "Apache-2.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "proofpane_community_phone_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+# a link out of the app's own pages opens in the phone's browser (src/lib.rs, open_outside)
+tauri-plugin-opener = "2"
+
+# Face ID, Touch ID or the passcode before an approval (ui/src/presence.ts): on the phones only
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+tauri-plugin-biometric = "2"
+
+[dev-dependencies]
+# the capability files read as JSON in the unit tests
+serde_json = "1"

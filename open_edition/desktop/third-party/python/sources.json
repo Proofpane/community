@@ -1,0 +1,175 @@
+{
+  "builds": {
+    "aarch64-apple-darwin": {
+      "archive": "cpython-3.13.15+20260929-aarch64-apple-darwin-pgo+lto-full.tar.zst",
+      "extensions": {
+        "_bz2": {
+          "shared": null,
+          "static": [
+            "bz2"
+          ]
+        },
+        "_ctypes": {
+          "shared": null,
+          "static": [
+            "ffi"
+          ]
+        },
+        "_decimal": {
+          "shared": null,
+          "static": [
+            "mpdec"
+          ]
+        },
+        "_hashlib": {
+          "shared": null,
+          "static": [
+            "crypto"
+          ]
+        },
+        "_lzma": {
+          "shared": null,
+          "static": [
+            "lzma"
+          ]
+        },
+        "_sqlite3": {
+          "shared": null,
+          "static": [
+            "sqlite3"
+          ]
+        },
+        "_ssl": {
+          "shared": null,
+          "static": [
+            "crypto",
+            "ssl"
+          ]
+        },
+        "_tkinter": {
+          "shared": "lib/python3.13/lib-dynload/_tkinter.cpython-313-darwin.so",
+          "static": [
+            "tclstub",
+            "tkstub"
+          ]
+        },
+        "_uuid": {
+          "shared": null,
+          "static": [
+            "uuid"
+          ]
+        },
+        "pyexpat": {
+          "shared": null,
+          "static": [
+            "expat"
+          ]
+        }
+      },
+      "openssl": "OpenSSL 3.5.9 29 Sep 2026",
+      "sha256": "f6d0b397d62a6041ef67ca5180fe989fc0acbd3058ffc31c8ab4b43cae1ba430"
+    },
+    "x86_64-apple-darwin": {
+      "archive": "cpython-3.13.15+20260929-x86_64-apple-darwin-pgo+lto-full.tar.zst",
+      "extensions": {
+        "_bz2": {
+          "shared": null,
+          "static": [
+            "bz2"
+          ]
+        },
+        "_ctypes": {
+          "shared": null,
+          "static": [
+            "ffi"
+          ]
+        },
+        "_decimal": {
+          "shared": null,
+          "static": [
+            "mpdec"
+          ]
+        },
+        "_hashlib": {
+          "shared": null,
+          "static": [
+            "crypto"
+          ]
+        },
+        "_lzma": {
+          "shared": null,
+          "static": [
+            "lzma"
+          ]
+        },
+        "_sqlite3": {
+          "shared": null,
+          "static": [
+            "sqlite3"
+          ]
+        },
+        "_ssl": {
+          "shared": null,
+          "static": [
+            "crypto",
+            "ssl"
+          ]
+        },
+        "_tkinter": {
+          "shared": "lib/python3.13/lib-dynload/_tkinter.cpython-313-darwin.so",
+          "static": [
+            "tclstub",
+            "tkstub"
+          ]
+        },
+        "_uuid": {
+          "shared": null,
+          "static": [
+            "uuid"
+          ]
+        },
+        "pyexpat": {
+          "shared": null,
+          "static": [
+            "expat"
+          ]
+        }
+      },
+      "openssl": "OpenSSL 3.5.9 29 Sep 2026",
+      "sha256": "702e3de8127ec80c873581afc870b3e4ad63d2eb78bab667c9ab4d5bce5a2390"
+    }
+  },
+  "cpython": {
+    "files": [
+      "license.rst",
+      "NOTICE.cpython-c.txt",
+      "LICENSE.hacl.txt",
+      "NOTICE.krml.txt"
+    ],
+    "licenses": [
+      "Python-2.0",
+      "CNRI-Python"
+    ],
+    "source": {
+      "archive": "Python-3.13.15.tar.xz",
+      "sha256": "1e66a7945a48390ee4c2a4268a0e4185884059a13c4aab6d148aa208deea4a76",
+      "url": "https://www.python.org/ftp/python/3.13.15/Python-3.13.15.tar.xz"
+    }
+  },
+  "files": {
+    "LICENSE.bzip2.txt": "1f38bbc7caacafd65169276d759c0d88c991b753b643ce35d0e45ea1971dd441",
+    "LICENSE.expat.txt": "122f2c27000472a201d337b9b31f7eb2b52d091b02857061a8880371612d9534",
+    "LICENSE.hacl.txt": "328a079d376d3e1e966317c647906004d38d42b7624531456b90ae1b710ddc0c",
+    "LICENSE.libffi.txt": "deaf3a42effb551a5b140fa9afefed183a27f1341c6d1bf430d106a5e6931fc0",
+    "LICENSE.liblzma.txt": "9a4062de0a2c388a98cf35a35d348b62fa97c838a71c3c28ee1a2d7d0a565b02",
+    "LICENSE.libuuid.txt": "122ee1f7e258f2c3c0e538a75c037684f420454bf3850ddc74ce750bbf5fe86b",
+    "LICENSE.mpdecimal.txt": "669512af7219f58be03a398766d7c9da11a3b3df9d3f05cb74c5ceca25c8da3b",
+    "LICENSE.openssl-3.txt": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a",
+    "LICENSE.sqlite.txt": "38bef3d28b24f145ea293bd3b6eb4b20396982abc8303128fb493986ea5bc719",
+    "NOTICE.cpython-c.txt": "7aecf254c370aad1a924f5b379b01a7bd04bdc018ac6d621f80d32a5cdcf0053",
+    "NOTICE.krml.txt": "99a800554ebe39e1c14dca8ee15cff1ab21802f05ca3d82da38c0500e1f4056a",
+    "license.rst": "952ac05720d7f1dcb63589b35eb0931b1442eb250230a4ad31198eddf0ad6abc"
+  },
+  "python": "3.13.15",
+  "release": "20260929"
+}

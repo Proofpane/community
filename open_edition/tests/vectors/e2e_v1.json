@@ -1,0 +1,250 @@
+{
+ "about": "End-to-end encryption: envelopes made by the link client (ade_link.py) from fixed keys and nonces, for the page to open and refuse as the Python tests do. Keys are base64url without padding; private keys raw (32 bytes) and, for the content key, as PKCS#8 DER too; plaintext_text is the plaintext's RFC 8785 bytes as text. A talk's i counts from 0. The page's own sealed vectors go in e2e_v1_page.json, in this file's shape (content_key, envelopes with slot, plaintext and envelope), which the Python tests open when it is there. The grant seals the master key's 32 bytes as they are (the envelope's construction, its AAD the grant's); the content-key wrap is AES-256-GCM under the content-wrap subkey, given as nonce, wrapped (ciphertext and tag) and the two together.",
+ "version": 1,
+ "account": "acct-e2e-0001",
+ "link_id": "0123456789abcdef0123456789abcdef",
+ "content_key": {
+  "private": "5cj0hh8JjElaGBO6sAXPynuC7GHi9SU-DJtRT1XKCxY",
+  "pkcs8": "MC4CAQAwBQYDK2VuBCIEIOXI9IYfCYxJWhgTurAFz8p7guxh4vUlPgybUU9VygsW",
+  "public": "5L10-Zq-PrzfGiZxhGFZqOw0TWnuhYaeTkg7hxvx5ls",
+  "key_id": "1869796b9ede51ab2e927fd26089cdfd"
+ },
+ "envelopes": [
+  {
+   "name": "event: a step to the owner (post)",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc0",
+   "plaintext": {
+    "text": "Built the History list.",
+    "session": null,
+    "said_at": null
+   },
+   "plaintext_text": "{\"said_at\":null,\"session\":null,\"text\":\"Built the History list.\"}",
+   "ephemeral_private": "fgM3uDXB10adq58qdIN8tqyFXLDw3WItIY3sKgxWUn4",
+   "nonce": "OVZaR6aDr8NlkvI3",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf0F6a9LPui3hg86HZpCukkeX0sK8Lm7ItHcQnb_ioV0dTlWWkemg6_DZZLyN-uUAED96L_O5VVY_-iljyqlJOSgvLifcacmHX5gAuER2ToFWXeUEHWb2KHJBK6eAxZ6EZOsygrUJI8tE0qGiAnqoaoFQWqLOkbn7DLHuWRs"
+  },
+  {
+   "name": "event: a question to the owner",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|question|||0000000000000000000000000000abc1",
+   "plaintext": {
+    "text": "Q-1: per user or per org?",
+    "session": null,
+    "said_at": null
+   },
+   "plaintext_text": "{\"said_at\":null,\"session\":null,\"text\":\"Q-1: per user or per org?\"}",
+   "ephemeral_private": "mc8MCGYSaecWOmIRxFbsVZkcX23gaX9oZ41Ni1dQTKs",
+   "nonce": "YdPi7yZ7snTWqn3A",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf3_cGdaPd9F9ma5lJ6KE730jmgUvnWv9tf_KMJpUfTCAWHT4u8me7J01qp9wBM7cY2AIdENpKrhEliiwQqGXo_H20rnvlXU3qRrKBMePlH0JKYQxRpO_0ISoHDRlhwHxGiCF-3uOXd4bjeei-BdK2iSZMr51DBJkYzzaYGoX4c"
+  },
+  {
+   "name": "event: a reply to a command it took (done, with the command's seq)",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|done||41|0000000000000000000000000000abc2",
+   "plaintext": {
+    "text": "done: 12 passed",
+    "session": null,
+    "said_at": null
+   },
+   "plaintext_text": "{\"said_at\":null,\"session\":null,\"text\":\"done: 12 passed\"}",
+   "ephemeral_private": "YBoe7k_UpN_ubPV_JPfNr5bmVol6_1OBST_kfmqC_Hk",
+   "nonce": "bYzg2WMqDxJ9_LWS",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf2OPJsSnFuVAlb6juUVPqWG0WFt6YPiORmaThpMdVNiCm2M4NljKg8Sffy1ku3cTCSP3RQ6x828aqNxalwr-xztO60hacLdhkT-6cywWXAYlvD9xQX1ZTLio8w7q9CwhcGe21dtAYkSYHsDUgMnu8RWMVQ-Zg"
+  },
+  {
+   "name": "event: a mirrored note of the session's words, naming its session",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|note|session||0000000000000000000000000000abc3",
+   "plaintext": {
+    "text": "(1 of 2) Checking.",
+    "session": "s-0001",
+    "said_at": 1790000000123
+   },
+   "plaintext_text": "{\"said_at\":1790000000123,\"session\":\"s-0001\",\"text\":\"(1 of 2) Checking.\"}",
+   "ephemeral_private": "hIy1oM-A-bgMm-OvTac5lld5q6fJwwy4hlBTsTFGSys",
+   "nonce": "EgAG_16paJ8RLdnR",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf0BjZjj_LOiX8umSrxijNC2kzGZ_onpE-1e4bJ8JwJCahIABv9eqWifES3Z0UynXTleUwb4IO7SA_LDxGEthnkZClHILm2vFLxQ2q4GrKBq73NCgrJPMCQepbvLhSpCL_qruwHAHOGP-dAS1bqGkJZViddfaRMzPt3U5wtkyKvIHua_nyU"
+  },
+  {
+   "name": "event: a mirrored note of the owner's words, no session named",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|note|owner||0000000000000000000000000000abc4",
+   "plaintext": {
+    "text": "how is the build?",
+    "session": null,
+    "said_at": 1790000000000
+   },
+   "plaintext_text": "{\"said_at\":1790000000000,\"session\":null,\"text\":\"how is the build?\"}",
+   "ephemeral_private": "ahOj64gim0K9yzi4QqXomrv1xbAJZur0VyqKUFegCvM",
+   "nonce": "O9OAKD1BIK-pX1yI",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf3lD9ETq5FP1d4iOn4P0rxg4BcyxTKFqCoTE9VPKxNgWTvTgCg9QSCvqV9ciBIfTSwNjjn6tDD7xGroEAE54bUHBvVlxOJ5hDeVi9oT3OjPow1p5VeEPZgfCXZoe-f6kZ3EXtf1D1RIhQcYiz0FGox6zq_QoBFJlZ3uEayesQmV"
+  },
+  {
+   "name": "event: text in other scripts, and what JSON escapes",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|note|||0000000000000000000000000000abc5",
+   "plaintext": {
+    "text": "caf\u00e9 \u00b5 \ud83d\ude00 \"q\" \\ tab\there\nnext\u0001\u007f\u2028end",
+    "session": null,
+    "said_at": null
+   },
+   "plaintext_text": "{\"said_at\":null,\"session\":null,\"text\":\"caf\u00e9 \u00b5 \ud83d\ude00 \\\"q\\\" \\\\ tab\\there\\nnext\\u0001\u007f\u2028end\"}",
+   "ephemeral_private": "EXym_cftV0EULCkxfuM7kKLSaszGRUmgmlU290IlzMA",
+   "nonce": "_vxY1yrhZqGMY2vV",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf3UvlySIaOtBYP57VCrUY05gTEpCVoESXCpDJNnw7jAOP78WNcq4WahjGNr1QpTPoAkt5FnrdWEzqcfqTIIw0-vQAv4SKwTpf84C3ETJ_nPmmJG0kbYR63CQ_7sGpQovjwR4SLzh1SUFTZSsaMJfs_xUjmW3mhudPJqtZfcLGsD1dzI4iJS4oO9FuP67G2cBq6BE3CY2EWfYQ"
+  },
+  {
+   "name": "history: a listed row",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|history|s-0001|0",
+   "plaintext": {
+    "title": "The History list",
+    "project": "~/work/app",
+    "branch": "main",
+    "repositories": [
+     "~/work/app",
+     "~/work/lib"
+    ]
+   },
+   "plaintext_text": "{\"branch\":\"main\",\"project\":\"~/work/app\",\"repositories\":[\"~/work/app\",\"~/work/lib\"],\"title\":\"The History list\"}",
+   "ephemeral_private": "_YV9IhzB92m-n1ZNbvWKnQfCKx22KX90NDrWWBspX9g",
+   "nonce": "2wtZhMPiiQPdKaZW",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf33gxMm7dt59T4VifQ8KxymSYxpnaWSbOZopLj-A-sYLtsLWYTD4okD3SmmVjHtzXUs_7IA7U2fRUPAfw7PVtZnh7m0WNFFu4hnCjSqKH2wmJMlpvECrZmLqEvzA9fQ_pNW7i1Us-4gV8R2Ek5cjdtPZKHprBj5qYoIdXYO8SxZvWgpnCZHXbdHRWHRgq0wHLtp7MqBr-04BDO_1R1G6Yh1VCweEVcDhZm6IQ"
+  },
+  {
+   "name": "history: a listed row with no branch and no repository",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|history|s-0003|0",
+   "plaintext": {
+    "title": "(untitled)",
+    "project": "~",
+    "branch": null,
+    "repositories": []
+   },
+   "plaintext_text": "{\"branch\":null,\"project\":\"~\",\"repositories\":[],\"title\":\"(untitled)\"}",
+   "ephemeral_private": "KQqM6xLm_eHLwUCA7CU3xczvmqYkD6rfGRNviCKSBao",
+   "nonce": "-pXgq7OUiSHKOidI",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf3jXRpBw3hHUZc0DTgBzScO7fuQc7RSnoquUW1uv8xATPqV4KuzlIkhyjonSJNT1TV1cfcaXV23x2nF2YCK8q7DqyBu3_c6DYtdj0Nh-IxwWVSIqiYOYvtO06BQnDfw5sUcqgBP91CcTKG8EJIRGVVZEHhv8T_XY0_jqFaNY0r2ww"
+  },
+  {
+   "name": "history: a withheld row, its project alone",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|history|s-0002|1",
+   "plaintext": {
+    "project": "~/work/app"
+   },
+   "plaintext_text": "{\"project\":\"~/work/app\"}",
+   "ephemeral_private": "H7XlEl5qyWYgIg7wvid0aXbeG3erRgN0xptj87nDoUU",
+   "nonce": "tvfZkc4Yi4X6apYL",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf2aez3LvzqccsERKN2MBWmox_RiDDQ4Mf7YrbzkZ4xjOrb32ZHOGIuF-mqWC7i74kRjntfJ1oqDWFRbxnVdYxdc2MYsCWVfrqtibmY25poXXAl8ICs"
+  },
+  {
+   "name": "talk: the owner's message, first of two, three before them",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|talk|s-0001|0|2|3|owner|1790000000|1790000000000",
+   "plaintext": {
+    "text": "how is the build?"
+   },
+   "plaintext_text": "{\"text\":\"how is the build?\"}",
+   "ephemeral_private": "TlItr8YCKjaMva0-aw3_qW0G0jE2N0XM7LwfC5zcfLY",
+   "nonce": "tUJLhzNjQ_rwJX0X",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf0o2gf28hvxHKByJ8vQszMzCeV91J3VUjChvIoepN3FYLVCS4czY0P68CV9F3j5SLl1wUjY8sbUtR4C-hP5NffR4_oDkdSt0JasiwofnGohn_dEsfriyxqb"
+  },
+  {
+   "name": "talk: the session's message, with no times",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|talk|s-0001|1|2|3|session||",
+   "plaintext": {
+    "text": "Green: 12 passed."
+   },
+   "plaintext_text": "{\"text\":\"Green: 12 passed.\"}",
+   "ephemeral_private": "AgJ8M1xA-O2wOE4g0ffZph_LNM71XWNp6-a45ZzDC4A",
+   "nonce": "41uxnSHzNFH6iNVg",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf0kWRQ7O81OQKQD0QTXx_rvZf4fDdNKC5dv5L24HmCwJeNbsZ0h8zRR-ojVYIkl8BdCSAYc1LCK_JEXfst6BpSI8hGZyQjI2Z36gz4xT1Al_4Wha96kyiXW"
+  }
+ ],
+ "refused": [
+  {
+   "why": "another slot: another client_id",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc7",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf0F6a9LPui3hg86HZpCukkeX0sK8Lm7ItHcQnb_ioV0dTlWWkemg6_DZZLyN-uUAED96L_O5VVY_-iljyqlJOSgvLifcacmHX5gAuER2ToFWXeUEHWb2KHJBK6eAxZ6EZOsygrUJI8tE0qGiAnqoaoFQWqLOkbn7DLHuWRs"
+  },
+  {
+   "why": "another account in the slot",
+   "slot": "proofpane-e2e/1|acct-other|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc0",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf0F6a9LPui3hg86HZpCukkeX0sK8Lm7ItHcQnb_ioV0dTlWWkemg6_DZZLyN-uUAED96L_O5VVY_-iljyqlJOSgvLifcacmHX5gAuER2ToFWXeUEHWb2KHJBK6eAxZ6EZOsygrUJI8tE0qGiAnqoaoFQWqLOkbn7DLHuWRs"
+  },
+  {
+   "why": "a byte of the tag changed",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc0",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf0F6a9LPui3hg86HZpCukkeX0sK8Lm7ItHcQnb_ioV0dTlWWkemg6_DZZLyN-uUAED96L_O5VVY_-iljyqlJOSgvLifcacmHX5gAuER2ToFWXeUEHWb2KHJBK6eAxZ6EZOsygrUJI8tE0qGiAnqoaoFQWqLOkbn7DLHuWRt"
+  },
+  {
+   "why": "a header of another version",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc0",
+   "envelope": "e2e1.AhhpeWue3lGrLpJ_0mCJzf0F6a9LPui3hg86HZpCukkeX0sK8Lm7ItHcQnb_ioV0dTlWWkemg6_DZZLyN-uUAED96L_O5VVY_-iljyqlJOSgvLifcacmHX5gAuER2ToFWXeUEHWb2KHJBK6eAxZ6EZOsygrUJI8tE0qGiAnqoaoFQWqLOkbn7DLHuWRs"
+  },
+  {
+   "why": "sealed to another key",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc0",
+   "envelope": "e2e1.AUp-NK7Mvp4ktAyE4HmD13wECUEkLyT3OoJ32dA0T-Z0ZVGBtRK2Qblgx07AsLf0WaQvYKN9ZWzB4i5o5VpugkiNm0IPO4TP3NuinCOZEm-8GWZrXdgsc6GIGRSQpJQKG7qxJsnPZgeARqTEPi5t2VFr3I0nKEJid5QfCwTW0Y5hEA7spDNgv60jnZa1"
+  },
+  {
+   "why": "a body with padding",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc0",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf0F6a9LPui3hg86HZpCukkeX0sK8Lm7ItHcQnb_ioV0dTlWWkemg6_DZZLyN-uUAED96L_O5VVY_-iljyqlJOSgvLifcacmHX5gAuER2ToFWXeUEHWb2KHJBK6eAxZ6EZOsygrUJI8tE0qGiAnqoaoFQWqLOkbn7DLHuWRs=="
+  },
+  {
+   "why": "a body whose length is 1 modulo 4",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc0",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf0F6a9LPui3hg86HZpCukkeX0sK8Lm7ItHcQnb_ioV0dTlWWkemg6_DZZLyN-uUAED96L_O5VVY_-iljyqlJOSgvLifcacmHX5gAuER2ToFWXeUEHWb2KHJBK6eAxZ6EZOsygrUJI8tE0qGiAnqoaoFQWqLOkbn7DLHuWRsA"
+  },
+  {
+   "why": "a body that does not encode again to itself",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc0",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf0F6a9LPui3hg86HZpCukkeX0sK8Lm7ItHcQnb_ioV0dTlWWkemg6_DZZLyN-uUAED96L_O5VVY_-iljyqlJOSgvLifcacmHX5gAuER2ToFWXeUEHWb2KHJBK6eAxZ6EZOsygrUJI8tE0qGiAnqoaoFQWqLOkbn7DLHuR"
+  },
+  {
+   "why": "not the envelope's mark",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc0",
+   "envelope": "e2e2.ARhpeWue3lGrLpJ_0mCJzf0F6a9LPui3hg86HZpCukkeX0sK8Lm7ItHcQnb_ioV0dTlWWkemg6_DZZLyN-uUAED96L_O5VVY_-iljyqlJOSgvLifcacmHX5gAuER2ToFWXeUEHWb2KHJBK6eAxZ6EZOsygrUJI8tE0qGiAnqoaoFQWqLOkbn7DLHuWRs"
+  },
+  {
+   "why": "the plaintext is not in its canonical form",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc0",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf23towChwWyRYL5I1P0D6H90Sp3CPYCntY3Cb8054nqceNO8QeyY8Q5XGZptfeNdfhSEjAeAhJZH7lOcEPZsC7dthG3JSMgCo5cv2d-j7JpVwbFHMOFxCf4-fKs9IPgDuG_CNbWJQy_C3kYjA"
+  },
+  {
+   "why": "the plaintext is not UTF-8",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc0",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf2uUmzALi2wLtsJ-EL7hij1kqjt5tS43P9MPSIySYVdPnHlDB5dIEnb09-cIqwVwwf96l_djFxueOPYt4iO06QLXpo2-VLl-A8AyEs_J_8NpQW1Zr1UZEMfaKx3IQUGqXI-8y7lvp8"
+  },
+  {
+   "why": "the plaintext is not a JSON object",
+   "slot": "proofpane-e2e/1|acct-e2e-0001|0123456789abcdef0123456789abcdef|event|step|||0000000000000000000000000000abc0",
+   "envelope": "e2e1.ARhpeWue3lGrLpJ_0mCJzf2-d7mgH8BJcExUJQdxYL-MJ8zwc4OGEn4_yOe5lnNfQ6Lfe1ywjXkQnFqJ8XED8M6LMPeKvrHtKhXmfDu8L2WlYA"
+  }
+ ],
+ "grant": {
+  "to": "cred-0001",
+  "mk": "T2zGxInSih2vR-7ODYzWlllVNJdMm3SzH55OSOt_WFk",
+  "mk_id": "6b82bad92081a64c5fe2ac7c830ea75a",
+  "private": "TAB0n9topXsv9BrYJB0p0N7V5836EVS9-DWmli7ruEQ",
+  "public": "HNdgw7jQvXeAazys5Y98Qzpi0l3ekbdcwQ_nVH7vKCA",
+  "slot": "proofpane-e2e/1|acct-e2e-0001|grant|cred-0001|6b82bad92081a64c5fe2ac7c830ea75a",
+  "ephemeral_private": "bChiKSwZcXeDRbogXLYySzqbfUYM1avrSs2Y1bJGJbk",
+  "nonce": "eHacNRRNyGpQ4Or3",
+  "envelope": "e2e1.AaXJOlsb2BCQZnZdAMyfWeVfT-URSrx7dBeWVf6-b9IqJA-nQbhovj_vZt17ArUWDXh2nDUUTchqUODq98RFxgUSnwm7ozbOLQddRA2vHx1lZs2qdD1M8fOqKA_S17NSoRaYCSBgt2F-0z0mHA"
+ },
+ "recovery_grant": {
+  "to": "recovery",
+  "mk": "T2zGxInSih2vR-7ODYzWlllVNJdMm3SzH55OSOt_WFk",
+  "mk_id": "6b82bad92081a64c5fe2ac7c830ea75a",
+  "private": "obrYGFVDJ9XvU2N7_wxtX-W67lw38fdg_5EkVIXJqzM",
+  "public": "rcfIEdj3nGsNOw6j2DcwWMz34z3NzSNYmBrSAvfHFms",
+  "slot": "proofpane-e2e/1|acct-e2e-0001|grant|recovery|6b82bad92081a64c5fe2ac7c830ea75a",
+  "ephemeral_private": "UkqW49at2k78sO8n8Bj4H5N78XKuC7TP8tiI2hC_uHQ",
+  "nonce": "B_EBLNQZtDylBtm6",
+  "envelope": "e2e1.ARKm4qzg57uNo1yQyfzUD0DnWLHW9-xaueKNmlUR4M9kj4tXJaLo0K_Fo0d9qevoCQfxASzUGbQ8pQbZupedLRdVPVx8ynwdbCXtwG_Q1cfgVmUkp0PDwRJ16pE3MeSdvefuCoKsFaah-z0sZQ"
+ },
+ "content_key_wrap": {
+  "mk": "T2zGxInSih2vR-7ODYzWlllVNJdMm3SzH55OSOt_WFk",
+  "mk_id": "6b82bad92081a64c5fe2ac7c830ea75a",
+  "subkey": "wdzv05z8C2X581jt8hxUo91KVudhgs1SZRJQNyHyuOg",
+  "aad": "proofpane-e2e/1 content key|acct-e2e-0001|1869796b9ede51ab2e927fd26089cdfd|6b82bad92081a64c5fe2ac7c830ea75a",
+  "plaintext_pkcs8": "MC4CAQAwBQYDK2VuBCIEIOXI9IYfCYxJWhgTurAFz8p7guxh4vUlPgybUU9VygsW",
+  "nonce": "u0kKc-T_syMvD065",
+  "wrapped": "nBHb67LGHSVgM-LiCMhADSz37gLq0fUTIMieazUaBQ-4WK7Q3LeoHH0_FQvHxIaye6tVmKMW9ELhGm0DLFWbZg",
+  "nonce_and_wrapped": "u0kKc-T_syMvD065nBHb67LGHSVgM-LiCMhADSz37gLq0fUTIMieazUaBQ-4WK7Q3LeoHH0_FQvHxIaye6tVmKMW9ELhGm0DLFWbZg"
+ }
+}

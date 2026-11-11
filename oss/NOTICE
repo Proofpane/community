@@ -1,0 +1,11 @@
+Proofpane's open packages: proofpane-core, proofpane-verify, proofpane-sign and Verify for pull requests
+Copyright 2026 PROOFPANE LIMITED
+
+Licensed under the Apache License, Version 2.0: the LICENSE file beside this one.
+
+sign/vectors/composite/id-MLDSA65-Ed25519-SHA512.json holds the test vectors of draft-ietf-lamps-pq-composite-sigs-19,
+Appendix E, as the IETF published that draft
+(https://www.ietf.org/archive/id/draft-ietf-lamps-pq-composite-sigs-19.txt); the file names its source, that address
+and the sha256 of the text it was taken from. core/vectors/jcs/objects.json includes the two examples of RFC 8785,
+sections 3.2.2 and 3.2.3 (https://www.rfc-editor.org/rfc/rfc8785). Each of these is under the terms its document
+states.

@@ -1,0 +1,1202 @@
+{
+  "about": "The second screen's shared vectors, made by tests/test_ade_link_sign_core.py (vectors(), and write_vectors() to write them anew) and read by the page's tests. kinds: for each kind the Mac signs, the payload, its canonical JSON (RFC 8785), the challenge a passkey signs (base64url of sha256 of the ASCII proofpane-step/1, a zero byte and the canonical bytes, as tests/vectors/step_v1.json has it), the request code (the first 5 bytes of that challenge in RFC 4648 base32, as two groups of four) and the exact client data the Mac writes for the origin here. design_example: a worked example of a step; its challenge and code of an older form (sha256 of the canonical bytes alone) are kept here as old_challenge and old_code, and a step is signed over the challenge and shows the code given here. words: each case, refused with the Mac's words for why, or the lines it is shown as. fields: each string the ADE gives, carrying an escape sequence, a C1 control, a bidi override and a line feed (hostile), as the screen shows it, and a name holding a double quote and a run of spaces that would pass for the screen's own column of kinds (forged). refused: payloads refused before anything is shown. screens: the lines shown for each kind, local time taken as UTC, and the rows a terminal 80 columns wide shows them as (rows_80: each row after a line's first begins with \"  > \"); no screen holds the nonce. Strings that are not ASCII are written as JSON escapes.",
+  "tag": "proofpane-step/1",
+  "marker": "second-screen/1",
+  "origin": "https://ade.example.com",
+  "kinds": [
+    {
+      "payload": {
+        "v": 2,
+        "deployment": "ade.example.com",
+        "purpose": "instruction",
+        "account": "5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b",
+        "nonce": "eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8",
+        "id": "0123456789abcdef0123456789abcdef",
+        "created_at": 1791511200,
+        "expires_at": 1791514800,
+        "to": "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b",
+        "text": "Run the tests in open_edition, then fix the failing one.\nDo not push."
+      },
+      "canonical": "{\"account\":\"5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b\",\"created_at\":1791511200,\"deployment\":\"ade.example.com\",\"expires_at\":1791514800,\"id\":\"0123456789abcdef0123456789abcdef\",\"nonce\":\"eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8\",\"purpose\":\"instruction\",\"text\":\"Run the tests in open_edition, then fix the failing one.\\nDo not push.\",\"to\":\"9b1e2f4071c34d5e8a9b0c1d2e3f4a5b\",\"v\":2}",
+      "challenge": "VLvY0GKRKEqfljrDYXS9vEgSGhoYGHAR3ssHYXW9eWU",
+      "code": "KS55-RUDC",
+      "client_data": "{\"type\":\"webauthn.get\",\"challenge\":\"VLvY0GKRKEqfljrDYXS9vEgSGhoYGHAR3ssHYXW9eWU\",\"origin\":\"https://ade.example.com\",\"crossOrigin\":false,\"proofpane\":\"second-screen/1\"}"
+    },
+    {
+      "payload": {
+        "v": 2,
+        "deployment": "ade.example.com",
+        "purpose": "answer",
+        "account": "5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b",
+        "nonce": "eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8",
+        "id": "0123456789abcdef0123456789abcdef",
+        "created_at": 1791511200,
+        "expires_at": 1791514800,
+        "to": "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b",
+        "text": "Yes. Run it, then stop and tell me what changed.",
+        "ref": 12,
+        "digest": "sha256:928da141ac27c1a1ccc176e327f2bd6e7554bc013e02b7e8df6bbd6fe476db51"
+      },
+      "canonical": "{\"account\":\"5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b\",\"created_at\":1791511200,\"deployment\":\"ade.example.com\",\"digest\":\"sha256:928da141ac27c1a1ccc176e327f2bd6e7554bc013e02b7e8df6bbd6fe476db51\",\"expires_at\":1791514800,\"id\":\"0123456789abcdef0123456789abcdef\",\"nonce\":\"eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8\",\"purpose\":\"answer\",\"ref\":12,\"text\":\"Yes. Run it, then stop and tell me what changed.\",\"to\":\"9b1e2f4071c34d5e8a9b0c1d2e3f4a5b\",\"v\":2}",
+      "challenge": "cTaWN6A3O_64n24CO1CaKXuIBMEnN-fcyUkDksS4WhM",
+      "code": "OE3J-MN5A",
+      "client_data": "{\"type\":\"webauthn.get\",\"challenge\":\"cTaWN6A3O_64n24CO1CaKXuIBMEnN-fcyUkDksS4WhM\",\"origin\":\"https://ade.example.com\",\"crossOrigin\":false,\"proofpane\":\"second-screen/1\"}"
+    },
+    {
+      "payload": {
+        "v": 2,
+        "deployment": "ade.example.com",
+        "purpose": "resume",
+        "account": "5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b",
+        "nonce": "eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8",
+        "id": "0123456789abcdef0123456789abcdef",
+        "created_at": 1791511200,
+        "expires_at": 1791511800,
+        "to": "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b",
+        "text": ""
+      },
+      "canonical": "{\"account\":\"5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b\",\"created_at\":1791511200,\"deployment\":\"ade.example.com\",\"expires_at\":1791511800,\"id\":\"0123456789abcdef0123456789abcdef\",\"nonce\":\"eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8\",\"purpose\":\"resume\",\"text\":\"\",\"to\":\"9b1e2f4071c34d5e8a9b0c1d2e3f4a5b\",\"v\":2}",
+      "challenge": "TYidCwaEED40D8M_OEkpSbOoNkvi8pn3T1oAr3Gr7fg",
+      "code": "JWEJ-2CYG",
+      "client_data": "{\"type\":\"webauthn.get\",\"challenge\":\"TYidCwaEED40D8M_OEkpSbOoNkvi8pn3T1oAr3Gr7fg\",\"origin\":\"https://ade.example.com\",\"crossOrigin\":false,\"proofpane\":\"second-screen/1\"}"
+    },
+    {
+      "payload": {
+        "v": 2,
+        "deployment": "ade.example.com",
+        "purpose": "move",
+        "account": "5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b",
+        "nonce": "eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8",
+        "id": "0123456789abcdef0123456789abcdef",
+        "created_at": 1791511200,
+        "expires_at": 1791514800,
+        "to": "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b",
+        "session": "3f1c9d2e-7a4b-4c8d-9e0f-1a2b3c4d5e6f"
+      },
+      "canonical": "{\"account\":\"5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b\",\"created_at\":1791511200,\"deployment\":\"ade.example.com\",\"expires_at\":1791514800,\"id\":\"0123456789abcdef0123456789abcdef\",\"nonce\":\"eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8\",\"purpose\":\"move\",\"session\":\"3f1c9d2e-7a4b-4c8d-9e0f-1a2b3c4d5e6f\",\"to\":\"9b1e2f4071c34d5e8a9b0c1d2e3f4a5b\",\"v\":2}",
+      "challenge": "xba2-uHw0Cu_ctr4MP7l5vztqYZ4xNhC9hb4s99cvJo",
+      "code": "YW3L-N6XB",
+      "client_data": "{\"type\":\"webauthn.get\",\"challenge\":\"xba2-uHw0Cu_ctr4MP7l5vztqYZ4xNhC9hb4s99cvJo\",\"origin\":\"https://ade.example.com\",\"crossOrigin\":false,\"proofpane\":\"second-screen/1\"}"
+    },
+    {
+      "payload": {
+        "v": 2,
+        "deployment": "ade.example.com",
+        "purpose": "e2e-key",
+        "account": "5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b",
+        "nonce": "eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8",
+        "id": "0123456789abcdef0123456789abcdef",
+        "created_at": 1791511200,
+        "expires_at": 1791511800,
+        "seq": 2,
+        "prev": "0cf10bbc665ab7e463cdf04627410efc0e14bfec1c2f0fca9ff2910ec666c347",
+        "key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+        "key_id": "630dcd2966c4336691125448bbb25b4f",
+        "retires": "grace"
+      },
+      "canonical": "{\"account\":\"5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b\",\"created_at\":1791511200,\"deployment\":\"ade.example.com\",\"expires_at\":1791511800,\"id\":\"0123456789abcdef0123456789abcdef\",\"key\":\"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8\",\"key_id\":\"630dcd2966c4336691125448bbb25b4f\",\"nonce\":\"eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8\",\"prev\":\"0cf10bbc665ab7e463cdf04627410efc0e14bfec1c2f0fca9ff2910ec666c347\",\"purpose\":\"e2e-key\",\"retires\":\"grace\",\"seq\":2,\"v\":2}",
+      "challenge": "AKmyXp3g73R7pMUS2gwKZ_wuzKnLJQ0GV0fY_V9vuIM",
+      "code": "ACU3-EXU5",
+      "client_data": "{\"type\":\"webauthn.get\",\"challenge\":\"AKmyXp3g73R7pMUS2gwKZ_wuzKnLJQ0GV0fY_V9vuIM\",\"origin\":\"https://ade.example.com\",\"crossOrigin\":false,\"proofpane\":\"second-screen/1\"}"
+    },
+    {
+      "payload": {
+        "v": 2,
+        "deployment": "ade.example.com",
+        "purpose": "e2e-off",
+        "account": "5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b",
+        "nonce": "eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8",
+        "id": "0123456789abcdef0123456789abcdef",
+        "created_at": 1791511200,
+        "expires_at": 1791511800,
+        "seq": 3,
+        "prev": "0cf10bbc665ab7e463cdf04627410efc0e14bfec1c2f0fca9ff2910ec666c347"
+      },
+      "canonical": "{\"account\":\"5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b\",\"created_at\":1791511200,\"deployment\":\"ade.example.com\",\"expires_at\":1791511800,\"id\":\"0123456789abcdef0123456789abcdef\",\"nonce\":\"eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8\",\"prev\":\"0cf10bbc665ab7e463cdf04627410efc0e14bfec1c2f0fca9ff2910ec666c347\",\"purpose\":\"e2e-off\",\"seq\":3,\"v\":2}",
+      "challenge": "YE0ggkL7EzQr7VEivFKj0t6FIEy9QkxfsPK_gZfdmRk",
+      "code": "MBGS-BASC",
+      "client_data": "{\"type\":\"webauthn.get\",\"challenge\":\"YE0ggkL7EzQr7VEivFKj0t6FIEy9QkxfsPK_gZfdmRk\",\"origin\":\"https://ade.example.com\",\"crossOrigin\":false,\"proofpane\":\"second-screen/1\"}"
+    }
+  ],
+  "design_example": {
+    "canonical": "{\"account\":\"5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b\",\"created_at\":1791511200,\"deployment\":\"ade.example.com\",\"expires_at\":1791514800,\"id\":\"0123456789abcdef0123456789abcdef\",\"nonce\":\"eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8\",\"purpose\":\"instruction\",\"text\":\"Run the tests in open_edition, then fix the failing one.\\nDo not push.\",\"to\":\"9b1e2f4071c34d5e8a9b0c1d2e3f4a5b\",\"v\":2}",
+    "sha256": "bb6264a693096254266fdeb3ab76d098693adec60a9d3f8b421e44be6d7e6e6d",
+    "old_challenge": "u2JkppMJYlQmb96zq3bQmGk63sYKnT-LQh5Evm1-bm0",
+    "old_code": "XNRGJJUT",
+    "challenge": "VLvY0GKRKEqfljrDYXS9vEgSGhoYGHAR3ssHYXW9eWU",
+    "code": "KS55-RUDC"
+  },
+  "words": [
+    {
+      "what": "a newline and a tab",
+      "words": "one\ttwo\nthree",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | one[U+0009]two",
+        "  | three",
+        "  END OF THE WORDS: 2 lines, 13 characters, all ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "a bell",
+      "words": "ring\u0007",
+      "refused": "line 1, character 5 holds [U+0007], a control character",
+      "shown": null
+    },
+    {
+      "what": "an escape",
+      "words": "a\u001b[2J",
+      "refused": "line 1, character 2 holds [U+001B], a control character",
+      "shown": null
+    },
+    {
+      "what": "delete",
+      "words": "a\u007f",
+      "refused": "line 1, character 2 holds [U+007F], a control character",
+      "shown": null
+    },
+    {
+      "what": "a C1 control (next line)",
+      "words": "a\u0085b",
+      "refused": "line 1, character 2 holds [U+0085], a control character",
+      "shown": null
+    },
+    {
+      "what": "a C1 control (CSI)",
+      "words": "a\u009b2J",
+      "refused": "line 1, character 2 holds [U+009B], a control character",
+      "shown": null
+    },
+    {
+      "what": "a carriage return",
+      "words": "a\rb",
+      "refused": "line 1, character 2 holds [U+000D], a control character",
+      "shown": null
+    },
+    {
+      "what": "a zero-width space",
+      "words": "pu\u200bsh",
+      "refused": "line 1, character 3 holds [U+200B ZERO WIDTH SPACE], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "a right-to-left override",
+      "words": "a\u202eb",
+      "refused": "line 1, character 2 holds [U+202E RIGHT-TO-LEFT OVERRIDE], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "a left-to-right isolate",
+      "words": "a\u2066b",
+      "refused": "line 1, character 2 holds [U+2066 LEFT-TO-RIGHT ISOLATE], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "a soft hyphen",
+      "words": "a\u00adb",
+      "refused": "line 1, character 2 holds [U+00AD SOFT HYPHEN], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "a byte order mark",
+      "words": "a\ufeffb",
+      "refused": "line 1, character 2 holds [U+FEFF ZERO WIDTH NO-BREAK SPACE], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "a line separator",
+      "words": "a\u2028b",
+      "refused": "line 1, character 2 holds [U+2028 LINE SEPARATOR], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "a paragraph separator",
+      "words": "a\u2029b",
+      "refused": "line 1, character 2 holds [U+2029 PARAGRAPH SEPARATOR], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "private use",
+      "words": "a\ue000b",
+      "refused": "line 1, character 2 holds [U+E000], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "a tag character",
+      "words": "a\udb40\udc41b",
+      "refused": "line 1, character 2 holds [U+E0041 TAG LATIN CAPITAL LETTER A], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "a lone surrogate",
+      "words": "a\ud800b",
+      "refused": "line 1, character 2 holds [U+D800], a lone surrogate",
+      "shown": null
+    },
+    {
+      "what": "a Hangul filler",
+      "words": "a\u3164b",
+      "refused": "line 1, character 2 holds [U+3164 HANGUL FILLER], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "a blank Braille pattern",
+      "words": "a\u2800b",
+      "refused": "line 1, character 2 holds [U+2800 BRAILLE PATTERN BLANK], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "the combining grapheme joiner",
+      "words": "a\u034fb",
+      "refused": "line 1, character 2 holds [U+034F COMBINING GRAPHEME JOINER], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "a variation selector",
+      "words": "a\ufe00b",
+      "refused": "line 1, character 2 holds [U+FE00 VARIATION SELECTOR-1], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "the emoji selector after a character",
+      "words": "go\u2764\ufe0f",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | go\u2764\ufe0f",
+        "  END OF THE WORDS: 1 line, 4 characters, 2 of them outside ASCII."
+      ]
+    },
+    {
+      "what": "the emoji selector at the start",
+      "words": "\ufe0fgo",
+      "refused": "line 1, character 1 holds [U+FE0F VARIATION SELECTOR-16], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "the text selector after another",
+      "words": "go\u2764\ufe0e\ufe0f",
+      "refused": "line 1, character 5 holds [U+FE0F VARIATION SELECTOR-16], which is not shown as itself",
+      "shown": null
+    },
+    {
+      "what": "a long stroke overlay",
+      "words": "do n\u0336ot push",
+      "refused": "line 1, character 5 holds [U+0336 COMBINING LONG STROKE OVERLAY], a mark drawn over or around the character before it",
+      "shown": null
+    },
+    {
+      "what": "a long solidus overlay",
+      "words": "a =\u0338 b",
+      "refused": "line 1, character 4 holds [U+0338 COMBINING LONG SOLIDUS OVERLAY], a mark drawn over or around the character before it",
+      "shown": null
+    },
+    {
+      "what": "a long solidus overlay after a letter",
+      "words": "push\u0338",
+      "refused": "line 1, character 5 holds [U+0338 COMBINING LONG SOLIDUS OVERLAY], a mark drawn over or around the character before it",
+      "shown": null
+    },
+    {
+      "what": "an enclosing keycap after a letter",
+      "words": "a\u20e3b",
+      "refused": "line 1, character 2 holds [U+20E3 COMBINING ENCLOSING KEYCAP], a mark drawn over or around the character before it",
+      "shown": null
+    },
+    {
+      "what": "an unassigned code point",
+      "words": "a\u0378b",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | a[U+0378]b",
+        "  END OF THE WORDS: 1 line, 3 characters, 1 of them outside ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "an em space",
+      "words": "a\u2003b",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | a[U+2003]b",
+        "  line 1: [U+2003 EM SPACE] looks like \" \"",
+        "  END OF THE WORDS: 1 line, 3 characters, 1 of them outside ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "an ideographic space",
+      "words": "a\u3000b",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | a[U+3000]b",
+        "  line 1: [U+3000 IDEOGRAPHIC SPACE] looks like \" \"",
+        "  END OF THE WORDS: 1 line, 3 characters, 1 of them outside ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "a narrow no-break space",
+      "words": "a\u202fb",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | a[U+202F]b",
+        "  line 1: [U+202F NARROW NO-BREAK SPACE] looks like \" \"",
+        "  END OF THE WORDS: 1 line, 3 characters, 1 of them outside ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "a combining long vertical line overlay",
+      "words": "a\u20d2b",
+      "refused": "line 1, character 2 holds [U+20D2 COMBINING LONG VERTICAL LINE OVERLAY], a mark drawn over or around the character before it",
+      "shown": null
+    },
+    {
+      "what": "an enclosing circle",
+      "words": "a\u20ddb",
+      "refused": "line 1, character 2 holds [U+20DD COMBINING ENCLOSING CIRCLE], a mark drawn over or around the character before it",
+      "shown": null
+    },
+    {
+      "what": "an enclosing circle backslash",
+      "words": "push\u20e0",
+      "refused": "line 1, character 5 holds [U+20E0 COMBINING ENCLOSING CIRCLE BACKSLASH], a mark drawn over or around the character before it",
+      "shown": null
+    },
+    {
+      "what": "a keycap",
+      "words": "1\ufe0f\u20e3",
+      "refused": "line 1, character 3 holds [U+20E3 COMBINING ENCLOSING KEYCAP], a mark drawn over or around the character before it",
+      "shown": null
+    },
+    {
+      "what": "not in normal form C",
+      "words": "cafe\u0301",
+      "refused": "they are not in Unicode normal form C",
+      "shown": null
+    },
+    {
+      "what": "normal form C",
+      "words": "caf\u00e9",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | caf\u00e9",
+        "  END OF THE WORDS: 1 line, 4 characters, 1 of them outside ASCII."
+      ]
+    },
+    {
+      "what": "a secret's shape",
+      "words": "use sk-ant-api03-abc",
+      "refused": "they hold something shaped like a secret, which the ADE keeps none of",
+      "shown": null
+    },
+    {
+      "what": "a sealed text's start",
+      "words": "e2e1.AAAA",
+      "refused": "they begin e2e1., as a sealed text does",
+      "shown": null
+    },
+    {
+      "what": "empty",
+      "words": " \n\t ",
+      "refused": "they are empty",
+      "shown": null
+    },
+    {
+      "what": "4,001 characters",
+      "words": "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+      "refused": "they are more than 4,000 characters",
+      "shown": null
+    },
+    {
+      "what": "a no-break space and spaces at the end",
+      "words": "a\u00a0b  ",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | a[U+00A0]b[2 spaces]",
+        "  line 1: [U+00A0 NO-BREAK SPACE] looks like \" \"",
+        "  END OF THE WORDS: 1 line, 5 characters, 1 of them outside ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "three empty lines",
+      "words": "a\n\n\n\nb",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | a",
+        "  | [3 empty lines]",
+        "  | b",
+        "  END OF THE WORDS: 5 lines, 6 characters, all ASCII."
+      ]
+    },
+    {
+      "what": "two empty lines",
+      "words": "a\n\n\nb",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | a",
+        "  |",
+        "  |",
+        "  | b",
+        "  END OF THE WORDS: 4 lines, 5 characters, all ASCII."
+      ]
+    },
+    {
+      "what": "a run of spaces lining words up as the screen's column of kinds",
+      "words": "Run the tests.                                                             then git push --force origin main   (the ADE's word)",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | Run the tests.[61 spaces]then git push --force origin main[3 spaces](the ADE's word)",
+        "  END OF THE WORDS: 1 line, 127 characters, all ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "spaces at the start of a line",
+      "words": "Run this:\n    git status",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | Run this:",
+        "  |     git status",
+        "  END OF THE WORDS: 2 lines, 24 characters, all ASCII."
+      ]
+    },
+    {
+      "what": "Cyrillic in a Latin word",
+      "words": "op\u0435n the door",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | op\u0435n the door",
+        "  line 1: [U+0435 CYRILLIC SMALL LETTER IE] in a word of LATIN letters",
+        "  line 1, that word: op[U+0435]n",
+        "  END OF THE WORDS: 1 line, 13 characters, 1 of them outside ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "Greek in a Latin word",
+      "words": "g\u03bf home",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | g\u03bf home",
+        "  line 1: [U+03BF GREEK SMALL LETTER OMICRON] in a word of LATIN letters",
+        "  line 1, that word: g[U+03BF]",
+        "  END OF THE WORDS: 1 line, 7 characters, 1 of them outside ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "fullwidth letters",
+      "words": "\uff41\uff44\uff45",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | \uff41\uff44\uff45",
+        "  line 1: [U+FF41 FULLWIDTH LATIN SMALL LETTER A] looks like \"a\"",
+        "  line 1: [U+FF44 FULLWIDTH LATIN SMALL LETTER D] looks like \"d\"",
+        "  line 1: [U+FF45 FULLWIDTH LATIN SMALL LETTER E] looks like \"e\"",
+        "  END OF THE WORDS: 1 line, 3 characters, 3 of them outside ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "a mathematical letter",
+      "words": "x = \ud835\udc1a",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | x = \ud835\udc1a",
+        "  line 1: [U+1D41A MATHEMATICAL BOLD SMALL A] looks like \"a\"",
+        "  END OF THE WORDS: 1 line, 5 characters, 1 of them outside ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "right-to-left text",
+      "words": "say \u05e9\u05dc\u05d5\u05dd now",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | say \u05e9\u05dc\u05d5\u05dd now",
+        "  line 1 holds right-to-left text; in the order of its bytes: say [U+05E9 U+05DC U+05D5 U+05DD] now",
+        "  END OF THE WORDS: 1 line, 12 characters, 4 of them outside ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "a stack of marks",
+      "words": "x\u0323\u0302\u0303b",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | x\u0323\u0302\u0303b",
+        "  line 1: [U+0078 LATIN SMALL LETTER X] carries 3 marks: [U+0323 COMBINING DOT BELOW] [U+0302 COMBINING CIRCUMFLEX ACCENT] [U+0303 COMBINING TILDE]",
+        "  END OF THE WORDS: 1 line, 5 characters, 3 of them outside ASCII. Read what is marked above."
+      ]
+    },
+    {
+      "what": "two marks",
+      "words": "x\u0323\u0302b",
+      "refused": null,
+      "shown": [
+        "  The words (signed):",
+        "  | x\u0323\u0302b",
+        "  END OF THE WORDS: 1 line, 4 characters, 2 of them outside ASCII."
+      ]
+    }
+  ],
+  "hostile": "a\u001b[2J\u001b[H\u009b2J\u202eb\nc\u2066d\\e",
+  "forged": "pp-r57\"   (this Mac: its own folder says so)",
+  "fields": [
+    {
+      "what": "a link name the ADE gives",
+      "shown": "               not a link of this Mac; the ADE calls it \"a\\x1b[2J\\x1b[H\\x9b2J\\u202eb\\x0ac\\u2066d\\\\e\"   (the ADE's word)"
+    },
+    {
+      "what": "a link name that would forge the column of kinds",
+      "shown": "               not a link of this Mac; the ADE calls it \"pp-r57\\\"[3 spaces](this Mac: its own folder says so)\"   (the ADE's word)"
+    },
+    {
+      "what": "an app's name",
+      "shown": "  Proposed by  the app \"a\\x1b[2J\\x1b[H\\x9b2J\\u202eb\\x0ac\\u2066d\\\\e\"   (the ADE's word)"
+    },
+    {
+      "what": "a move's title",
+      "shown": "  Title        \"a\\x1b[2J\\x1b[H\\x9b2J\\u202eb\\x0ac\\u2066d\\\\e\", sent beside the payload, not signed   (the ADE's word)"
+    },
+    {
+      "what": "where the request was parked from",
+      "shown": "  Parked from  \"a\\x1b[2J\\x1b[H\\x9b2J\\u202eb\\x0ac\\u2066d\\\\e\" at 2026-10-09 02:00:00 local (02:00:00 UTC)   (the ADE's word)"
+    },
+    {
+      "what": "a passkey's name",
+      "shown": "               which the ADE names \"a\\x1b[2J\\x1b[H\\x9b2J\\u202eb\\x0ac\\u2066d\\\\e\" (a\\x1b[2J\\x1b[H...)   (the ADE's word)"
+    },
+    {
+      "what": "a session's folder",
+      "shown": "               Claude Code's own transcript on this Mac, in \"a\\x1b[2J\\x1b[H\\x9b2J\\u202eb\\x0ac\\u2066d\\\\e\", last active 2026-10-09 02:00:00 local (02:00:00 UTC); not running   (this Mac)"
+    },
+    {
+      "what": "a served question's words",
+      "shown": "  The question, as the ADE served it (the ADE's word: matches the digest you sign):\n  | a[U+001B][2J[U+001B][H[U+009B]2J[U+202E]b\n  | c[U+2066]d\\e\n  END OF THE QUESTION: 2 lines, 19 characters, 3 of them outside ASCII. Read what is marked above."
+    },
+    {
+      "what": "the escaped value itself",
+      "shown": "a\\x1b[2J\\x1b[H\\x9b2J\\u202eb\\x0ac\\u2066d\\\\e"
+    }
+  ],
+  "refused": [
+    {
+      "what": "a to that is not 32 lowercase hex",
+      "payload": "{\"account\":\"5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b\",\"created_at\":1791511200,\"deployment\":\"ade.example.com\",\"expires_at\":1791514800,\"id\":\"0123456789abcdef0123456789abcdef\",\"nonce\":\"eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8\",\"purpose\":\"instruction\",\"text\":\"Run the tests in open_edition, then fix the failing one.\\nDo not push.\",\"to\":\"\\u001b[2J2f4071c34d5e8a9b0c1d2e3f4a5b\",\"v\":2}",
+      "refusal": "Its to is not a linked session's id: 32 lowercase hex characters."
+    },
+    {
+      "what": "a to in capitals",
+      "payload": "{\"account\":\"5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b\",\"created_at\":1791511200,\"deployment\":\"ade.example.com\",\"expires_at\":1791514800,\"id\":\"0123456789abcdef0123456789abcdef\",\"nonce\":\"eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8\",\"purpose\":\"instruction\",\"text\":\"Run the tests in open_edition, then fix the failing one.\\nDo not push.\",\"to\":\"9B1E2F4071C34D5E8A9B0C1D2E3F4A5B\",\"v\":2}",
+      "refusal": "Its to is not a linked session's id: 32 lowercase hex characters."
+    },
+    {
+      "what": "a nonce holding an escape",
+      "payload": "{\"account\":\"5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b\",\"created_at\":1791511200,\"deployment\":\"ade.example.com\",\"expires_at\":1791514800,\"id\":\"0123456789abcdef0123456789abcdef\",\"nonce\":\"eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8\\u001b[2J\",\"purpose\":\"instruction\",\"text\":\"Run the tests in open_edition, then fix the failing one.\\nDo not push.\",\"to\":\"9b1e2f4071c34d5e8a9b0c1d2e3f4a5b\",\"v\":2}",
+      "refusal": "Its nonce is not in its form: two parts of base64url joined by a dot, at most 600 characters."
+    },
+    {
+      "what": "a nonce padded with controls",
+      "payload": "{\"account\":\"5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b\",\"created_at\":1791511200,\"deployment\":\"ade.example.com\",\"expires_at\":1791514800,\"id\":\"0123456789abcdef0123456789abcdef\",\"nonce\":\"eyJjIjoiQUFFQ0F3UUZC\\u0001\\u0002\\u0003\\u0004Z2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8\",\"purpose\":\"instruction\",\"text\":\"Run the tests in open_edition, then fix the failing one.\\nDo not push.\",\"to\":\"9b1e2f4071c34d5e8a9b0c1d2e3f4a5b\",\"v\":2}",
+      "refusal": "Its nonce is not in its form: two parts of base64url joined by a dot, at most 600 characters."
+    },
+    {
+      "what": "a nonce of 601 characters",
+      "payload": "{\"account\":\"5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b\",\"created_at\":1791511200,\"deployment\":\"ade.example.com\",\"expires_at\":1791514800,\"id\":\"0123456789abcdef0123456789abcdef\",\"nonce\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"purpose\":\"instruction\",\"text\":\"Run the tests in open_edition, then fix the failing one.\\nDo not push.\",\"to\":\"9b1e2f4071c34d5e8a9b0c1d2e3f4a5b\",\"v\":2}",
+      "refusal": "Its nonce is not in its form: two parts of base64url joined by a dot, at most 600 characters."
+    }
+  ],
+  "screens": [
+    {
+      "kind": "instruction",
+      "payload": {
+        "v": 2,
+        "deployment": "ade.example.com",
+        "purpose": "instruction",
+        "account": "5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b",
+        "nonce": "eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8",
+        "id": "0123456789abcdef0123456789abcdef",
+        "created_at": 1791511200,
+        "expires_at": 1791514800,
+        "to": "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b",
+        "text": "Run the tests in open_edition, then fix the failing one.\nDo not push."
+      },
+      "local": {
+        "links": {
+          "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b": "pp-r57"
+        },
+        "pins": [
+          "3a7f0c1e000000000000000000000000"
+        ]
+      },
+      "ade": {
+        "links": {
+          "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b": {
+            "name": "pp-r57"
+          }
+        },
+        "allow": [
+          {
+            "name": "YubiKey 5C",
+            "fingerprint": "3a7f0c1e000000000000000000000000"
+          },
+          {
+            "name": "Spare key",
+            "fingerprint": "91c04d2b111111111111111111111111"
+          }
+        ],
+        "high_security": true,
+        "parked_from": "203.0.113.7",
+        "parked_at": 1791511209
+      },
+      "now": 1791511229,
+      "deadline": 1791511500,
+      "lines": [
+        "PROOFPANE SECOND SCREEN",
+        "Your security key is about to sign what follows. This program decoded it",
+        "from the exact bytes it signs. Lines marked (signed) are decoded from those",
+        "bytes, the only lines that bind; (this Mac) is this Mac's own record;",
+        "(the ADE's word) is what the ADE says, which binds nothing. A row that begins",
+        "with \"  > \" is the rest of the row above it, cut where the terminal wraps it.",
+        "",
+        "  ADE          https://ade.example.com   (this Mac: this signer's own setting)",
+        "  Account      5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b   (this Mac: the account this signer was paired with)",
+        "  Kind         INSTRUCTION to a linked session   (signed)",
+        "  To           link 9b1e2f4071c34d5e8a9b0c1d2e3f4a5b   (signed)",
+        "               this Mac's link \"pp-r57\"   (this Mac: its own folder says so)",
+        "  Made         2026-10-09 02:00:00 local (02:00:00 UTC), by the ADE's clock   (signed)",
+        "  Good until   2026-10-09 03:00:00 local (03:00:00 UTC), 1 hour after   (signed)",
+        "  Id           0123456789abcdef0123456789abcdef   (signed)",
+        "  Request      KS55-RUDC   (from the signed bytes: your page shows this code beside the request it made)",
+        "",
+        "  The words (signed):",
+        "  | Run the tests in open_edition, then fix the failing one.",
+        "  | Do not push.",
+        "  END OF THE WORDS: 2 lines, 69 characters, all ASCII.",
+        "",
+        "  Signs with   a passkey of this account on the key you touch   (this Mac)",
+        "               which the ADE names \"YubiKey 5C\" (3a7f0c1e...) (in this Mac's pin held outside the server) or \"Spare key\" (91c04d2b...)   (the ADE's word)",
+        "               the ADE takes only hardware keys now   (the ADE's word: high security is on)",
+        "  Parked from  \"203.0.113.7\" at 2026-10-09 02:00:09 local (02:00:09 UTC)   (the ADE's word)",
+        "  Time left    271 seconds   (this Mac: its clock)"
+      ],
+      "rows_80": [
+        "PROOFPANE SECOND SCREEN",
+        "Your security key is about to sign what follows. This program decoded it",
+        "from the exact bytes it signs. Lines marked (signed) are decoded from those",
+        "bytes, the only lines that bind; (this Mac) is this Mac's own record;",
+        "(the ADE's word) is what the ADE says, which binds nothing. A row that begins",
+        "with \"  > \" is the rest of the row above it, cut where the terminal wraps it.",
+        "",
+        "  ADE          https://ade.example.com   (this Mac: this signer's own setting)",
+        "  Account      5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b   (this Mac: the account this s",
+        "  > igner was paired with)",
+        "  Kind         INSTRUCTION to a linked session   (signed)",
+        "  To           link 9b1e2f4071c34d5e8a9b0c1d2e3f4a5b   (signed)",
+        "               this Mac's link \"pp-r57\"   (this Mac: its own folder says so)",
+        "  Made         2026-10-09 02:00:00 local (02:00:00 UTC), by the ADE's clock   (",
+        "  > signed)",
+        "  Good until   2026-10-09 03:00:00 local (03:00:00 UTC), 1 hour after   (signed",
+        "  > )",
+        "  Id           0123456789abcdef0123456789abcdef   (signed)",
+        "  Request      KS55-RUDC   (from the signed bytes: your page shows this code be",
+        "  > side the request it made)",
+        "",
+        "  The words (signed):",
+        "  | Run the tests in open_edition, then fix the failing one.",
+        "  | Do not push.",
+        "  END OF THE WORDS: 2 lines, 69 characters, all ASCII.",
+        "",
+        "  Signs with   a passkey of this account on the key you touch   (this Mac)",
+        "               which the ADE names \"YubiKey 5C\" (3a7f0c1e...) (in this Mac's pi",
+        "  > n held outside the server) or \"Spare key\" (91c04d2b...)   (the ADE's word)",
+        "               the ADE takes only hardware keys now   (the ADE's word: high sec",
+        "  > urity is on)",
+        "  Parked from  \"203.0.113.7\" at 2026-10-09 02:00:09 local (02:00:09 UTC)   (the",
+        "  >  ADE's word)",
+        "  Time left    271 seconds   (this Mac: its clock)"
+      ]
+    },
+    {
+      "kind": "answer",
+      "payload": {
+        "v": 2,
+        "deployment": "ade.example.com",
+        "purpose": "answer",
+        "account": "5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b",
+        "nonce": "eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8",
+        "id": "0123456789abcdef0123456789abcdef",
+        "created_at": 1791511200,
+        "expires_at": 1791514800,
+        "to": "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b",
+        "text": "Yes. Run it, then stop and tell me what changed.",
+        "ref": 12,
+        "digest": "sha256:928da141ac27c1a1ccc176e327f2bd6e7554bc013e02b7e8df6bbd6fe476db51"
+      },
+      "local": {},
+      "ade": {
+        "links": {
+          "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b": {
+            "name": "cloud-runner"
+          }
+        },
+        "question": {
+          "text": "May I run the database migration now?"
+        },
+        "allow": [
+          {
+            "name": "YubiKey 5C",
+            "fingerprint": "3a7f0c1e000000000000000000000000"
+          }
+        ],
+        "parked_from": "203.0.113.7",
+        "parked_at": 1791511209
+      },
+      "now": 1791511229,
+      "deadline": 1791511500,
+      "lines": [
+        "PROOFPANE SECOND SCREEN",
+        "Your security key is about to sign what follows. This program decoded it",
+        "from the exact bytes it signs. Lines marked (signed) are decoded from those",
+        "bytes, the only lines that bind; (this Mac) is this Mac's own record;",
+        "(the ADE's word) is what the ADE says, which binds nothing. A row that begins",
+        "with \"  > \" is the rest of the row above it, cut where the terminal wraps it.",
+        "",
+        "  ADE          https://ade.example.com   (this Mac: this signer's own setting)",
+        "  Account      5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b   (this Mac: the account this signer was paired with)",
+        "  Kind         ANSWER to a question a linked session asked   (signed)",
+        "  To           link 9b1e2f4071c34d5e8a9b0c1d2e3f4a5b   (signed)",
+        "               not a link of this Mac; the ADE calls it \"cloud-runner\"   (the ADE's word)",
+        "  Made         2026-10-09 02:00:00 local (02:00:00 UTC), by the ADE's clock   (signed)",
+        "  Good until   2026-10-09 03:00:00 local (03:00:00 UTC), 1 hour after   (signed)",
+        "  Id           0123456789abcdef0123456789abcdef   (signed)",
+        "  Request      OE3J-MN5A   (from the signed bytes: your page shows this code beside the request it made)",
+        "  Question     seq 12 on that session's timeline   (signed)",
+        "  Its words    have the digest sha256:928da141ac27c1a1ccc176e327f2bd6e7554bc013e02b7e8df6bbd6fe476db51   (signed)",
+        "",
+        "  The question, as the ADE served it (the ADE's word: matches the digest you sign):",
+        "  | May I run the database migration now?",
+        "  END OF THE QUESTION: 1 line, 37 characters, all ASCII.",
+        "",
+        "  The words (signed):",
+        "  | Yes. Run it, then stop and tell me what changed.",
+        "  END OF THE WORDS: 1 line, 48 characters, all ASCII.",
+        "",
+        "  Signs with   a passkey of this account on the key you touch   (this Mac)",
+        "               which the ADE names \"YubiKey 5C\" (3a7f0c1e...)   (the ADE's word)",
+        "  Parked from  \"203.0.113.7\" at 2026-10-09 02:00:09 local (02:00:09 UTC)   (the ADE's word)",
+        "  Time left    271 seconds   (this Mac: its clock)"
+      ],
+      "rows_80": [
+        "PROOFPANE SECOND SCREEN",
+        "Your security key is about to sign what follows. This program decoded it",
+        "from the exact bytes it signs. Lines marked (signed) are decoded from those",
+        "bytes, the only lines that bind; (this Mac) is this Mac's own record;",
+        "(the ADE's word) is what the ADE says, which binds nothing. A row that begins",
+        "with \"  > \" is the rest of the row above it, cut where the terminal wraps it.",
+        "",
+        "  ADE          https://ade.example.com   (this Mac: this signer's own setting)",
+        "  Account      5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b   (this Mac: the account this s",
+        "  > igner was paired with)",
+        "  Kind         ANSWER to a question a linked session asked   (signed)",
+        "  To           link 9b1e2f4071c34d5e8a9b0c1d2e3f4a5b   (signed)",
+        "               not a link of this Mac; the ADE calls it \"cloud-runner\"   (the A",
+        "  > DE's word)",
+        "  Made         2026-10-09 02:00:00 local (02:00:00 UTC), by the ADE's clock   (",
+        "  > signed)",
+        "  Good until   2026-10-09 03:00:00 local (03:00:00 UTC), 1 hour after   (signed",
+        "  > )",
+        "  Id           0123456789abcdef0123456789abcdef   (signed)",
+        "  Request      OE3J-MN5A   (from the signed bytes: your page shows this code be",
+        "  > side the request it made)",
+        "  Question     seq 12 on that session's timeline   (signed)",
+        "  Its words    have the digest sha256:928da141ac27c1a1ccc176e327f2bd6e7554bc013",
+        "  > e02b7e8df6bbd6fe476db51   (signed)",
+        "",
+        "  The question, as the ADE served it (the ADE's word: matches the digest you si",
+        "  > gn):",
+        "  | May I run the database migration now?",
+        "  END OF THE QUESTION: 1 line, 37 characters, all ASCII.",
+        "",
+        "  The words (signed):",
+        "  | Yes. Run it, then stop and tell me what changed.",
+        "  END OF THE WORDS: 1 line, 48 characters, all ASCII.",
+        "",
+        "  Signs with   a passkey of this account on the key you touch   (this Mac)",
+        "               which the ADE names \"YubiKey 5C\" (3a7f0c1e...)   (the ADE's word",
+        "  > )",
+        "  Parked from  \"203.0.113.7\" at 2026-10-09 02:00:09 local (02:00:09 UTC)   (the",
+        "  >  ADE's word)",
+        "  Time left    271 seconds   (this Mac: its clock)"
+      ]
+    },
+    {
+      "kind": "resume",
+      "payload": {
+        "v": 2,
+        "deployment": "ade.example.com",
+        "purpose": "resume",
+        "account": "5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b",
+        "nonce": "eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8",
+        "id": "0123456789abcdef0123456789abcdef",
+        "created_at": 1791511200,
+        "expires_at": 1791511800,
+        "to": "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b",
+        "text": ""
+      },
+      "local": {
+        "links": {
+          "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b": "pp-r57"
+        }
+      },
+      "ade": {
+        "links": {
+          "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b": {
+            "name": "pp-r57",
+            "stopped_at": 1791510600
+          }
+        },
+        "allow": [
+          {
+            "name": "YubiKey 5C",
+            "fingerprint": "3a7f0c1e000000000000000000000000"
+          }
+        ]
+      },
+      "now": 1791511229,
+      "deadline": 1791511500,
+      "lines": [
+        "PROOFPANE SECOND SCREEN",
+        "Your security key is about to sign what follows. This program decoded it",
+        "from the exact bytes it signs. Lines marked (signed) are decoded from those",
+        "bytes, the only lines that bind; (this Mac) is this Mac's own record;",
+        "(the ADE's word) is what the ADE says, which binds nothing. A row that begins",
+        "with \"  > \" is the rest of the row above it, cut where the terminal wraps it.",
+        "",
+        "  ADE          https://ade.example.com   (this Mac: this signer's own setting)",
+        "  Account      5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b   (this Mac: the account this signer was paired with)",
+        "  Kind         RESUME of a stopped linked session   (signed)",
+        "  To           link 9b1e2f4071c34d5e8a9b0c1d2e3f4a5b   (signed)",
+        "               this Mac's link \"pp-r57\"   (this Mac: its own folder says so)",
+        "               stopped since 2026-10-09 01:50:00 local (01:50:00 UTC)   (the ADE's word)",
+        "  Made         2026-10-09 02:00:00 local (02:00:00 UTC), by the ADE's clock   (signed)",
+        "  Good until   2026-10-09 02:10:00 local (02:10:00 UTC), 10 minutes after   (signed)",
+        "  Id           0123456789abcdef0123456789abcdef   (signed)",
+        "  Request      JWEJ-2CYG   (from the signed bytes: your page shows this code beside the request it made)",
+        "",
+        "  Signs with   a passkey of this account on the key you touch   (this Mac)",
+        "               which the ADE names \"YubiKey 5C\" (3a7f0c1e...)   (the ADE's word)",
+        "  Time left    271 seconds   (this Mac: its clock)"
+      ],
+      "rows_80": [
+        "PROOFPANE SECOND SCREEN",
+        "Your security key is about to sign what follows. This program decoded it",
+        "from the exact bytes it signs. Lines marked (signed) are decoded from those",
+        "bytes, the only lines that bind; (this Mac) is this Mac's own record;",
+        "(the ADE's word) is what the ADE says, which binds nothing. A row that begins",
+        "with \"  > \" is the rest of the row above it, cut where the terminal wraps it.",
+        "",
+        "  ADE          https://ade.example.com   (this Mac: this signer's own setting)",
+        "  Account      5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b   (this Mac: the account this s",
+        "  > igner was paired with)",
+        "  Kind         RESUME of a stopped linked session   (signed)",
+        "  To           link 9b1e2f4071c34d5e8a9b0c1d2e3f4a5b   (signed)",
+        "               this Mac's link \"pp-r57\"   (this Mac: its own folder says so)",
+        "               stopped since 2026-10-09 01:50:00 local (01:50:00 UTC)   (the AD",
+        "  > E's word)",
+        "  Made         2026-10-09 02:00:00 local (02:00:00 UTC), by the ADE's clock   (",
+        "  > signed)",
+        "  Good until   2026-10-09 02:10:00 local (02:10:00 UTC), 10 minutes after   (si",
+        "  > gned)",
+        "  Id           0123456789abcdef0123456789abcdef   (signed)",
+        "  Request      JWEJ-2CYG   (from the signed bytes: your page shows this code be",
+        "  > side the request it made)",
+        "",
+        "  Signs with   a passkey of this account on the key you touch   (this Mac)",
+        "               which the ADE names \"YubiKey 5C\" (3a7f0c1e...)   (the ADE's word",
+        "  > )",
+        "  Time left    271 seconds   (this Mac: its clock)"
+      ]
+    },
+    {
+      "kind": "move",
+      "payload": {
+        "v": 2,
+        "deployment": "ade.example.com",
+        "purpose": "move",
+        "account": "5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b",
+        "nonce": "eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8",
+        "id": "0123456789abcdef0123456789abcdef",
+        "created_at": 1791511200,
+        "expires_at": 1791514800,
+        "to": "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b",
+        "session": "3f1c9d2e-7a4b-4c8d-9e0f-1a2b3c4d5e6f"
+      },
+      "local": {
+        "links": {
+          "9b1e2f4071c34d5e8a9b0c1d2e3f4a5b": "pp-r57"
+        },
+        "sessions": {
+          "3f1c9d2e-7a4b-4c8d-9e0f-1a2b3c4d5e6f": {
+            "folder": "/Users/owner/proofpane",
+            "last": 1791511080,
+            "running": false
+          }
+        }
+      },
+      "ade": {
+        "title": "Fix the failing test",
+        "allow": [
+          {
+            "name": "YubiKey 5C",
+            "fingerprint": "3a7f0c1e000000000000000000000000"
+          }
+        ]
+      },
+      "now": 1791511229,
+      "deadline": 1791511500,
+      "lines": [
+        "PROOFPANE SECOND SCREEN",
+        "Your security key is about to sign what follows. This program decoded it",
+        "from the exact bytes it signs. Lines marked (signed) are decoded from those",
+        "bytes, the only lines that bind; (this Mac) is this Mac's own record;",
+        "(the ADE's word) is what the ADE says, which binds nothing. A row that begins",
+        "with \"  > \" is the rest of the row above it, cut where the terminal wraps it.",
+        "",
+        "  ADE          https://ade.example.com   (this Mac: this signer's own setting)",
+        "  Account      5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b   (this Mac: the account this signer was paired with)",
+        "  Kind         MOVE of a session on this Mac into the hosted workspace   (signed)",
+        "  To           link 9b1e2f4071c34d5e8a9b0c1d2e3f4a5b   (signed)",
+        "               this Mac's link \"pp-r57\"   (this Mac: its own folder says so)",
+        "  Made         2026-10-09 02:00:00 local (02:00:00 UTC), by the ADE's clock   (signed)",
+        "  Good until   2026-10-09 03:00:00 local (03:00:00 UTC), 1 hour after   (signed)",
+        "  Id           0123456789abcdef0123456789abcdef   (signed)",
+        "  Request      YW3L-N6XB   (from the signed bytes: your page shows this code beside the request it made)",
+        "  Session      3f1c9d2e-7a4b-4c8d-9e0f-1a2b3c4d5e6f   (signed)",
+        "               Claude Code's own transcript on this Mac, in \"/Users/owner/proofpane\", last active 2026-10-09 01:58:00 local (01:58:00 UTC); not running   (this Mac)",
+        "  Title        \"Fix the failing test\", sent beside the payload, not signed   (the ADE's word)",
+        "",
+        "  Signs with   a passkey of this account on the key you touch   (this Mac)",
+        "               which the ADE names \"YubiKey 5C\" (3a7f0c1e...)   (the ADE's word)",
+        "  Time left    271 seconds   (this Mac: its clock)"
+      ],
+      "rows_80": [
+        "PROOFPANE SECOND SCREEN",
+        "Your security key is about to sign what follows. This program decoded it",
+        "from the exact bytes it signs. Lines marked (signed) are decoded from those",
+        "bytes, the only lines that bind; (this Mac) is this Mac's own record;",
+        "(the ADE's word) is what the ADE says, which binds nothing. A row that begins",
+        "with \"  > \" is the rest of the row above it, cut where the terminal wraps it.",
+        "",
+        "  ADE          https://ade.example.com   (this Mac: this signer's own setting)",
+        "  Account      5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b   (this Mac: the account this s",
+        "  > igner was paired with)",
+        "  Kind         MOVE of a session on this Mac into the hosted workspace   (signe",
+        "  > d)",
+        "  To           link 9b1e2f4071c34d5e8a9b0c1d2e3f4a5b   (signed)",
+        "               this Mac's link \"pp-r57\"   (this Mac: its own folder says so)",
+        "  Made         2026-10-09 02:00:00 local (02:00:00 UTC), by the ADE's clock   (",
+        "  > signed)",
+        "  Good until   2026-10-09 03:00:00 local (03:00:00 UTC), 1 hour after   (signed",
+        "  > )",
+        "  Id           0123456789abcdef0123456789abcdef   (signed)",
+        "  Request      YW3L-N6XB   (from the signed bytes: your page shows this code be",
+        "  > side the request it made)",
+        "  Session      3f1c9d2e-7a4b-4c8d-9e0f-1a2b3c4d5e6f   (signed)",
+        "               Claude Code's own transcript on this Mac, in \"/Users/owner/proof",
+        "  > pane\", last active 2026-10-09 01:58:00 local (01:58:00 UTC); not running   ",
+        "  > (this Mac)",
+        "  Title        \"Fix the failing test\", sent beside the payload, not signed   (t",
+        "  > he ADE's word)",
+        "",
+        "  Signs with   a passkey of this account on the key you touch   (this Mac)",
+        "               which the ADE names \"YubiKey 5C\" (3a7f0c1e...)   (the ADE's word",
+        "  > )",
+        "  Time left    271 seconds   (this Mac: its clock)"
+      ]
+    },
+    {
+      "kind": "e2e-key",
+      "payload": {
+        "v": 2,
+        "deployment": "ade.example.com",
+        "purpose": "e2e-key",
+        "account": "5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b",
+        "nonce": "eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8",
+        "id": "0123456789abcdef0123456789abcdef",
+        "created_at": 1791511200,
+        "expires_at": 1791511800,
+        "seq": 2,
+        "prev": "0cf10bbc665ab7e463cdf04627410efc0e14bfec1c2f0fca9ff2910ec666c347",
+        "key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+        "key_id": "630dcd2966c4336691125448bbb25b4f",
+        "retires": "grace"
+      },
+      "local": {
+        "statement": {
+          "seq": 1,
+          "sha256": "0cf10bbc665ab7e463cdf04627410efc0e14bfec1c2f0fca9ff2910ec666c347"
+        }
+      },
+      "ade": {
+        "allow": [
+          {
+            "name": "YubiKey 5C",
+            "fingerprint": "3a7f0c1e000000000000000000000000"
+          }
+        ]
+      },
+      "now": 1791511229,
+      "deadline": 1791511500,
+      "lines": [
+        "PROOFPANE SECOND SCREEN",
+        "Your security key is about to sign what follows. This program decoded it",
+        "from the exact bytes it signs. Lines marked (signed) are decoded from those",
+        "bytes, the only lines that bind; (this Mac) is this Mac's own record;",
+        "(the ADE's word) is what the ADE says, which binds nothing. A row that begins",
+        "with \"  > \" is the rest of the row above it, cut where the terminal wraps it.",
+        "",
+        "  ADE          https://ade.example.com   (this Mac: this signer's own setting)",
+        "  Account      5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b   (this Mac: the account this signer was paired with)",
+        "  Kind         NEW KEY for this account's end-to-end encryption   (signed)",
+        "  Made         2026-10-09 02:00:00 local (02:00:00 UTC), by the ADE's clock   (signed)",
+        "  Good until   2026-10-09 02:10:00 local (02:10:00 UTC), 10 minutes after   (signed)",
+        "  Id           0123456789abcdef0123456789abcdef   (signed)",
+        "  Request      ACU3-EXU5   (from the signed bytes: your page shows this code beside the request it made)",
+        "  Statement    seq 2, after one whose sha256 is 0cf10bbc665ab7e463cdf04627410efc0e14bfec1c2f0fca9ff2910ec666c347   (signed)",
+        "  Key id       630dcd2966c4336691125448bbb25b4f   (signed)",
+        "  Key          classical (X25519)   (signed)",
+        "  Retires      the earlier keys after a grace (a rotation)   (signed)",
+        "               this Mac's links hold statement 1; this one follows it   (this Mac)",
+        "",
+        "  Signs with   a passkey of this account on the key you touch   (this Mac)",
+        "               which the ADE names \"YubiKey 5C\" (3a7f0c1e...)   (the ADE's word)",
+        "  Time left    271 seconds   (this Mac: its clock)"
+      ],
+      "rows_80": [
+        "PROOFPANE SECOND SCREEN",
+        "Your security key is about to sign what follows. This program decoded it",
+        "from the exact bytes it signs. Lines marked (signed) are decoded from those",
+        "bytes, the only lines that bind; (this Mac) is this Mac's own record;",
+        "(the ADE's word) is what the ADE says, which binds nothing. A row that begins",
+        "with \"  > \" is the rest of the row above it, cut where the terminal wraps it.",
+        "",
+        "  ADE          https://ade.example.com   (this Mac: this signer's own setting)",
+        "  Account      5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b   (this Mac: the account this s",
+        "  > igner was paired with)",
+        "  Kind         NEW KEY for this account's end-to-end encryption   (signed)",
+        "  Made         2026-10-09 02:00:00 local (02:00:00 UTC), by the ADE's clock   (",
+        "  > signed)",
+        "  Good until   2026-10-09 02:10:00 local (02:10:00 UTC), 10 minutes after   (si",
+        "  > gned)",
+        "  Id           0123456789abcdef0123456789abcdef   (signed)",
+        "  Request      ACU3-EXU5   (from the signed bytes: your page shows this code be",
+        "  > side the request it made)",
+        "  Statement    seq 2, after one whose sha256 is 0cf10bbc665ab7e463cdf04627410ef",
+        "  > c0e14bfec1c2f0fca9ff2910ec666c347   (signed)",
+        "  Key id       630dcd2966c4336691125448bbb25b4f   (signed)",
+        "  Key          classical (X25519)   (signed)",
+        "  Retires      the earlier keys after a grace (a rotation)   (signed)",
+        "               this Mac's links hold statement 1; this one follows it   (this M",
+        "  > ac)",
+        "",
+        "  Signs with   a passkey of this account on the key you touch   (this Mac)",
+        "               which the ADE names \"YubiKey 5C\" (3a7f0c1e...)   (the ADE's word",
+        "  > )",
+        "  Time left    271 seconds   (this Mac: its clock)"
+      ]
+    },
+    {
+      "kind": "e2e-off",
+      "payload": {
+        "v": 2,
+        "deployment": "ade.example.com",
+        "purpose": "e2e-off",
+        "account": "5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b",
+        "nonce": "eyJjIjoiQUFFQ0F3UUZCZ2NJQ1FvTERBME9EeEFSRWhNVUZSWVhHQmthR3h3ZEhoOCIsInAiOiJjbWQ6aW5zdHJ1Y3Rpb24iLCJ1IjoiNWYwYzJhOWU3YjFkNGMzZThhNmY5YjJkMWMwZTRhN2IiLCJlIjoxNzkxNTExNTAwfQ.s9eKKl7pYWudnL966HFPRxiURXc8eRI7IN2Cn17wZk8",
+        "id": "0123456789abcdef0123456789abcdef",
+        "created_at": 1791511200,
+        "expires_at": 1791511800,
+        "seq": 3,
+        "prev": "0cf10bbc665ab7e463cdf04627410efc0e14bfec1c2f0fca9ff2910ec666c347"
+      },
+      "local": {
+        "statement": {
+          "seq": 2,
+          "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      },
+      "ade": {
+        "allow": [
+          {
+            "name": "YubiKey 5C",
+            "fingerprint": "3a7f0c1e000000000000000000000000"
+          }
+        ]
+      },
+      "now": 1791511229,
+      "deadline": 1791511500,
+      "lines": [
+        "PROOFPANE SECOND SCREEN",
+        "Your security key is about to sign what follows. This program decoded it",
+        "from the exact bytes it signs. Lines marked (signed) are decoded from those",
+        "bytes, the only lines that bind; (this Mac) is this Mac's own record;",
+        "(the ADE's word) is what the ADE says, which binds nothing. A row that begins",
+        "with \"  > \" is the rest of the row above it, cut where the terminal wraps it.",
+        "",
+        "  ADE          https://ade.example.com   (this Mac: this signer's own setting)",
+        "  Account      5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b   (this Mac: the account this signer was paired with)",
+        "  Kind         TURNS END-TO-END ENCRYPTION OFF for this account   (signed)",
+        "  Made         2026-10-09 02:00:00 local (02:00:00 UTC), by the ADE's clock   (signed)",
+        "  Good until   2026-10-09 02:10:00 local (02:10:00 UTC), 10 minutes after   (signed)",
+        "  Id           0123456789abcdef0123456789abcdef   (signed)",
+        "  Request      MBGS-BASC   (from the signed bytes: your page shows this code beside the request it made)",
+        "  Statement    seq 3, after one whose sha256 is 0cf10bbc665ab7e463cdf04627410efc0e14bfec1c2f0fca9ff2910ec666c347   (signed)",
+        "               this Mac's links hold statement 2; this one DOES NOT follow it   (this Mac)",
+        "",
+        "  Signs with   a passkey of this account on the key you touch   (this Mac)",
+        "               which the ADE names \"YubiKey 5C\" (3a7f0c1e...)   (the ADE's word)",
+        "  Time left    271 seconds   (this Mac: its clock)"
+      ],
+      "rows_80": [
+        "PROOFPANE SECOND SCREEN",
+        "Your security key is about to sign what follows. This program decoded it",
+        "from the exact bytes it signs. Lines marked (signed) are decoded from those",
+        "bytes, the only lines that bind; (this Mac) is this Mac's own record;",
+        "(the ADE's word) is what the ADE says, which binds nothing. A row that begins",
+        "with \"  > \" is the rest of the row above it, cut where the terminal wraps it.",
+        "",
+        "  ADE          https://ade.example.com   (this Mac: this signer's own setting)",
+        "  Account      5f0c2a9e7b1d4c3e8a6f9b2d1c0e4a7b   (this Mac: the account this s",
+        "  > igner was paired with)",
+        "  Kind         TURNS END-TO-END ENCRYPTION OFF for this account   (signed)",
+        "  Made         2026-10-09 02:00:00 local (02:00:00 UTC), by the ADE's clock   (",
+        "  > signed)",
+        "  Good until   2026-10-09 02:10:00 local (02:10:00 UTC), 10 minutes after   (si",
+        "  > gned)",
+        "  Id           0123456789abcdef0123456789abcdef   (signed)",
+        "  Request      MBGS-BASC   (from the signed bytes: your page shows this code be",
+        "  > side the request it made)",
+        "  Statement    seq 3, after one whose sha256 is 0cf10bbc665ab7e463cdf04627410ef",
+        "  > c0e14bfec1c2f0fca9ff2910ec666c347   (signed)",
+        "               this Mac's links hold statement 2; this one DOES NOT follow it  ",
+        "  >  (this Mac)",
+        "",
+        "  Signs with   a passkey of this account on the key you touch   (this Mac)",
+        "               which the ADE names \"YubiKey 5C\" (3a7f0c1e...)   (the ADE's word",
+        "  > )",
+        "  Time left    271 seconds   (this Mac: its clock)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,322 @@
+[
+ {
+  "file": "at-depth-limit.jsonl",
+  "head": "sha256:8c8228030aad9dbd13b36f44cb30876ca13f1d0db8054037c85bd244e0a5f870",
+  "lines": 1,
+  "next_seq": 1,
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": true
+ },
+ {
+  "file": "early-year.jsonl",
+  "head": "sha256:1f561dc4065097145c88408d0d59e06f3a2a43c7d37d8fbf1b79f4cfddacbcc8",
+  "lines": 1,
+  "next_seq": 1,
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": true
+ },
+ {
+  "file": "edited-earlier-line.jsonl",
+  "line": 2,
+  "rejected_by": "line-prev",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "empty.jsonl",
+  "head": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "lines": 0,
+  "next_seq": 0,
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": true
+ },
+ {
+  "file": "line-canonical-number.jsonl",
+  "line": 1,
+  "rejected_by": "line-canonical",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-canonical.jsonl",
+  "line": 1,
+  "rejected_by": "line-canonical",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-event.jsonl",
+  "line": 1,
+  "rejected_by": "line-event",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-hash-format-trailing.jsonl",
+  "line": 1,
+  "rejected_by": "line-hash-format",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-hash-format.jsonl",
+  "line": 1,
+  "rejected_by": "line-hash-format",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-hash.jsonl",
+  "line": 1,
+  "rejected_by": "line-hash",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-json-bom.jsonl",
+  "line": 1,
+  "rejected_by": "line-json",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-json-duplicate-key.jsonl",
+  "line": 2,
+  "rejected_by": "line-json",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-json-lone-surrogate-in-key.jsonl",
+  "line": 1,
+  "rejected_by": "line-json",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-json-lone-surrogate.jsonl",
+  "line": 1,
+  "rejected_by": "line-json",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-json-nan.jsonl",
+  "line": 1,
+  "rejected_by": "line-json",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-json-too-deep.jsonl",
+  "line": 1,
+  "rejected_by": "line-json",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-json.jsonl",
+  "line": 2,
+  "rejected_by": "line-json",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-keys-missing.jsonl",
+  "line": 1,
+  "rejected_by": "line-keys",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-keys.jsonl",
+  "line": 1,
+  "rejected_by": "line-keys",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-newline.jsonl",
+  "line": 2,
+  "rejected_by": "line-newline",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-object.jsonl",
+  "line": 1,
+  "rejected_by": "line-object",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-prev-format-trailing.jsonl",
+  "line": 1,
+  "rejected_by": "line-prev-format",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-prev-format.jsonl",
+  "line": 1,
+  "rejected_by": "line-prev-format",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-prev-genesis.jsonl",
+  "line": 1,
+  "rejected_by": "line-prev",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-prev.jsonl",
+  "line": 2,
+  "rejected_by": "line-prev",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-seq-start.jsonl",
+  "line": 1,
+  "rejected_by": "line-seq",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-seq.jsonl",
+  "line": 2,
+  "rejected_by": "line-seq",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-size.jsonl",
+  "line": 2,
+  "max_line_bytes": 305,
+  "rejected_by": "line-size",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-ts-leap-second.jsonl",
+  "line": 1,
+  "rejected_by": "line-ts",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-ts-offset.jsonl",
+  "line": 1,
+  "rejected_by": "line-ts",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-ts-trailing.jsonl",
+  "line": 1,
+  "rejected_by": "line-ts",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-ts-year-zero.jsonl",
+  "line": 1,
+  "rejected_by": "line-ts",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-ts.jsonl",
+  "line": 1,
+  "rejected_by": "line-ts",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-utf8.jsonl",
+  "line": 2,
+  "rejected_by": "line-utf8",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "line-version.jsonl",
+  "line": 1,
+  "rejected_by": "line-version",
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": false
+ },
+ {
+  "file": "one.jsonl",
+  "head": "sha256:bfc1af7b236e65b63324e848df3490a4d9a860a5b20769422772c6615056608b",
+  "lines": 1,
+  "next_seq": 1,
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": true
+ },
+ {
+  "file": "recovered.jsonl",
+  "head": "sha256:58de8f6702726d8a5bd27d7bdea00e33a4aa8cf7094fac3c26a03888588a6d64",
+  "lines": 2,
+  "next_seq": 2,
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": true
+ },
+ {
+  "file": "three.jsonl",
+  "head": "sha256:d65e320321fa79cbf8c1082282fd3a5ee2b960b460eafdfb6e9b69cb58f0ab21",
+  "lines": 3,
+  "next_seq": 3,
+  "start_prev": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "start_seq": 0,
+  "valid": true
+ },
+ {
+  "file": "window.jsonl",
+  "head": "sha256:99e66d36abe7c523c7e0cb1b419f925265f1579e9cd5cb70982d72e641e9d37e",
+  "lines": 3,
+  "next_seq": 5,
+  "start_prev": "sha256:676c17ce1f19f11a9d32dac6a7ecd98742b4ccded306b4073b952070d87681f4",
+  "start_seq": 2,
+  "valid": true
+ }
+]

@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|fork|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python -I -X utf8 \"/absolute/path/to/home/.proofpane-ade/ade_link.py\" --dir \"/absolute/path/to/home/.proofpane-ade/NAME\" session start",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python -I -X utf8 \"/absolute/path/to/home/.proofpane-ade/ade_link.py\" --dir \"/absolute/path/to/home/.proofpane-ade/NAME\" mirror reply --listed-only || true",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python -I -X utf8 \"/absolute/path/to/home/.proofpane-ade/ade_link.py\" --dir \"/absolute/path/to/home/.proofpane-ade/NAME\" mirror live --listed-only || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+Usage: claude [options] [command] [prompt]
+
+A stand-in for `claude --help`, written for these tests in the layout it prints: the options the
+workspace reads, with words of its own.
+
+Arguments:
+  prompt                                What to ask
+
+Options:
+  --debug-file <path>                   Write a debug log to this file
+  --effort <level>                      Effort level for the current session
+                                        (low, medium, high, xhigh, max)
+  --environment <environment_id>        Create a new cloud session that runs on
+                                        the environment named
+  --model <model>                       Model for the current session: an alias
+                                        or a full name
+  --output-format <format>              How a printed answer is written
+                                        (choices: "text", "json",
+                                        "stream-json")
+  --permission-mode <mode>              Permission mode to use for the session
+                                        (choices: "acceptEdits", "auto",
+                                        "bypassPermissions", "manual",
+                                        "dontAsk", "plan")
+  -p, --print                           Print an answer and exit
+  -v, --version                         Output the version number
+  -h, --help                            Display help for command

@@ -1,0 +1,67 @@
+Proofpane Community
+Copyright 2026 PROOFPANE LIMITED
+
+Licensed under the Apache License, Version 2.0: the LICENSE file beside this one. LICENSE-APACHE-2.0 holds the
+same text, which the builds carry and which the third-party works below that are under it refer to.
+
+It includes xterm.js (web/vendor/xterm/), Copyright (c) 2017-2019 The xterm.js authors, Copyright (c) 2014-2016
+SourceLair Private Company and Copyright (c) 2012-2013 Christopher Jeffrey, under the MIT License, whose text is in
+web/vendor/xterm/LICENSE and web/vendor/xterm/LICENSE-addon-fit.
+
+The ADE quotes, in proofpane_open/ade/risk_texts.py, eleven passages of Anthropic's published texts word for word,
+each with its address and the date it was read: three of the Consumer Terms of Service, one of the Commercial Terms of
+Service, three of the Usage Policy (one of its version effective 15 September 2025, two of its version effective 12
+November 2026), three of Claude Code's Legal and compliance page and one Help Center article. They are Anthropic's,
+and the license above does not extend to them.
+
+The app built from ui/ (into web/app/, desktop/build/ui/ or phone/dist/) holds the code of npm packages, each under its
+own license. Each build writes THIRD_PARTY_LICENSES.txt beside the app, naming every package the build holds, with its
+version, its license and the license files it ships, and puts this LICENSE, LICENSE-APACHE-2.0 and NOTICE beside it
+(ui/licenses.ts). A package the app bundles carries one of the permissive licenses ui/licenses.ts allows, and a license
+file: its own or, for one that ships none, its project's own license file, kept in ui/third-party/ from its repository,
+as the notice says; anything else stops the build (ui/licenses.ts), and ui/src/licenses.test.ts builds the app and holds
+it to that. The app's Licenses dialog (in its account menu, its palette and on its sign-in screen) shows these files
+and, in the desktop and phone apps, those below.
+
+The desktop app (desktop/) also carries a Python and the Rust crates its shell is built from, and the phone app (phone/)
+Rust crates, each under its own license; their builds write the notices into them (desktop/licenses.py). The desktop
+app's Resources/licenses/ holds this LICENSE, LICENSE-APACHE-2.0 and NOTICE, the page's notice as
+THIRD_PARTY_LICENSES-page.txt, THIRD_PARTY_LICENSES-python.txt and THIRD_PARTY_LICENSES-rust.txt, with the Rust standard
+library's notices as the toolchain that builds the app ships them (THIRD_PARTY_LICENSES-rust-std.html); the last three
+are beside the window's pages too, and the phone app carries the two Rust ones beside its pages.
+
+THIRD_PARTY_LICENSES-python.txt names CPython, with its license, its acknowledgements and the notices of what it
+incorporates, from its own source, and a summary of the changes made to it, which its license asks for; the libraries
+python-build-standalone links into it; each Python package the app installs, and each component its SBOMs list as
+built into it; and, on an Intel Mac, the OpenSSL built for cryptography. THIRD_PARTY_LICENSES-rust.txt names each crate
+the shell links for the machine's architecture, as cargo's resolver builds it.
+
+Each is named with its license and license files: its own or, for one that ships none, those of a crate published from
+its repository under the same license, the text of a license it offers that names no holder, or its repository's own
+license files at the commit it was published from (desktop/third-party/rust/); the notice says which, and names no
+holder its project does not. The crates objc2, block2, objc2-encode and objc2-foundation are given their repository's
+own LICENSE.md, kept in desktop/third-party/rust/madsmtm/objc2/; it names no copyright holder, and says that the crates
+from that repository (the desktop app carries 11 of them, the phone app 16) are derived from Apple's SDKs and that it is
+unclear whether Xcode's license allows such derived works to be distributed. The desktop app depends on objc2 itself,
+and tauri, wry, tao and muda, among others, bring it in too; in the phone app, tauri, wry and tao bring it in. Each
+carries a permissive license desktop/licenses.py allows, whose conditions for software carried in a built app the
+notices meet (the copyright notice and license text as its project gives them, an Apache NOTICE file among the license
+files where one is shipped, and for Python the summary of changes), or, for a Rust crate from crates.io, the Mozilla
+Public License 2.0, with where its source is there; anything else, or anything with no license text, stops the build.
+desktop/third-party/ holds license texts as their projects publish them: CPython's, from its source, and those
+python-build-standalone ships for the libraries it links in (python/), crates' repositories' (rust/), and the Mozilla
+Public License 2.0 as cssparser 0.37.0 ships it. tests/test_desktop_licenses.py holds the builds to all this.
+
+Its tests include three files of test vectors from Project Wycheproof (tests/vectors/wycheproof/, from
+https://github.com/C2SP/wycheproof, testvectors_v1, unchanged), under the Apache License, Version 2.0, whose text is
+LICENSE-APACHE-2.0 beside this one.
+
+Its tests also carry, from others:
+- tests/vectors/xwing_draft11.json: X-Wing's test vectors, copied from draft-connolly-cfrg-xwing-kem-11, Appendix C
+  (https://www.ietf.org/archive/id/draft-connolly-cfrg-xwing-kem-11.txt), under the terms that document states; the
+  file names its source and the sha256 of the text it was taken from.
+- tests/test_ade_push.py: values from RFC 8291's example (https://www.rfc-editor.org/rfc/rfc8291), under the terms
+  that RFC states.
+- tests/fixtures/mcp_registry_filesystem.json: a page of the Model Context Protocol registry's list of servers, with
+  the descriptions their publishers gave them, which are their publishers' and to which the license above does not
+  extend.

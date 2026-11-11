@@ -1,0 +1,9 @@
+{
+  "name": "proofpane-core",
+  "displayName": "Proofpane core",
+  "version": "1.0.0",
+  "description": "Proofpane's core in a session the workspace starts: the owner's Proofpane audit and approvals through its hooks, and its core skills.",
+  "author": {
+    "name": "PROOFPANE LIMITED"
+  }
+}

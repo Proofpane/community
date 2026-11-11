@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python -I -X utf8 \"/absolute/path/to/home/.proofpane-ade/ade_link.py\" --dir \"/absolute/path/to/home/.proofpane-ade/NAME\" mirror reply || true",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/venv/bin/python -I -X utf8 \"/absolute/path/to/home/.proofpane-ade/ade_link.py\" --dir \"/absolute/path/to/home/.proofpane-ade/NAME\" mirror live || true",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

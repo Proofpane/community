@@ -1,0 +1,17 @@
+#!/bin/sh
+# The approval hook's start in a hosted workspace (settings.ade_hook_settings names this file as the hook's program).
+# Its four arguments: the interpreter, open_edition/ade_hook.py, this deployment's address and the file
+# of the workspace's hook token. It starts the hook with nothing of the session's environment but those two (`env -i`),
+# so no token, address, pattern, proxy, certificate or wait a repository's or a user's settings set reaches it.
+#
+# A program of its own, so that no other hook's command is the hold's: Claude Code runs a handler defined the same in
+# several settings files once, and a hook started as /usr/bin/env or /bin/sh would share its program with many.
+#
+# Where /usr/bin/env, the interpreter or the hook is not there it holds the Bash command (exit 2, which Claude Code
+# takes as a denial), since a hook that cannot start is no decision and would let a gated command go on.
+if [ "$#" -ne 4 ] || [ ! -x /usr/bin/env ] || [ ! -f "$1" ] || [ ! -x "$1" ] || [ ! -f "$2" ]; then
+    echo "the approval hook cannot start: its interpreter or ade_hook.py is not there, so every Bash command is" \
+        "held." >&2
+    exit 2
+fi
+exec /usr/bin/env -i PROOFPANE_ADE_URL="$3" PROOFPANE_ADE_TOKEN_FILE="$4" "$1" -I -X utf8 "$2"

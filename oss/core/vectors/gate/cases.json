@@ -1,0 +1,630 @@
+[
+ {
+  "decision": {
+   "because": [],
+   "claims": "failure",
+   "deny_type": "terminal",
+   "rule_id": "nothing-blocking",
+   "verify": "failure"
+  },
+  "name": "empty",
+  "obligations": []
+ },
+ {
+  "decision": {
+   "because": [],
+   "claims": "failure",
+   "deny_type": "terminal",
+   "rule_id": "nothing-blocking",
+   "verify": "failure"
+  },
+  "name": "proposed-only",
+  "obligations": [
+   {
+    "claim": {
+     "location": "pr_body",
+     "text": "no schema change"
+    },
+    "class": "advisory",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "proposed",
+    "outcome": "error",
+    "reason": "resolver crashed",
+    "resolver": "diff.no_schema_change"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [],
+   "claims": "failure",
+   "deny_type": "terminal",
+   "rule_id": "nothing-blocking",
+   "verify": "failure"
+  },
+  "name": "advisory-only-all-pass",
+  "obligations": [
+   {
+    "claim": null,
+    "class": "advisory",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "pass",
+    "reason": null,
+    "resolver": "diff.no_pii"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001",
+    "V-002"
+   ],
+   "claims": "failure",
+   "deny_type": "terminal",
+   "rule_id": "any-fail",
+   "verify": "failure"
+  },
+  "name": "fail-with-a-person-needed-too",
+  "obligations": [
+   {
+    "claim": null,
+    "class": "security",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "unverified",
+    "reason": "needs a named reviewer's approval on the head commit",
+    "resolver": "policy.change_reviewed"
+   },
+   {
+    "claim": null,
+    "class": "required",
+    "deny_type": "correctable",
+    "evidence": [],
+    "id": "V-002",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "fail",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [],
+   "claims": "success",
+   "deny_type": null,
+   "rule_id": "all-pass",
+   "verify": "success"
+  },
+  "name": "all-pass",
+  "obligations": [
+   {
+    "claim": null,
+    "class": "required",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "pass",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   },
+   {
+    "claim": {
+     "location": "pr_body",
+     "text": "all tests pass"
+    },
+    "class": "required",
+    "evidence": [],
+    "id": "V-002",
+    "method": "deterministic",
+    "origin": "claimed",
+    "outcome": "pass",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001"
+   ],
+   "claims": "failure",
+   "deny_type": "correctable",
+   "rule_id": "any-fail",
+   "verify": "failure"
+  },
+  "name": "false-claim-required",
+  "obligations": [
+   {
+    "claim": {
+     "location": "pr_body",
+     "text": "all tests pass"
+    },
+    "class": "required",
+    "deny_type": "correctable",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "claimed",
+    "outcome": "fail",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   },
+   {
+    "claim": null,
+    "class": "required",
+    "evidence": [],
+    "id": "V-002",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "pass",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001"
+   ],
+   "claims": "failure",
+   "deny_type": "correctable",
+   "rule_id": "any-fail",
+   "verify": "failure"
+  },
+  "name": "false-claim-advisory-still-blocks",
+  "obligations": [
+   {
+    "claim": {
+     "location": "pr_body",
+     "text": "all tests pass"
+    },
+    "class": "advisory",
+    "deny_type": "correctable",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "claimed",
+    "outcome": "fail",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   },
+   {
+    "claim": null,
+    "class": "required",
+    "evidence": [],
+    "id": "V-002",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "pass",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001"
+   ],
+   "claims": "failure",
+   "deny_type": "terminal",
+   "rule_id": "any-fail",
+   "verify": "failure"
+  },
+  "name": "secret-found",
+  "obligations": [
+   {
+    "claim": null,
+    "class": "security",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "fail",
+    "reason": null,
+    "resolver": "diff.no_secrets"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001",
+    "V-002"
+   ],
+   "claims": "failure",
+   "deny_type": "terminal",
+   "rule_id": "any-fail",
+   "verify": "failure"
+  },
+  "name": "secret-and-false-claim",
+  "obligations": [
+   {
+    "claim": {
+     "location": "pr_body",
+     "text": "all tests pass"
+    },
+    "class": "required",
+    "deny_type": "correctable",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "claimed",
+    "outcome": "fail",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   },
+   {
+    "claim": null,
+    "class": "security",
+    "evidence": [],
+    "id": "V-002",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "fail",
+    "reason": null,
+    "resolver": "diff.no_secrets"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001"
+   ],
+   "claims": "failure",
+   "deny_type": "terminal",
+   "rule_id": "any-fail",
+   "verify": "failure"
+  },
+  "name": "ci-red-no-deny-type",
+  "obligations": [
+   {
+    "claim": null,
+    "class": "required",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "fail",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001"
+   ],
+   "claims": "failure",
+   "deny_type": "terminal",
+   "rule_id": "needs-person",
+   "verify": "failure"
+  },
+  "name": "ci-pending",
+  "obligations": [
+   {
+    "claim": null,
+    "class": "required",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "unverified",
+    "reason": "pending: backend",
+    "resolver": "ci.checks_green"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001"
+   ],
+   "claims": "failure",
+   "deny_type": "terminal",
+   "rule_id": "needs-person",
+   "verify": "failure"
+  },
+  "name": "workflow-changed-unapproved",
+  "obligations": [
+   {
+    "claim": null,
+    "class": "security",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "unverified",
+    "reason": "needs a named reviewer's approval on the head commit",
+    "resolver": "policy.change_reviewed"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001"
+   ],
+   "claims": "failure",
+   "deny_type": "terminal",
+   "rule_id": "needs-person",
+   "verify": "failure"
+  },
+  "name": "resolver-error",
+  "obligations": [
+   {
+    "claim": null,
+    "class": "required",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "error",
+    "reason": "GitHub API returned 502",
+    "resolver": "ci.checks_green"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001",
+    "V-002"
+   ],
+   "claims": "failure",
+   "deny_type": "terminal",
+   "rule_id": "any-fail",
+   "verify": "failure"
+  },
+  "name": "fail-beats-needs-person",
+  "obligations": [
+   {
+    "claim": null,
+    "class": "required",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "unverified",
+    "reason": "pending: backend",
+    "resolver": "ci.checks_green"
+   },
+   {
+    "claim": {
+     "location": "pr_body",
+     "text": "all tests pass"
+    },
+    "class": "required",
+    "deny_type": "correctable",
+    "evidence": [],
+    "id": "V-002",
+    "method": "deterministic",
+    "origin": "claimed",
+    "outcome": "fail",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001"
+   ],
+   "claims": "failure",
+   "deny_type": null,
+   "rule_id": "advisory-not-vouched",
+   "verify": "success"
+  },
+  "name": "unresolvable-claim",
+  "obligations": [
+   {
+    "claim": {
+     "location": "pr_body",
+     "text": "fully backwards compatible"
+    },
+    "class": "advisory",
+    "evidence": [],
+    "id": "V-001",
+    "method": "none",
+    "origin": "claimed",
+    "outcome": "unverified",
+    "reason": "no resolver",
+    "resolver": null
+   },
+   {
+    "claim": null,
+    "class": "required",
+    "evidence": [],
+    "id": "V-002",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "pass",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001"
+   ],
+   "claims": "failure",
+   "deny_type": null,
+   "rule_id": "advisory-not-vouched",
+   "verify": "success"
+  },
+  "name": "pii-in-fixture",
+  "obligations": [
+   {
+    "claim": null,
+    "class": "advisory",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "fail",
+    "reason": null,
+    "resolver": "diff.no_pii"
+   },
+   {
+    "claim": null,
+    "class": "required",
+    "evidence": [],
+    "id": "V-002",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "pass",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001"
+   ],
+   "claims": "failure",
+   "deny_type": null,
+   "rule_id": "advisory-not-vouched",
+   "verify": "success"
+  },
+  "name": "proposed-claim-false",
+  "obligations": [
+   {
+    "claim": {
+     "location": "pr_body",
+     "text": "no schema change"
+    },
+    "class": "advisory",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "proposed",
+    "outcome": "fail",
+    "reason": null,
+    "resolver": "diff.no_schema_change"
+   },
+   {
+    "claim": null,
+    "class": "required",
+    "evidence": [],
+    "id": "V-002",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "pass",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-001"
+   ],
+   "claims": "failure",
+   "deny_type": null,
+   "rule_id": "advisory-not-vouched",
+   "verify": "success"
+  },
+  "name": "proposed-claim-no-resolver",
+  "obligations": [
+   {
+    "claim": {
+     "location": "pr_body",
+     "text": "faster"
+    },
+    "class": "advisory",
+    "evidence": [],
+    "id": "V-001",
+    "method": "none",
+    "origin": "proposed",
+    "outcome": "unverified",
+    "reason": "no resolver",
+    "resolver": null
+   },
+   {
+    "claim": null,
+    "class": "required",
+    "evidence": [],
+    "id": "V-002",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "pass",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   }
+  ]
+ },
+ {
+  "decision": {
+   "because": [
+    "V-003",
+    "V-002"
+   ],
+   "claims": "failure",
+   "deny_type": "correctable",
+   "rule_id": "any-fail",
+   "verify": "failure"
+  },
+  "name": "because-in-manifest-order",
+  "obligations": [
+   {
+    "claim": null,
+    "class": "required",
+    "deny_type": "correctable",
+    "evidence": [],
+    "id": "V-003",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "fail",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   },
+   {
+    "claim": null,
+    "class": "required",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "pass",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   },
+   {
+    "claim": {
+     "location": "pr_body",
+     "text": "all tests pass"
+    },
+    "class": "advisory",
+    "deny_type": "correctable",
+    "evidence": [],
+    "id": "V-002",
+    "method": "deterministic",
+    "origin": "claimed",
+    "outcome": "fail",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   }
+  ]
+ }
+]

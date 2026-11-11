@@ -1,0 +1,61 @@
+{
+ "manifest": {
+  "decision": {
+   "because": [],
+   "claims": "success",
+   "deny_type": null,
+   "rule_id": "all-pass",
+   "verify": "success"
+  },
+  "format": "proofpane.verification-manifest/0",
+  "issued_at": "2026-09-24T00:00:00Z",
+  "obligations": [
+   {
+    "claim": {
+     "location": "pr_body",
+     "text": "all tests pass"
+    },
+    "class": "required",
+    "evidence": [],
+    "id": "V-001",
+    "method": "deterministic",
+    "origin": "claimed",
+    "outcome": "pass",
+    "reason": null,
+    "resolver": "ci.checks_green"
+   },
+   {
+    "claim": null,
+    "class": "security",
+    "evidence": [],
+    "id": "V-002",
+    "method": "deterministic",
+    "origin": "implicit",
+    "outcome": "pass",
+    "reason": null,
+    "resolver": "diff.no_secrets"
+   }
+  ],
+  "policy": {
+   "digest": "sha256:773b8a811f706f8e989a8d04d749c1cef39870fbe95ec368393ec06e0fd2f10c",
+   "path": ".proofpane/policy.json",
+   "source": "base-ref"
+  },
+  "subject": {
+   "base_sha": "1111111111111111111111111111111111111111",
+   "claims_digest": "sha256:a466f248a3f1b0285aac151da96d23b0d0320463d26b88e6c602a600fd3478d6",
+   "diff_digest": "sha256:675542733c11af951a9326792bc612592dcdba218f74725871e9e18ecad4183c",
+   "head_sha": "2222222222222222222222222222222222222222",
+   "kind": "git-change",
+   "pr_number": 42,
+   "repo": "example/widgets"
+  },
+  "unrecognised_sentences": true,
+  "verifier": {
+   "name": "proofpane-verify-pr",
+   "ruleset_fingerprint": "sha256:1b7834c4562a8550197d9b4f662a4c7dc5ce4812400f56a536f6700c69dae802",
+   "version": "0.1.0"
+  }
+ },
+ "rejected_by": "unrecognised"
+}

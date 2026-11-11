@@ -1,0 +1,9 @@
+{
+  "name": "proofpane-core-daemon",
+  "displayName": "Proofpane core: the daemon's tools",
+  "version": "1.0.0",
+  "description": "Proofpane's MCP server for a session the workspace starts, run by the Proofpane daemon installed on this machine, in the name the workspace was paired with.",
+  "author": {
+    "name": "PROOFPANE LIMITED"
+  }
+}

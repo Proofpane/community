@@ -1,0 +1,77 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["-E", "-s", "-X", "utf8", "${CLAUDE_PLUGIN_ROOT}/hooks/proofpane_hook.py"],
+            "async": true
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["-E", "-s", "-X", "utf8", "${CLAUDE_PLUGIN_ROOT}/hooks/proofpane_hook.py", "budget-check"],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["-E", "-s", "-X", "utf8", "${CLAUDE_PLUGIN_ROOT}/hooks/proofpane_hook.py"],
+            "timeout": 90
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["-E", "-s", "-X", "utf8", "${CLAUDE_PLUGIN_ROOT}/hooks/proofpane_hook.py"],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["-E", "-s", "-X", "utf8", "${CLAUDE_PLUGIN_ROOT}/hooks/proofpane_hook.py"],
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": ["-E", "-s", "-X", "utf8", "${CLAUDE_PLUGIN_ROOT}/hooks/proofpane_hook.py"],
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,77 @@
+# Proofpane Community as a Fly app: an example. Put your own values in place of the placeholders (<app>, <region>,
+# <domain>, <org>, <network>) before the first deploy.
+#
+# Deploy from the repository root, since the image copies oss/. flyctl reads the ignore file named by --ignorefile, or
+# else .dockerignore in the working directory (Fly's deploy reference); the root has none, so without the flag the
+# whole repository may be uploaded. Dockerfile.dockerignore lets through only the directories the image needs.
+# --ha=false: one machine, since the volume can be mounted by one machine only. The two build arguments name the
+# release and the commit deployed, which GET /api/health then says (the Dockerfile; each "unknown" when not given):
+# put your release's own name in place of RELEASE (left as it is, the build refuses it); the commit is the full id of
+# the clean checkout deployed, which the first line checks.
+#     test -z "$(git status --porcelain --untracked-files=all)" && commit="$(git rev-parse --verify HEAD)" && \
+#     fly deploy . -c open_edition/fly.toml --dockerfile open_edition/Dockerfile \
+#         --ignorefile open_edition/Dockerfile.dockerignore --ha=false \
+#         --build-arg OPEN_EDITION_RELEASE=RELEASE --build-arg OPEN_EDITION_COMMIT="$commit"
+#
+# First time only, before that deploy. An app on a private network of its own (--network; an existing app cannot
+# change network) shares no network with your organisation's other apps, which matters once workspace machines run
+# users' code:
+#     fly apps create <app> --org <org> --network <network>
+#     fly volumes create open_edition_data --region <region> --size 1 -a <app> --yes
+#     fly ips allocate-v4 -a <app> --yes   # a dedicated address: a shared IPv4 cannot carry raw TCP
+#     fly ips allocate-v6 -a <app>
+#     python3 -c 'import base64,secrets; print("OPEN_EDITION_TOKEN_SECRET=" + base64.b64encode(secrets.token_bytes(48)).decode())' \
+#         | fly secrets import -a <app> --stage      # the value never appears
+#     fly secrets set -a <app> --stage OPEN_EDITION_ADMINS=<your email>
+# After it, the first admin's invitation, printed once (a `fly ssh console` session may have no PATH):
+#     fly ssh console -a <app> -C "/usr/local/bin/proofpane-open invite <your email>"
+app = "<app>"
+primary_region = "<region>"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  OPEN_EDITION_DATA = "/data"
+  OPEN_EDITION_DOMAIN = "<domain>"
+  OPEN_EDITION_PUBLIC_URL = "https://<domain>"
+  # The task settings, each at its default: the crossing between groups off (it applies only to a task whose relay is
+  # on, and the relay is off unless OPEN_EDITION_ADE_TASK_RELAY turns it on), and a deleted task's account record kept
+  # 90 days after the deletion ("forever" keeps it for good).
+  OPEN_EDITION_ADE_TASK_CROSS_GROUPS = "off"
+  OPEN_EDITION_ADE_ACCOUNT_RECORD_DAYS = "90"
+
+[mounts]
+  source = "open_edition_data"
+  destination = "/data"
+
+# TCP passed straight through: Caddy terminates TLS, so the key exchange is ours (X25519MLKEM768), not Fly's edge's.
+# Each connection starts with a PROXY protocol header naming the client's address (version 1), which Caddy reads
+# (Caddyfile): the app sees who asks, for what it limits by network (a device's request to be signed in).
+[[services]]
+  protocol = "tcp"
+  internal_port = 443
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+  [[services.ports]]
+    port = 443
+    handlers = ["proxy_proto"]
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "20s"
+
+# Port 80 only redirects to HTTPS and answers Let's Encrypt's HTTP challenge.
+[[services]]
+  protocol = "tcp"
+  internal_port = 80
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  [[services.ports]]
+    port = 80
+
+# 512 MB: the container used 69 MiB after every tool had been exercised, measured locally.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

@@ -1,0 +1,29 @@
+# A workspace machine's TLS front: the only port the machine listens on
+# beyond 127.0.0.1, reached by the app over Fly's private network. It takes TLS 1.3 with the X25519MLKEM768 exchange
+# and nothing else, requires the app's client certificate, and passes what it receives to the workspace agent.
+# Caddy requires the Host header to match the name the client gave in TLS when client certificates are required, so
+# the app connects by the machine's name, never its address.
+#
+# Its admin endpoint is off, so no program in the machine can reconfigure it. The paths and ports are the image's
+# (start.sh); the placeholders let the tests run this same file elsewhere.
+{
+	admin off
+	auto_https off
+	persist_config off
+	servers {
+		# the app's client speaks HTTP/1.1, and a terminal is an HTTP/1.1 WebSocket
+		protocols h1
+	}
+}
+
+:{$PP_LISTEN_PORT:8443} {
+	tls {$PP_TLS_DIR:/run/proofpane/tls}/tls.crt {$PP_TLS_DIR:/run/proofpane/tls}/tls.key {
+		protocols tls1.3
+		curves x25519mlkem768
+		client_auth {
+			mode require_and_verify
+			trust_pool file {$PP_TLS_DIR:/run/proofpane/tls}/app.crt
+		}
+	}
+	reverse_proxy 127.0.0.1:{$PP_AGENT_PORT:7000}
+}

@@ -1,0 +1,39 @@
+[package]
+name = "proofpane-community"
+version = "0.1.0"
+description = "Proofpane Community: the ADE on your own machine"
+authors = ["PROOFPANE LIMITED"]
+license = "Apache-2.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "proofpane_community_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+tauri-plugin-notification = "2"
+serde_json = "1"
+log = "0.4"
+env_logger = "0.11"
+# a hosted workspace's sign-in, kept in the system's keychain by its server's address (token_get, token_set), never
+# in the web view's storage, which any program of the same user can read
+keyring = { version = "3", features = ["apple-native"] }
+# a picture of an element picked in a preview (design mode): the view's own snapshot, as PNG (lib.rs, element_shot)
+base64 = "0.22"
+# a worktree's tasks.json opened without waiting (O_NONBLOCK): a pipe left there never holds the app (lib.rs, runs_on_open)
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+block2 = "0.6"
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "objc2", "CFCGTypes"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData", "NSDictionary", "NSError", "NSValue", "NSString", "NSURL"] }
+# NSOpenPanel and what its runModal needs: a repository's folder picked in the system's own dialog (lib.rs, pick_folder)
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSOpenPanel", "NSSavePanel", "NSPanel", "NSResponder", "NSWindow", "NSApplication"] }
+objc2-web-kit = { version = "0.3", default-features = false, features = ["std", "block2", "objc2-app-kit", "objc2-core-foundation", "WKWebView", "WKSnapshotConfiguration"] }

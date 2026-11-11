@@ -1,0 +1,29 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The app's window: its own pages, the ADE built in, which asks the app for this Mac's server (local_server), keeps a hosted workspace's sign-in in the keychain (token_get, token_set), opens a session's preview (open_preview) and a pop-out of the control view's map (open_popout), asks Proofpane Tray for a hosted sign-in (tray_status, tray_approve), says what needs the person for the app's menu-bar icon (menu_bar), lets the person pick a repository's folder in the system's own dialog (pick_folder), shows a session's worktree in the Finder or opens it in one of a fixed list of editors (editors, open_worktree; the worktree found by the session's id under the app's data folder), talks to this Mac's server and hosted ones over the network, and opens a link to a new window, a web or mail address, in the system's browser (the opener plugin's script calls open_url, for those addresses alone). Tauri's own defaults but its menu and tray ones: the menu-bar icon and its menu are the app's to make, from what menu_bar is told, never the page's.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:app:default",
+    "core:event:default",
+    "core:image:default",
+    "core:path:default",
+    "core:resources:default",
+    "core:webview:default",
+    "core:window:default",
+    "allow-local-server",
+    "allow-open-preview",
+    "allow-open-popout",
+    "allow-tray-status",
+    "allow-tray-approve",
+    "allow-token-get",
+    "allow-token-set",
+    "allow-menu-bar",
+    "allow-pick-folder",
+    "allow-editors",
+    "allow-open-worktree",
+    { "identifier": "opener:allow-open-url", "allow": [{ "url": "https://*" }, { "url": "http://*" }, { "url": "mailto:*" }] }
+  ]
+}

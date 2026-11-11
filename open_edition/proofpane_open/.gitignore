@@ -1,0 +1,2 @@
+# what build.py keeps when the image is built; a run of it in a checkout is no part of the source
+build.json

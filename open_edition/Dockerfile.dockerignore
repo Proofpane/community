@@ -1,0 +1,16 @@
+# The build context is the repository root; the image needs only these, so nothing else is sent to the builder.
+*
+!oss/core
+!oss/verify
+!oss/verify-pr
+!oss/sign
+!open_edition
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+open_edition/web/app
+# what proofpane_open/build.py keeps: one a run of it left in a checkout is no part of the image, whose own step writes it
+open_edition/proofpane_open/build.json
+# the desktop and phone apps, built on a person's own machine, are no part of the hosted app
+open_edition/desktop
+open_edition/phone

@@ -1,0 +1,30 @@
+# A workspace machine's firewall (start.sh loads it before anything else runs; no program after it can change it,
+# since none keeps a capability). Loaded again at every boot; the first two lines make that replace the table.
+#
+# In: from the network, only the TLS front's port and Fly's SSH, which takes only Fly's certificates; replies to the
+# machine's own connections come back. A server a user starts in a session is not reachable from other machines.
+#
+# Out: nothing new into Fly's private network, fdaa::/16, which joins every app of the organization (another user's
+# machine, and any other app there), except DNS to Fly's resolver, fdaa::3. The internet stays reachable: the
+# programs, git and package managers need it.
+table inet proofpane_workspace
+delete table inet proofpane_workspace
+table inet proofpane_workspace {
+	chain input {
+		type filter hook input priority filter; policy drop;
+		iif "lo" accept
+		ct state established,related accept
+		ct state invalid drop
+		meta l4proto { icmp, ipv6-icmp } accept
+		tcp dport { 8443, 22 } accept
+	}
+	chain output {
+		type filter hook output priority filter; policy accept;
+		oif "lo" accept
+		ct state established,related accept
+		ip6 daddr fdaa::3 udp dport 53 accept
+		ip6 daddr fdaa::3 tcp dport 53 accept
+		ip6 daddr fdaa::/16 meta l4proto tcp reject with tcp reset
+		ip6 daddr fdaa::/16 reject
+	}
+}

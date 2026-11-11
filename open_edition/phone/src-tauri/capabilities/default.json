@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "default",
+  "description": "The app's own pages: the ADE's UI. It reaches the server over HTTPS like any page; nothing of the app's is exposed to it. A link to a new window, a web or mail address, the opener plugin's script opens in the phone's browser (open_url, for those addresses alone).",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    { "identifier": "opener:allow-open-url", "allow": [{ "url": "https://*" }, { "url": "http://*" }, { "url": "mailto:*" }] }
+  ]
+}

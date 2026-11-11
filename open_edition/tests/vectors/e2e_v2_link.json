@@ -1,0 +1,132 @@
+{
+ "about": "End-to-end encryption, post-quantum: what the link client seals as it posts to a post-quantum account, made at random by its own sealing functions (ade_link.py's _e2e_event, _e2e_row and _e2e_talk, with pyca's ML-KEM-768 and X25519 and hashlib's SHA3-256; pyca has no derandomized encapsulation), for the page's opener (ui/src/e2eCrypto.ts) to open as it opens the server's (e2e_v2.json). Written again whenever the link's sealing changes, from open_edition: PP_E2E_VECTORS_WRITE=1 python -m pytest tests/test_ade_link_client_e2e_pq.py -k own_post_quantum_vectors, which also checks this file and a set made at once. Bytes are base64url without padding; the content key is made from its seed as X-Wing makes keys. Envelopes are form 2, each bound to its slot, made from where it goes (where); the conversation's key is a form-2 envelope of a key the link drew for this list, bound to key_slot and named by key_id, its messages form 3.",
+ "version": 2,
+ "account": "acct-e2e-link",
+ "link_id": "fedcba9876543210fedcba9876543210",
+ "content_key": {
+  "seed": "rGYDM5EbVgP6HAxiqgofxjsQljxCJbaMaCyeUcSGE3o",
+  "public": "zFGF-jerMvwn0njG7-m6MlmdYwuzLcxG4soiCPdfjCk_3aEZW6thA-VolEnPlcapHhvGF2AVcVw682e9NDArhUk9LWjHhdIj9HyfibNTl-Y3_EWwz7Sc8yKKVaCC6XSpHEVH_ajP_DZltRgA0oQyT9Bx5BjDR4YEepm7u4bNA3QjN7sk43wcybA4IJxmhjl1X2E-D6bDAvFgw4FFKLFVOoxTY7orwYGQiuO0yaaRJLwmwNOpFHdwJOQvaOFL8AyZzlCPRHRuBcOGuwsKWNWH_sMKQMIImxm2-ZuwDYpSWCwQJ0AFZdUp48dE-7ZSUyObugbOplVvrVQMaYZv5uMZTSI9X7V--pVKk0NqoxYx6CoCosZlSqplBqtMGIVF1SJRsjk1QVSlpUtzi3SLOkBnqcxZvIOA4vdUucqAGxBww2Bpl5GI3IixLFRZ7rKmqZGjOxO7khmuDCworqiPJIRxW5YSVvWY4OaJZoxtJnkx2-QD4iIjEIWhQ4NPS3bIXZgtISK7myK9FmGb46u0NHtd2vuZSXxQLJpw7loZAVydQ3GnRuJaKUFQdexE_IrFJQdsHfeqpDTDPhbKGQNXdRmRmBRlmFUSj_rAgeFZC9fAhZZzTizDIda8tgxJ1cen7QdZV5RuKvtNhuRLHTqlI6RpXwg6qoikJ2eZXFNaYOSydtGRGGh-9pgDZjS2laJn_ihLu1dafpHNAPCWDsQbQsuR2mRH6yZaYJihj2WW39oRTJyLyHBQCyo_RtgnVHlDiYHJo-Yl2-ULI7e1rFGMpFhtxJvG0sVGQ5clTrypV3uWOAgNwUirDFpySnG5opg75DGcUJIG7fsfx2bO9xdtaHHMaAPPrziz5aos2ouQPEwp3BgTaEsa8aRf_aup8qi8msywYewgltuMvnyAKlp2SuCGEvQcAYkcbuJjJmrKTTuG2cqAKOGDI8KCpVtwyKyhY2a5XxIX-mc5e1QLlbVawEabc9GLB2QWMyHNWNs9hqF0RkWrh4e6nXB4q0BBIpwnnXHPrMtvGlM-1jtNkweHZctN-rxP_edKqHFB_dilTXhe0ElPTbwMKjKtJNCWUUKSmzmoelA0FLWFMgNELeh3cjo6VGdJ_kkL2wO61cao94mAiYEzK1BrZ-iWR7xrZYijHiCqX7U4yuu9XHu-tXQyomBSBJA54ltabxxxgcZeaUgyIvIFhUy0Qls-IalNCMAB8_CkdgyBa5iAiFDB_HZcCNptGFgiGQMidBNdw8oaU5lKNZJCI7HL1QXO9ZYGOeUQvbYNkxw-ntfG2kQWodPB7sRF1IUqn6FfRTaDjWq4ufKzPUm_IKwI47sckUMgAHFA09a3MDgSniIJVPhfbKZ0-biqHMszHjN6QEhLqKOmbktnxoctWiJNk0kLTYuLSNRG6ePLSzt1_nNx3yyTbVZdJaaLd8WXsQl84NFmpKDO3KeOESCTd7lsiQhqL2InCzNqOmlOXBV2aBAG4xVfjVKKotSQBXSm1ux98QdrPvOI-OxAzqZ5i7e5Jqpvgxet3vptbFUs7QNRK6uhH1KBHLYhvqJ4fxf0rsuyTemH-CiyAXouE_s55Sn7E-zNI0v2PGAgHG4ibAm3PTshb72r663NhpVCSA",
+  "key_id": "10c798fd4f9d76d0332ab8ea40d88e68"
+ },
+ "envelopes": [
+  {
+   "name": "event: a step to the owner",
+   "where": {
+    "path": "event",
+    "kind": "step",
+    "mirror": null,
+    "ref": null,
+    "client_id": "0000000000000000000000000000f101"
+   },
+   "slot": "proofpane-e2e/1|acct-e2e-link|fedcba9876543210fedcba9876543210|event|step|||0000000000000000000000000000f101",
+   "plaintext": {
+    "text": "Sealed by the link.",
+    "session": null,
+    "said_at": null
+   },
+   "plaintext_text": "{\"said_at\":null,\"session\":null,\"text\":\"Sealed by the link.\"}",
+   "envelope": "e2e1.AhDHmP1PnXbQMyq46kDYjmhlhDeT9DeDW2tSWi5eD23BeJXuxVH6j9fRaM2ANoew95nfOFM7ZkKWRLgjhVeFZJkBmzEnSGVskb3N-ozvGm0UJTOpdWG8V7bXH4eNW8-sO38zcqO41VybT2YLi4lwgoYbNRCxXUFDIBnyl2NxVCyGhb0TrHd0YIXuhyS3ot7u5DtgDzfr4kXz9wOsTvgZpIjnu5JRsBx7kWulfAEUWwwEFqT1LBxhYmaKrmpnwJfgKcvHXN6Pbj1bhjE5HlcFnyQiUvNEE0FBT8YBhi10AjsFVTRYb_yECmLWkJZSCcvn3GCypAdoeeVeYnKlzcWccJlV-e3r7vhTOx1rgmOh1v9erJg2C6uZxRxsGytt-8nwZ6UrDnfDAAr_Q-9jdqeKs5z3HOYb9pGTnNDutst2CWMPd3O6BCJkPvTRnEXRWahsnLEnOfnHWZciyNY_Cu4CNQYpX09Mu_1Ha7vf6EgtKQbCeTBpOSvW0encz3zydjJvXASYzMytdQER1lVU-NwAzqQKCCkjwiQASJfwuTvmrSESkmO0-Ru7eECZ_1xukWzd9L_nhfsvY6SBGy1IyXMicVQu_CwDEIKnD4LePd4-wNYghCODQu-GBbg9qRFI907p92RwnrrUXSWjJm84MsZmRvJsLmZ9yv2OGhHRINcTDv2NZ19WKMBPTYZ4b4Y59Ykv0XqkaAUc40ENEvOaGxiTLPV_-Uy_jEUPGRZoAGWsUwX34UWh0Y2BRtjG5ltSkHEuf27g0hATtrqPzDZlnRRaMUd-kWmnvKeRJQhJVHHmfwqTQEm9QAUBdoaOl8ToLaXA6F-QLALlx1lU96goDMyDbLr-pRvAkfJRmXrIqLBxptM2xzEnVF0lWCNGT16E9W4lmBlt0v8vZlNUr30INnz6SPtiOQRhmm4hq4M4b8wMtbl4zJsxg823aLPZOXKNzcHV1Z7vSRyoUfdWwbVUKqSrSQPzVt5UugWyYSnDCSqKVZd3C3VfDUOsW4fXWLbzUcBO8CxruFQhTqbe7CBJibAdsBAW1twbQb4AryhqILYJ1YOv5vOLasEx1OrjH5zCRScJTI1owywYYc6qkGwqi3XH9B9lwtpZLSwMQYLSURL5cC6nLrEwz9P86jYrd8N2luzwiZc60nied6LwapOj83UQEozQaCrPfA_CxB3RrcBIwF7qtwG33_r6rz12VvjnzzGsGYX_HXvzyVUhRyTojhBvd084U2uFeB4gv62Cn5uQ6e7tOH-3NJESHXJms9SqmQ2FcVOuhwNbMaTFtMuh_9qEa39BRvhnUDI2AJfVDHRThQRLFezhi3kll47Csf2uGD2Y76b-uyyyPSyiqApHUK8UTFNEixp7YLkzw9FTr2E2ST4upqdG0QUb1lTToI5UR3aUhMO_jX3em3jXE9psZVvsVR4bYVatO_KoblOu_5hrhbT5lv634oL1j1VaOjWWlMPN0j3U2UamcqyIwafB5MPr4oZyPVhqufPscLMe_xjrIu0GNbG1iBnqVEbLuwABL8a-5QLcu0r1dIzrbFzdd24dCHP4p-jdtRq_AzYvxaeBXv1NSbGNSPtOj4PmkkRThRoAUceOt2sSx513BuNPyNLcIQXm9maMOfLWJw"
+  },
+  {
+   "name": "event: a mirrored note, in other scripts and with what JSON escapes",
+   "where": {
+    "path": "event",
+    "kind": "note",
+    "mirror": "session",
+    "ref": null,
+    "client_id": "0000000000000000000000000000f102"
+   },
+   "slot": "proofpane-e2e/1|acct-e2e-link|fedcba9876543210fedcba9876543210|event|note|session||0000000000000000000000000000f102",
+   "plaintext": {
+    "text": "caf\u00e9 \u03bb \ud83d\ude00 \"q\" \\ tab\there\nnext\u0001\u007f end",
+    "session": "s-0009",
+    "said_at": 1790000000321
+   },
+   "plaintext_text": "{\"said_at\":1790000000321,\"session\":\"s-0009\",\"text\":\"caf\u00e9 \u03bb \ud83d\ude00 \\\"q\\\" \\\\ tab\\there\\nnext\\u0001\u007f end\"}",
+   "envelope": "e2e1.AhDHmP1PnXbQMyq46kDYjmh8IqTQtE_ne7F5MDiJog25quBR1ZvLPT8sM25HmKDWpW-uKPTBKKzjwPVFIhXs0zD1U6QngX5uHGCWU2z21sBFwPRKp7LKvY0dLupAAM8Wwwv9Vg1xPJMlyLXQtKOC2nqLEXMmuQBMjzspZZLN0A9HMh-y6QcCOmDwLTfPe-HhU0s2ARFc-SiZn46J__VlPRP-TuvUUvf00CBYPVtI5XZJNMVolSkdYjeTy1nAhhkruXZFJJzkRKk_g5wlv3LWkglrULORw2FbEFh73s7fmL7p8I088MiOwHxEmnzBgIXBr6Sg_Vx3Ht8kr5SsYq6ScNddWZs_qNtDAWrB8Lcn4hgTNLW0lxjkhxRBKEPNoU-keG3B5H3I_MtUcnh2Kf33XxDgrZZtFzdE5XCeHcuu8Rhcxf9y-aCw2fM81dsT8kVhPBe0ZXx101mwB4gjpsN3s1n7EMvCUrY6uRX1aP85AB4p3P6aulgdQivCe_CZdsNcqgXuTzAlAc27HzaQgiys6rc4ImpIELgxJOGAMLqjSRlI-8FXknz_Ud9tc7n93b1O-r0YYt-nQ1yf5cKYKur1OqC6rwF--r7QawDWynDICPdvHrYP0tmtqheiiBTEuLTbjMX2LsxOFzGvg_dA8cQFYDYZeeHmV-xM7Aa8Y8vugU17WKiAK2HeBng1vhW0BAayWIr5cLp5ielc4w9qEPlXPWgqQoJTWye0KI6Vm_0qS8jJpmnUK7jepOrdem4dN3IdK1vDm4IAZu0utCfZAwG_pEON0xo8yT39m_2kwak9hnQM_DcE0yY4PJSfLgZZY0xS0DjBjnJMjhH770xwITAwMNgVIwPc9li2SW0qUhaJWniiXlNvnVMBzygXxnvNOEdrrI4M3mix06aRp8sV543Xx8x7_kEq4WEt9FXIH8usYPYoXomjyR21NgDZg4f445nKiOUB4uigBRaDkVKcvNu7HkEsS-s094IJiJ4TveC7Q5ii-t923kRfF994-2xNh8rTOxncParBcc9ecNw3VZSOq0c8MBG3FF-KuJ-NMI-myRzBggZOYWon5QJo3m8s-Su18fnkM8IQVnN5tYc18VkNPK2sYdNAXd-MmweSbzzjRY2mCCNbl5fp83Qq_6rWPUJvWuLzeFkpViz-uOVVRv6oK0tVguDewghRvpZEunHb3CsZSUaRCiYh1_y9UxeiBulRD9F-EoBMMoh_I1e9nUMx7w-uiinAJXqEE9W1GWsQGqUrD4QZ9UQ-ntuM82PlxdjqUeGtRGu-rrK-o2ZMWJ0O2sN-IdEaIwNXevzawRU59mEQg5wxpacwreVeiknLAKf14Y1OI4uq8TrRz8Gon_DeFRWnyUfyAKMECX0_qzZiOjCk5rnbYw2zIQoEGQ33rD4vLnivIRVQ63Ayb9o_kBYwXEwbsN-SO5HGJEE5xr9JzNBIMlFycQVY_01sW-tup5JFI-te-jKsV5ThQw_VzSb0JoYSbbE7z95zAuHUV1ROgFptlrJJodUH_-b21Sga0-htPHqcz-CYQ8Ykziudg6eV0g8K-uVHi3Q-fiFgaU2TgQvyQ1FEE-m8hpMO3__BkZ4Kif5JOl-rF-PiUI02Uh8EOw4eTXolvYUxH0bqiAzjwGd9WTpOKFZ-VJDxULwwbfwxdERiV80DE3qJMZH_bxKxlv1KPzo"
+  },
+  {
+   "name": "event: a reply to the command it took",
+   "where": {
+    "path": "event",
+    "kind": "done",
+    "mirror": null,
+    "ref": 41,
+    "client_id": "0000000000000000000000000000f103"
+   },
+   "slot": "proofpane-e2e/1|acct-e2e-link|fedcba9876543210fedcba9876543210|event|done||41|0000000000000000000000000000f103",
+   "plaintext": {
+    "text": "done: 3 passed",
+    "session": null,
+    "said_at": null
+   },
+   "plaintext_text": "{\"said_at\":null,\"session\":null,\"text\":\"done: 3 passed\"}",
+   "envelope": "e2e1.AhDHmP1PnXbQMyq46kDYjmgnqcDUMc1nULdnESPeHJQzHDPjeUYMyg-BXoR1hiNoZzx9VHRWqweGgYe77rVfZfY30svuEcnCVTFk35EyQm3LIFfOPC1zYL2TKlo7W3NTJdOibgu-r60DtbsRG-q6UBYZIyXYgXXKKezUxzK9obxhpOOTCt8OyBIzY9-6Vzb_epq9zCQSMjFr9iKNaNfOBWUMWrhc77XZSTCawesYiwWJUljfa76pa4u5b9ecO62RnfExn4ZHf6SEYOw731zkgkmvnIYDJLj0EIVDJZ-6juMPCSySvJ6jSDxVimP7yvvIrGso5_4onydt7aH14Y_g1wD50ZV6wSSGNEok3gq55nDGMP6WJjFlxxeJ4cm9bUgvrVpnbQ3Kl4M_U6a3LARcGrN9NH2h80oFft5puRE95zjbahnPLKiqdWp2_IuwpAlIbYhWA9-D3T34p4BCuMRborPXRxF_KC0TtNNUia5yO-9u_ol2ZDtAKr_eprpcbC9NLIbrFrG2cQz8sjKi-5plU5JDgmvouEWCL0aCcPIPvAqAdVNKVIFZcx1mT3yIl4F6l7PJJgBP30pp5cXS-kYLkTv_xqDOl3k14J7nedxj-SyyB5LIdnJHVg2A-7n4IWu6u_tUv5o2_K5Mz-9Hev-3ag0Dn6F6bo7y5LyRre0HIAhVIsjGz_LVrE9zd7e1EJnGzqDldu72JLza6D2bVL10sukJ24EZ4ZJyMD2NRlZhXHBAdUOiYF2YT1EOGIWyg8yWvtmQX0vcXbguttwqRZrup7UaQDfu6dw98SzuWXqBeivMtwnGrQPIkRzufrKRBBtbpSet5Cxrqp_zVM7Ocw25xYw3eiJZpervhisOxzm5sOEJ5h98rY0unKm5zGfe3AqZv8vO6bLC-0B1_TlNm6AAEHwI6KH9-RWRt5hXQ8Aq1Rz9nYRp0WOW3QKYyekDqdH4jHSqRIjfa44-0rFjDPJTE62S0qpTEcfVLgEhEmnVIKCmX1nRYjsS0dPOqmmJFdyVhIlYykP8x7PuVqbBehoHf4ri-Rug8Bq1JukhIw_TB6r11Hj2Q6w5afMBZCQTTB0WtbD9Sg_gBO7qlWC1kZuqBY1ApUOyNTGHQC4hVtYBaVlVtfpZdI7w0mxlQmW89RFVGbywH6uqT0O2W2FV9gZGTsMAfGzYaxTwSbzFeDMGsiIAIA4L16myn8OephHclfOxRufm_hjFw_er-bi55BnAgdyAvCU21evbqUVRY1q-v0jhdrnQLqt6ah6mQpTzNb0H5foeHY-xzeJWSRxrQH0pB6s2ctg8BLsHBdhiqv-mMe-gOBEUwX6pnBgpSyHUg9QsFfC4bKnZ1XgOkIR6IaVccW5pX9XBEZOsiJO2Uk7eST1IkVcpK3vPB9TViS4O9O2aM65Z51T_RaiK7eUYNBeK71w363FKbAP1X4xbOclCcf4fZIu1W8FUd0zmQDQDtVIpizuMn-6cFcrJYdj_UF_Dletovy7kFC8wok8T2dhCSftnhk_kRFaNMa0Rhuk79WeCkP9zhgILyRwqutBHEJ4DEVijFfXmvBsaGFVhhn4O5ZafnWiaPwia6lUwm8Y6YpgwZSgjp1zEIi5DSegtFPsxg4TP4tA"
+  },
+  {
+   "name": "history: a listed row",
+   "where": {
+    "path": "history",
+    "session": "s-0009",
+    "withheld": false
+   },
+   "slot": "proofpane-e2e/1|acct-e2e-link|fedcba9876543210fedcba9876543210|history|s-0009|0",
+   "plaintext": {
+    "title": "Sealed by the link",
+    "project": "~/work/link",
+    "branch": "main",
+    "repositories": [
+     "~/work/link"
+    ]
+   },
+   "plaintext_text": "{\"branch\":\"main\",\"project\":\"~/work/link\",\"repositories\":[\"~/work/link\"],\"title\":\"Sealed by the link\"}",
+   "envelope": "e2e1.AhDHmP1PnXbQMyq46kDYjmiwyxviRj-gJd7ReDDsOmp0Ti2QVKF-9px1jnOd3z-vk-O94bc72tFSF1Z0U7ElKWhE8-ziQG6k7-0KqL4Y-530eDOvYT3WwmqjU6JI9wsJ7EWTjLRiu6jQyWhdjIBKPUn03V1Aqdlb3q3FGVB-Jd873nmYZNZOKaU3eB-Qkfh9QAFK0XPI0a-d3fywJDFckvjFcHrO9OTPGwRO1RJcjXEenShgOYPKYWh0ifLT7O0v_5ZHYL-YF4lZK0cMj43U_b09nTaHpY0SR38qvGDjjdSqYQmtlRrZNDYCVpjOGtf1DYmd_H4eleTyOUJy3KeY8YpLSwwJlNc9rm8RQGOJmaSMq0Z3QTo9wubzjWMGIYwyeE3a58GqJkpvhSDc66HZIXMcSNwksgz2vV6brrsc6ZTHxVStuYUUlT_ommpyHWsd_pPs1XUaT2nhZFLlxC8nN2TndWT2G9rIYS9qdW5xDXQcUHSfrufdsGj7wiypmm0c-lcpFshJlVDuHzBFg-P5VaAUHOyHy2NLHE2mnFbTHZ6wxJBIXtzCqq-QvEpcXacykUMiB98Wq0Dqm433-yLTr1W7yDr3nLq6_YGFw_XCP2dfxG6pk8eDn6FJR2rR4cc4vpRL4562-gdvyPQZEzpXF5MlU8elgeXgEHJgOadbhmKRSqYlOcZwa2Ldx8cdGkzRJRFLLqT6jdao3Jmd6VM6ySBp5zh8474_TSWDzLEOCl8UnhVqxMsgKvjfiItwJ2EA2ufazXQMFlkylv73k_N0SKnQQ4IxLh8LjSdilCerLpggApZSm35u4wbqVixOSH9LMEKOInr4L7bQtR62Xl7EOviH6CK2MWw30WSEKH15VvjZF3bDF5naiORQfDuoJJsOoCc_ZbGprRpHVBy6RJjF_oYkM2jK-ZamXiQUrFsh730GtUZ3p0XiGZz0Ex3LA_itc8Axw5Nk48qG8UL3vzNo0Y9IlEQtme_QHqKQrhJE_QG1jbXI_sqFpz6mhhtM1Xj1ubtmdE_qtLzv2jnt_lqToJY2P-MyCb5i3lpZj-6QjqVBlScQoDl58l5j4Nkq5iKBrqVTPVbZET5cywS-jyt_dEi7A-yJ6oRyCEWrUa9IXmQqIfy1PCPpXnpEWaO0YqlWO3JwB6Tdgc_GIJcT6HKJtahIUVw1CGkydYX-EmnKgxqomK46cy7mMxYFgPcX3BoS2Ycz64K6lMdrbGVENQx1UMlrFdE3R0RNMjo8VmqxjudELTLuFwISTUsrtvP8HjhrWDlRS1XNrqEZXxW_u5_ZlJHLZw8vIQXLGMRz61g0Epy3dnpV6UD_5RbsnDLYDccSuBe_4qwqsabrrv7V0jgITF34ey6PBaxUWWXLv3tSqi9cS4vH1HtcQ8O4r59Na3d558h4FcLg5bHkMk44Dc4ztW3WPlprVsGM7-elUV3vS5d2ttaH3jx6emjcIclqtAUd9qHiM_gOK5psV7pWk1stx7dOHe8-yX2n5IKCkyPYL_VZa96S9UUN13EZ4_DLqb9h6xbbQwJ9fi8gss5qCnjoU-mhEmV0Vj96pbIDoPyU44_nuLhWtnLG7DKGfgm92jcwXR8_QDlDu9uo4F0mDi1w6TXmlrlRftvOtbQa8ezwLg80KK4ZuoMc09k7MoeGQb-iLA8sJgDCzsAYzJlXa6nk24mg"
+  },
+  {
+   "name": "history: a withheld row, its project alone",
+   "where": {
+    "path": "history",
+    "session": "s-0010",
+    "withheld": true
+   },
+   "slot": "proofpane-e2e/1|acct-e2e-link|fedcba9876543210fedcba9876543210|history|s-0010|1",
+   "plaintext": {
+    "project": "~/private"
+   },
+   "plaintext_text": "{\"project\":\"~/private\"}",
+   "envelope": "e2e1.AhDHmP1PnXbQMyq46kDYjmgR4OJ1AxFcL1_kYOk5xP7klJH1HxPrierGoeKAwnsf_8O75qgRMi9EfzpBnRT7y7DeoqqH9b7iY5KrPlcVHwOWusGBDje9P-eOvm1z2i0QIrsb-VVfbeFsaFRlQsYvCpRfkRyfRy3i9r1gEYOCQmCGnKp2ZV0hiSj_O4Wb6b63Ngv1M-fbpm6qz8d5gPptfJRtlZpxx2PsbcCIW90XNaK38OTFP4l3ExspQG5ug8J2FfRIP4X9ULlPDd7WvawE2EW17_6w3-RNcbs-GtWl8WUEjGkVZaxIjId_3lNLw68JGqHfb9Q_w8-qHT-DocryxlDfGAild7J1cSfMQTvtkxb03pQHr__zk1ahTi1p7zlJyTe_dFbLCjzXcyqArhqOWULyeEqhXqynDMaba2_9-BqKPe2p986cU-vA4Ul9E3VboePuwhZundJjOWfTZXaYc3JvHFsxhpYYaxUiOwDO2TeMaZFedImhCc7RL1zKyT6ty6eopc43vxGTdWAur0uWpM12-DYsQIvpqORI6ENXwSW1EUzAZlO7Hjm0ofC7uzfpXbFjPu8cCJUUIqh8clxerW8d-4bglszavqMDJL4ps1Gq1S0gwk4hTq7LnZcQ5maNRad8UkEjH4bbHY92BEZlKwOC5VQTf01agnIvXEl53EsBj0uXZxfWClppmp3XYTrxuXU0v7sTrEtnca1Opq9hqiA4l-c0yr_Q2Kzi_tWAH2rwSi0RaKkiIY5wqoKmsuQVRvExCEu4UXHINDWtJGHNsQ50cJpCw0prPrvyKJAD5fjz_aQgDXVwNxWGJ2esaaefMC3_MAG1ECNsThXAVpIS8oa34HxhuvD5PunVWKAbnjA8u4A6tTzIAT7hNFa0hcNCNi0kCGbhQSPnrSupj6L8z3ki3S6OYXd1s-RxM4y7XaNHNJeKK6Y_KrKhL0Q1nf2IyDkB-u6_Iste0kZvcg_RUFcZjXFWTXqTYLh3pa3LNfo-chk9_RqVd-Ic5lnyM5YFG3dSNzlhlvb7COSI9KmnaaEQbeiTTNgbsiGoxqBioaLfL0KpZgDDwtDL25oq07Tyq9GQhsXAAamHxJfH30e94eAmSsBsrwk02eBr1wsiJJovrq2dNegzk7j4o_w0nRFO6_hB5d8tOkHR0LksquTVmDnWmupN5N55FwPyU0YxuYNfzP7akbNy9hDz58hnFzx2O1qHCa5U9Yqxsxt594FGAVvhUYrdcCrTfw5LMUWI4p8PakeK22dT-l9Y_pfvo1WWwWU3cynDDkbY03NlDe2nwuZRsodnRnMd_rMzoCAa0ur7oJF04rJQWQXCE7A-_6ezZ9wDdCYTcmPxPS3MPpypN9drMS_mFLRgZPFo20-NQ5oQI3W4BZM8T3QdHT-r-MC5n52ByYr3bRZE10CckFtSyVaoGpToFH6UK1-FZ5idgf1e2HX6D8QTEqpbNsSCpkYr4I2lZtlQD-Jj1YULs4Mf1WLRrHToAGxnz9q0-jNJmnsZUzdCu4GKcZhjxMhHo_9nCzyRU3OFf_024jcMxapbczqyidexDlY4Tp3_3A3fmO1ceV2F"
+  }
+ ],
+ "talk": {
+  "session": "s-0009",
+  "count": 2,
+  "earlier": 4,
+  "key_id": "62abc63e6578197471ed94e284960452",
+  "key_slot": "proofpane-e2e/1|acct-e2e-link|fedcba9876543210fedcba9876543210|talk-key|s-0009|2|4",
+  "key_envelope": "e2e1.AhDHmP1PnXbQMyq46kDYjmgjvt_IWQvayGwahnXl32FkM6c0YrtPQ0Aio98TwjY_4O9WlGUgHO3EkNsg8-ZZ-q9eubvxefkuW_0h1OYdBq8JlbQFAnBqZv-7zxNsaJdWt6x9yf-TcB7bG4KIahNcbYk1W4K2Lv9sWenGFTXo_FnoIElNl5TO60AeAhRRIefA2v9pkpAwyx87rV4DRQp7br8sNkqamD9st3qX2i1sqzt3WYHIbtCuzcGt93Q9UAJK7jbpuQa55526q9C6AdV4l53vRjOgHLyYJwn4GNhZZcuOijwF2tKhmssUVyG9sNF_mmdHNfsKO3CNE8_axYa8GvJhdLZiLlUj6YsOsrGcXWTBwItjXrmdGzqFFnX3dbFNN5E9Lw6UZXr154iGgA8-VMQQkQ4qMx_wS2vFZxxd9bRlaJ3Bi9tpJzufn0u74p3heIXpZ7LNYHW8oX4NS9D4-Rlkx4ZFDs9TfEl2v6TLaBTHpE1OXMYI0SZCtAcEKVY170k7MgNpcjO7IpoD1GQVgmwC71g0XLtS_RB0Dkrmk5N_CI3LK0mA7AMb2ajA1SaAWD8YFGSlq8s9U7rsyQ5dl7f2e-Hsp7n4lqJjSCQewNk719O5xCyoT-l4jYwp81CEaVmJGkkxCOHo_neKvLfXlv0NOsBMVwl4owflICIVyy7ZUB95dkuuKMowoM_ez5cGauKEaRiF-2-FLJMJKGeLG1uXOAj25RFHBBhIO4eZ4tWqQSvNXq5vf-xX6LOepjPiQNAtqk47TdW2QGQU8iGY60AWH9S17tpulC6gNaWAkdksBlnmYnB2b8nF83VKJ_rT-Qpc_dIWVpuPEIgw6eRrzloZ0BezLUs-Q8PMERGTdHpn8tvQOhbzWw7PTQTPsJjoeQUV85j8ym86nsZYTq9VsLuv1w7Okrz4VNRKtoKVnaB4WDZJ86KrfYU5s6o4n6sAs7ck9u2cysv_orKhaPwU8BkJGC6LR2RZRHFEjeCJJGde4wJ9Nt8WAxYEYG_KraeK9njP02E9u4N8nqJSAKGq_dPhqO9MgzKMepjrJfYJ8fjrLTnFReXhtv063qwkTb2M9-eJcmgvmGVBKwBJGCaRUIGjkkWFJAzh5hDQX99znihZ6BpIHBpcmRHredI8zppJVDOdKRrG_gXaMVheAehVKoQEzyu1sjuANZSW6gR6VMMMk0BCinjLKwFQV8M01NWi7lpIbSab3V_tih7vuVxMcyXod7_StKi7ObbCxyS6POPdDtFpcUMa5fY7oPnqr0T76_r5eOQzdfTYIkTIQO4MCZCcxVHrp0BmXjEc0YQRVUjZcLiiaAKaJv2rlI6nAKCH1ecONkUH7KpwUp6GqioE2zKRSl7CT_jTZJ2CSyaUJkDrJr9d-uooYt2DOdhQdwRKCWkS6BGXaGBFWrgtfXYzc5Owx29dwf4_GXT2tdYk7yBaB_ufdlcidqX-3SnsXUfzDZYmEDImcZ3i4_VJNoX0dignC7R0DVAvitNt_4rgRx5GdmtQbU8xTVCzfVAVbJZQdl1bcehgNqSWE_ph7Eq-Shg2j0d6NPXeywGNipXSwqBVgVJkMDDJOnAbWIc7",
+  "messages": [
+   {
+    "who": "owner",
+    "at": 1790000003,
+    "ms": 1790000002500,
+    "slot": "proofpane-e2e/1|acct-e2e-link|fedcba9876543210fedcba9876543210|talk|s-0009|0|2|4|owner|1790000003|1790000002500",
+    "plaintext": {
+     "text": "and the tests?"
+    },
+    "plaintext_text": "{\"text\":\"and the tests?\"}",
+    "envelope": "e2e1.A2Krxj5leBl0ce2U4oSWBFLVOqJU2qgE-Z30qBY1qM-F-P3_CY3ZbuD-2N2iYGC5DMROdKcW_vz9oZfJ6u5cc-ImCzKcug"
+   },
+   {
+    "who": "session",
+    "at": null,
+    "ms": null,
+    "slot": "proofpane-e2e/1|acct-e2e-link|fedcba9876543210fedcba9876543210|talk|s-0009|1|2|4|session||",
+    "plaintext": {
+     "text": "All 58 pass."
+    },
+    "plaintext_text": "{\"text\":\"All 58 pass.\"}",
+    "envelope": "e2e1.A2Krxj5leBl0ce2U4oSWBFJVO336Rkha8kfSfONYpcC6eeZe1F22TG70XT0oGG-nMEw_q4XbVyVVkDkBVCrfjPMOIjQ"
+   }
+  ]
+ }
+}

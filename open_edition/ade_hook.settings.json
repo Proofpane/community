@@ -1,0 +1,50 @@
+{
+  "env": {
+    "CLAUDE_CODE_SHELL_PREFIX": "",
+    "CLAUDE_CODE_SIMPLE": "0",
+    "LD_PRELOAD": "",
+    "LD_LIBRARY_PATH": "",
+    "LD_AUDIT": "",
+    "DYLD_INSERT_LIBRARIES": "",
+    "DYLD_LIBRARY_PATH": "",
+    "DYLD_FRAMEWORK_PATH": "",
+    "DYLD_FALLBACK_LIBRARY_PATH": "",
+    "DYLD_FALLBACK_FRAMEWORK_PATH": "",
+    "DYLD_VERSIONED_LIBRARY_PATH": "",
+    "DYLD_VERSIONED_FRAMEWORK_PATH": "",
+    "DYLD_IMAGE_SUFFIX": "",
+    "GCONV_PATH": "",
+    "LOCPATH": "",
+    "OPENSSL_CONF": "",
+    "RES_OPTIONS": "",
+    "PROOFPANE_ADE_URL": "ADE_ADDRESS",
+    "PROOFPANE_ADE_TOKEN_FILE": "/absolute/path/to/home/.proofpane-ade/hook-token",
+    "PROOFPANE_ADE_TOKEN": "",
+    "PROOFPANE_ADE_GATE": "",
+    "PROOFPANE_ADE_WINDOWS": "",
+    "PROOFPANE_ADE_WAIT": "",
+    "PROOFPANE_ADE_PROXY": "",
+    "PROOFPANE_ADE_CA_FILE": ""
+  },
+  "disableAllHooks": false,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/absolute/path/to/python3",
+            "args": ["-I", "-X", "utf8", "/absolute/path/to/open_edition/ade_hook.py"],
+            "timeout": 90
+          },
+          {
+            "type": "command",
+            "command": "p='/absolute/path/to/python3'; h='/absolute/path/to/open_edition/ade_hook.py'; [ -f \"$p\" ] && [ -x \"$p\" ] && [ -f \"$h\" ] && exit 0; echo \"ADE: the approval hook cannot start: $p is not an executable file or $h is not a file, so every Bash command is held until .claude/settings.local.json names both\" >&2; exit 2",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

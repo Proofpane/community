@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proofpane Community</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css">
+<script src="theme.js"></script>
+</head>
+<body>
+<header>
+  <h1>Proofpane <span class="tag">Community</span></h1>
+  <nav id="nav" hidden>
+    <a href="#verify">Verify</a>
+    <a href="#ade">ADE</a>
+    <a href="#check">Check</a>
+    <a href="#key">Public key</a>
+    <a href="#account">Account</a>
+    <a href="#admin" id="nav-admin" hidden>Invitations</a>
+    <button id="sign-out" type="button">Sign out</button>
+  </nav>
+</header>
+
+<main>
+  <section id="signin" hidden>
+    <h2>Sign in</h2>
+    <p class="note">This edition is by invitation, free to use, and carries no service commitment. If you were invited,
+      open the link you were sent.</p>
+    <form id="signin-form">
+      <label>Email <input name="email" type="email" autocomplete="username" required></label>
+      <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit">Sign in</button>
+    </form>
+    <p><button type="button" id="passkey-signin" class="muted-button" hidden>Sign in with a passkey</button></p>
+  </section>
+
+  <section id="register" hidden>
+    <h2>Create your account</h2>
+    <p>Invitation for <strong id="register-email"></strong>. Choose a password of at least 10 characters.</p>
+    <form id="register-form">
+      <label>Password <input name="password" type="password" autocomplete="new-password" minlength="10" required></label>
+      <button type="submit">Create account</button>
+    </form>
+  </section>
+
+  <section id="verify" hidden>
+    <h2>Verify a change</h2>
+    <p class="note">Paste what a pull request says about itself and its <code>git diff</code>. Each claim the rules
+      recognise is checked against the diff by a fixed rule; no model decides an outcome. A claim nothing here can
+      check is reported as unverified, never as passed. The result is a Verification Manifest v0, signed by this
+      deployment with ML-DSA-65 and Ed25519 together.</p>
+    <form id="verify-form">
+      <label>Title <input name="title" maxlength="500"></label>
+      <label>Description <textarea name="body" rows="5"></textarea></label>
+      <label>Diff (<code>git diff</code> output) <textarea name="diff" rows="12" required autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false"></textarea></label>
+      <details><summary>Repository and commits (optional)</summary>
+        <label>Repository (owner/name) <input name="repo" placeholder="pasted/diff" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label>Base commit <input name="base_sha" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label>Head commit <input name="head_sha" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      </details>
+      <button type="submit">Verify</button>
+    </form>
+    <div id="verify-result" hidden>
+      <h3>Decision</h3>
+      <p id="verify-decision"></p>
+      <table id="verify-obligations"><thead><tr><th>Id</th><th>From</th><th>Class</th><th>Outcome</th><th>Claim</th></tr></thead><tbody></tbody></table>
+      <p>Manifest digest: <code id="verify-digest"></code></p>
+      <p><button type="button" id="download-manifest">Download manifest</button>
+         <button type="button" id="download-signature">Download signature</button></p>
+    </div>
+  </section>
+
+  <section id="ade" hidden>
+    <h2>ADE</h2>
+    <details class="about"><summary>What the ADE is</summary>
+    <p class="note">The control room for the coding sessions you run yourself, in the cloud and on your machine, in
+      Anthropic's or OpenAI's own programs. It reads the branch where they pass work to each other and the
+      repositories they change, and shows what each session did and what it is waiting for. Each commit on a verified
+      branch is checked by Verify and the manifest is signed with ML-DSA-65 and Ed25519 together; a merge, the first
+      commit, a commit with no change and one whose diff is over 1 MB are recorded as skipped, with the reason, and a
+      commit that cannot be read or checked as an error. Where this
+      deployment turns on the hosted workspace, it also runs Anthropic's and OpenAI's own <code>claude</code> and
+      <code>codex</code> programs, unmodified, in a workspace of your own: you sign in inside the terminal, in the
+      program's own flow, and nothing here reads that sign-in.</p>
+    <p class="note">The workspace's gate holds Claude Code through managed settings a session cannot change (read in
+      Claude Code's text, not measured: on a seat whose organisation sends server-managed settings, those replace the
+      image's, so an agent's own run and a chat there run without the gate, while a task's attempt keeps its own
+      callbacks); Codex, Grok Build, Qwen Code and Gemini CLI through files the image installs as root, which a
+      user's or a repository's settings cannot turn off, each in its own way (the manual says how); Kimi Code and
+      MiniMax Code only through settings a session can change, so the gate does not count on them; OpenCode has no
+      hooks. Measured on 2026-10-12 for Codex, Grok Build, Qwen Code and Gemini CLI, on a measurement image built on
+      the release image's own base with a recorder standing in for the gate and each program driven headless: no
+      repository's or session's file left the gate unrun while the call went ahead, with three residuals the manual
+      names.</p>
+    </details>
+    <div id="ade-approvals-box">
+      <p class="row-buttons"><button type="button" id="ade-notify" class="muted-button">Notify me in this browser</button>
+        <span id="ade-notify-state" class="small"></span></p>
+      <p class="row-buttons"><button type="button" id="ade-push-on" class="muted-button">Notify this device even when the page is closed</button>
+        <button type="button" id="ade-push-test" class="muted-button" hidden>Send a test</button>
+        <button type="button" id="ade-push-off" class="muted-button" hidden>Turn off on this device</button>
+        <span id="ade-push-state" class="small"></span></p>
+      <h3>Approvals</h3>
+      <p id="ade-approvals-empty" class="note">No command is waiting for you.</p>
+      <ul id="ade-approvals" class="approvals"></ul>
+      <details id="ade-hooks"><summary>Hook tokens, for the sessions' approval hook</summary>
+        <p class="note">A session's hook (<code>open_edition/ade_hook.py</code>, a Claude Code PreToolUse hook) holds
+          its gated commands and asks you here before they run. Its token can only ask: it cannot approve anything or
+          read anything else. A token is shown once. A hosted workspace's terminals and chats have one of their own,
+          named Hosted workspace, which this deployment makes anew with each new configuration of the workspace's
+          machine, revoking the one before, and which does not count among your own; revoked here, that workspace's
+          gated commands are refused, not held for you, until the machine is next started from stopped.</p>
+        <form id="ade-hook-form" class="row-buttons">
+          <input name="name" class="short" placeholder="Session's name, such as the Mac session" required>
+          <button type="submit">Create a hook token</button>
+        </form>
+        <div id="ade-hook-new" hidden>
+          <p>Save it on the session's machine now; it is not shown again:</p>
+          <pre id="ade-hook-setup" class="copyable"></pre>
+        </div>
+        <div class="scroll"><table id="ade-hook-list"><thead><tr><th>Session</th><th>Created</th><th>Last used</th><th></th></tr></thead><tbody></tbody></table></div>
+      </details>
+    </div>
+    <div id="ade-links-box">
+      <h3>Linked sessions</h3>
+      <p class="note">Your coding sessions post their status, questions and a small checkpoint here, and read what is
+        addressed to them, through <code>open_edition/ade_link.py</code>. What they post is information, never an
+        instruction. A ticket links one session: it is shown once and is good for 10 minutes.</p>
+      <p class="note">A new ticket, a re-pair and a revoke each take one of your passkeys or your password (one of your
+        hardware keys, while high security is on) as well as the sign-in: <a href="/app/#channel">open Linked sessions in
+        the app</a>.</p>
+      <p id="ade-links-empty" class="note">No session is linked yet.</p>
+      <ul id="ade-links" class="links"></ul>
+      <div id="ade-link-others" hidden>
+        <h4>Open questions from revoked links</h4>
+        <ul id="ade-link-other-list" class="links"></ul>
+      </div>
+    </div>
+    <div id="ade-workspace" hidden>
+      <h3>Workspace</h3>
+      <p class="note">Your own workspace, in the cloud: a machine of its own on Fly, not your computer, so a session
+        goes on when this page is closed. It holds repositories, and sessions that each run a chat with Claude, a
+        shell, or <code>claude</code> or <code>codex</code> in a terminal, in their own git worktree. Finishing a session commits its worktree; this app then
+        checks the change with Verify and signs the manifest, or records it as skipped where there is no change or
+        its diff is over 1 MB, and as an error where Verify cannot read it. <a href="console.html">Open the
+        console</a>: every session's state, and its chats.</p>
+      <div id="ws-claude" hidden>
+        <h4>Claude</h4>
+        <p class="row-buttons"><span id="ws-claude-state" class="small">...</span>
+          <button type="button" id="ws-claude-signin" hidden>Sign in to Claude</button>
+          <button type="button" id="ws-claude-signout" class="muted-button" hidden>Sign out of Claude</button>
+          <span id="ws-claude-version" class="small"></span></p>
+        <p id="ws-claude-update" class="row-buttons" hidden><span id="ws-claude-update-state" class="small"></span>
+          <button type="button" id="ws-claude-update-now" class="muted-button">Check for an update now</button>
+          <button type="button" id="ws-claude-update-mode" class="muted-button"></button></p>
+        <div id="ws-claude-box" class="signin" hidden>
+          <p>1. <a id="ws-claude-link" target="_blank" rel="noopener">Open Claude's sign-in page</a> and sign in with
+            your Claude account.</p>
+          <form id="ws-claude-code">
+            <label>2. After you approve, that page shows a code: copy it there, then paste it here
+              <input name="code" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off" required></label>
+            <button type="submit">Send the code</button>
+          </form>
+          <p id="ws-claude-sent" class="small" hidden></p>
+        </div>
+        <p id="ws-claude-done" class="signin pass" hidden></p>
+        <p class="note">Sign in here first: a <code>claude</code> session or a chat starts once Claude is signed in, so
+          Claude Code never asks for its sign-in in a terminal, where a phone cannot copy. Sign-in runs Claude Code's own
+          <code>claude auth login</code> in the workspace. Claude Code keeps what it gets on your workspace's volume, where
+          every <code>claude</code> session uses it; this app never sees it, and the workspace's gate refuses a session's
+          tool call that names it.</p>
+      </div>
+      <p class="row-buttons"><span id="ws-state" class="small"></span>
+        <button type="button" id="ws-start">Start the workspace</button>
+        <button type="button" id="ws-stop" class="muted-button" hidden>Stop the workspace</button>
+        <button type="button" id="ws-refresh" class="muted-button" hidden>Refresh</button></p>
+      <p id="ws-spend" class="small" hidden></p>
+      <p id="ws-note" class="error" hidden></p>
+      <div id="ws-body" hidden>
+        <h4>GitHub</h4>
+        <p class="row-buttons"><span id="ws-gh-state" class="small">...</span>
+          <button type="button" id="ws-gh-signin" hidden>Sign in to GitHub</button></p>
+        <div id="ws-gh-code-box" class="signin" hidden>
+          <p>Enter this code at GitHub; this page says when the workspace is signed in.</p>
+          <pre id="ws-gh-code" class="copyable device-code"></pre>
+          <p><a id="ws-gh-device" target="_blank" rel="noopener">Open github.com/login/device</a></p>
+        </div>
+        <p id="ws-gh-done" class="signin pass" hidden></p>
+        <div id="ws-gh-pick" hidden>
+          <p id="ws-gh-count" class="small"></p>
+          <label>Find a repository
+            <input id="ws-gh-filter" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off"
+                   placeholder="part of its name"></label>
+          <label>Your repositories <select id="ws-gh-select"></select></label>
+          <p class="row-buttons"><button type="button" id="ws-gh-clone">Clone</button></p>
+        </div>
+        <p class="note">Sign-in runs GitHub's own <code>gh auth login</code> in the workspace, and its one-time
+          code is shown here, to enter at github.com/login/device. gh keeps its token on your workspace's volume,
+          and git clones your private repositories with it. Programs in your sessions, <code>claude</code> and
+          <code>codex</code> included, can use it too, to push as well as to clone. To keep the workspace read-only,
+          sign in instead with a fine-grained token that has read-only access to the repositories you choose: in a
+          shell, <code>gh auth login --with-token</code>, then paste it.</p>
+        <h4>Repositories</h4>
+        <ul id="ws-repos" class="entries"></ul>
+        <form id="ws-clone" class="row-buttons">
+          <input name="url" class="short" placeholder="An https address, such as github.com/owner/name.git" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+          <button type="submit">Clone</button>
+        </form>
+        <h4>Sessions</h4>
+        <div class="scroll"><table id="ws-sessions"><thead><tr><th>Session</th><th>Program</th><th>Task</th><th>State</th><th>Tokens</th><th></th></tr></thead><tbody></tbody></table></div>
+        <form id="ws-new">
+          <label>Repository <select name="repo"></select></label>
+          <label>Program
+            <select name="program"><option value="chat">a chat with Claude (in the console)</option><option value="shell">a shell</option><option value="claude">claude in a terminal (advanced)</option><option value="codex">codex in a terminal (advanced)</option></select>
+          </label>
+          <div id="ws-new-settings"></div>
+          <label>Task: its first line is the claim Verify checks when the session finishes
+            <textarea name="task" rows="3" required></textarea></label>
+          <div id="ws-new-voice" class="voice-row"></div>
+          <p id="ws-new-note" class="error" hidden></p>
+          <p><button type="submit" id="ws-new-submit">Start a session</button>
+            <a class="button-link" href="console.html">Open the console</a></p>
+        </form>
+      </div>
+      <div id="ws-finished" hidden>
+        <h4>Finished sessions</h4>
+        <div class="scroll"><table id="ws-finishes"><thead><tr><th>Session</th><th>Commits</th><th>Verify</th><th>Task</th><th></th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+    <div id="ade-board" hidden>
+      <h3 id="ade-board-title"></h3>
+      <p class="note" id="ade-board-meta"></p>
+      <p><button type="button" id="ade-refresh">Refresh</button>
+         <button type="button" id="ade-verify-now" hidden>Verify new commits</button></p>
+      <ul id="ade-alerts" class="alerts"></ul>
+      <div class="seg" id="ade-view"><button type="button" data-view="convo" class="on">Conversation</button><button type="button" data-view="details">Details</button></div>
+      <div id="ade-convo">
+        <p class="note small">Rebuilt from what the two sessions wrote on the channel branch: the handoff, the windows, the log, the
+          questions and your answers. It is not a live view of their screens; a cloud session's own page opens from its header.</p>
+        <div class="seg phone-only" id="ade-pane-switch"><button type="button" data-pane="cloud" class="on">Cloud</button><button type="button" data-pane="local">Local</button></div>
+        <div class="panes">
+          <div class="pane" id="ade-pane-cloud"></div>
+          <div class="pane" id="ade-pane-local"></div>
+        </div>
+      </div>
+      <div id="ade-details" hidden>
+      <h4>Sessions</h4>
+      <div class="scroll"><table id="ade-sessions"><thead><tr><th>Session</th><th>Kind</th><th>Last seen</th><th>Commits</th></tr></thead><tbody></tbody></table></div>
+      <div id="ade-channels"></div>
+      <div id="ade-commits-box" hidden>
+        <h4>Commits on the branch</h4>
+        <div class="scroll"><table id="ade-commits"><thead><tr><th>Commit</th><th>Session</th><th>Verify</th><th>Subject</th><th></th></tr></thead><tbody></tbody></table></div>
+      </div>
+      </div>
+    </div>
+    <h3>Repositories</h3>
+    <div class="scroll"><table id="ade-repos"><thead><tr><th>Repository</th><th>Branch</th><th>Channel directories</th><th>Verify</th><th></th></tr></thead><tbody></tbody></table></div>
+    <p id="ade-empty" class="note" hidden>No repository is connected yet.</p>
+    <details id="ade-connect"><summary>Connect a repository</summary>
+      <form id="ade-form">
+        <label id="ade-source-label" hidden>Where
+          <select name="source"><option value="github">GitHub</option><option value="local">A clone on this machine</option></select>
+        </label>
+        <label>Repository <input name="repo" placeholder="owner/name" required autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label>Branch <input name="branch" required autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label>Channel directories, one per line (where the sessions write their log, questions, answers and windows)
+          <textarea name="dirs" rows="3" autocapitalize="off" autocorrect="off" spellcheck="false"></textarea></label>
+        <label class="inline"><input name="verify" type="checkbox"> Verify each commit on this branch and sign the manifest</label>
+        <label id="ade-token-label">GitHub token, for a private repository (fine-grained, limited to this repository: read-only shows a board only, and the ADE's records need Contents: read and write; stored encrypted and never shown again)
+          <input name="token" type="password" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <p id="ade-no-token" class="note" hidden>This deployment cannot store tokens, so only public repositories can be connected.</p>
+        <button type="submit">Connect</button>
+      </form>
+    </details>
+    <h3>Proofpane</h3>
+    <p id="ade-proofpane-state" class="note">Not paired: your linked sessions' usage stays with them.</p>
+    <p id="ade-proofpane-usage" class="small" hidden></p>
+    <details id="ade-proofpane"><summary>Pair this account with your Proofpane organisation</summary>
+      <p class="note">So that your linked sessions' usage reaches Proofpane's meter: for each reply of theirs, its
+        request id, its session's id, its model, its token counts, when it began, its link's name and, where its
+        transcript says, whether a person or a schedule began its turn, never a word of it, sent by this
+        deployment as the device Proofpane gives for your code, each reply once. Make a pairing code in Proofpane
+        (Devices, Pair a device) and give it here within ten minutes. The device's token is stored encrypted and never
+        shown. Unpairing here sends nothing more and revokes nothing in Proofpane: an admin of your organisation revokes
+        the device there. The workspace's own pairing, in its Connections, is another.</p>
+      <p id="ade-proofpane-addresses" class="small"></p>
+      <form id="ade-proofpane-form">
+        <label>Proofpane's address (empty for the first this deployment names)
+          <input name="address" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label>Pairing code <input name="code" required autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false"></label>
+        <button type="submit">Pair</button>
+      </form>
+      <p id="ade-proofpane-no-key" class="note" hidden>This deployment cannot store a token, so it pairs no account with Proofpane.</p>
+      <p class="row-buttons"><button type="button" id="ade-proofpane-unpair" class="muted-button" hidden>Unpair</button></p>
+    </details>
+
+  </section>
+
+  <section id="check" hidden>
+    <h2>Check evidence</h2>
+    <p class="note">The same checks the open verifier runs offline: a manifest is parsed strictly, validated and its
+      decision recomputed; a hash chain v2 file is checked line by line. A signature is checked against this
+      deployment's public key.</p>
+    <form id="check-form">
+      <label>What is it?
+        <select name="kind">
+          <option value="manifest">A Verification Manifest</option>
+          <option value="chain">A hash chain v2 file</option>
+          <option value="signature">A manifest and its signature</option>
+        </select>
+      </label>
+      <label>File <input name="file" type="file" required></label>
+      <label id="check-signature-label" hidden>Signature file <input name="signature" type="file"></label>
+      <button type="submit">Check</button>
+    </form>
+    <pre id="check-result" hidden></pre>
+  </section>
+
+  <section id="key" hidden>
+    <h2>This deployment's public key</h2>
+    <p class="note">Algorithm <code>id-MLDSA65-Ed25519-SHA512</code> (draft-ietf-lamps-pq-composite-sigs-19): a
+      signature is valid only if both its ML-DSA-65 and its Ed25519 part are.</p>
+    <p class="note">The key is served to anyone. Checking a signature against it away from this deployment needs the
+      signing package (<code>oss/sign</code>), published with Proofpane Community's source; here, the Check page
+      checks one.</p>
+    <p>Key id: <code id="key-id"></code></p>
+    <textarea id="key-value" rows="6" readonly></textarea>
+  </section>
+
+  <section id="account" hidden>
+    <h2>Account</h2>
+    <p>Signed in as <strong id="account-email"></strong>.</p>
+    <p class="note">Passkeys, and signing out everywhere when a device is lost, are in the app's Account. Adding or
+      removing a passkey and signing out everywhere ask for one of your passkeys or your password first (one of your
+      hardware keys, while high security is on), so a sign-in someone else has taken cannot do them.</p>
+    <p><a href="/app/#account">Open the account in the app</a></p>
+  </section>
+
+  <section id="admin" hidden>
+    <h2>Invitations</h2>
+    <form id="invite-form">
+      <label>Email <input name="email" type="email" required></label>
+      <button type="submit">Create invitation link</button>
+    </form>
+    <p id="invite-link" hidden>Send this link to the person invited. It is shown once, works once, and expires in
+      24 hours: <code></code></p>
+    <table id="invite-list"><thead><tr><th>Email</th><th>By</th><th>Created</th><th>Expires</th><th>Used</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <p id="error" class="error" hidden></p>
+</main>
+<script src="chat-settings.js"></script>
+<script src="voice.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# The build context is open_edition/; the workspace image needs only the agent's package, the plugin it gives each
+# claude start (core_plugin/), the approval hook it gives the sessions (ade_hook.py: one file, standard
+# library only) and this directory, so nothing of the app (its accounts, its signing code) is sent to the builder or
+# can reach the image.
+*
+!proofpane_workspace
+!core_plugin
+!ade_hook.py
+!workspace_image
+**/__pycache__
+**/.pytest_cache

@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "popout",
+  "description": "A pop-out of the control view's map (open_popout): the map, one session's map or one agent in a window of its own. Its page is the app's own, signed in as the main window is. Of the app's own commands it may ask for this Mac's server (local_server) and read a hosted workspace's sign-in from the keychain (token_get), and call no other: not token_set, open_popout, open_preview or menu_bar. Besides those, four of Tauri's own default sets, which the main window has too: app, path, webview and window; not its events', which would let the page raise the main window's own (a design pick, the menu-bar icon's).",
+  "windows": [
+    "pop-*"
+  ],
+  "permissions": [
+    "core:app:default",
+    "core:path:default",
+    "core:webview:default",
+    "core:window:default",
+    "allow-local-server",
+    "allow-token-get"
+  ]
+}

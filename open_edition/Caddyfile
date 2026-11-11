@@ -1,0 +1,104 @@
+{
+	servers {
+		# the client's address: Fly's proxy puts it in a PROXY protocol header at the start of each connection to 443
+		# (fly.toml), and Caddy takes it as the connection's own, so X-Forwarded-For carries it to the app (a client's
+		# own X-Forwarded-For is replaced). A connection without one, as Fly's TCP check makes, is taken as it comes.
+		# Port 80, which only redirects and answers Let's Encrypt, gets no header: Caddy's redirect server does not
+		# read one (tried with Caddy 2.11, 2026-10-02).
+		# A header is taken only from a private IPv4 address (RFC 1918) or this machine's loopback. Fly's
+		# documentation says its proxy reaches a machine through the machine's private IPv4 address, but not which
+		# address the proxy connects from (docs.fly.io/networking/app-services, read 2026-10-09; a Fly engineer said
+		# 172.16.x.x on Fly's forum in 2023, which no page promises), so every private IPv4 range is taken, and no
+		# IPv6 one: other machines on the app's Fly private network reach this one over IPv6 (fdaa::/16). From
+		# anywhere else a header is read and its address ignored, the connection's own kept (fallback_policy ignore),
+		# so no one who reaches this port another way can say whom the app sees.
+		listener_wrappers {
+			proxy_protocol {
+				timeout 5s
+				allow 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.0/8
+				fallback_policy ignore
+			}
+			tls
+		}
+		# HTTP/1.1 and HTTP/2 only: fly.toml exposes no UDP, so HTTP/3 would be advertised and never reachable
+		protocols h1 h2
+	}
+}
+
+{$OPEN_EDITION_DOMAIN:localhost} {
+	tls {
+		# the hybrid post-quantum exchange first; classical X25519 for browsers that do not offer it yet
+		curves x25519mlkem768 x25519
+		protocols tls1.3
+	}
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+		-Via
+	}
+	# every page but the terminal page and the ADE app: no inline style, no inline script
+	@pages not path /terminal.html /app/*
+	header @pages Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+	# the terminal page and the ADE app (/app/): xterm.js writes its theme, cell sizes and scrollbar into <style>
+	# elements it creates, and the app sets style attributes, so these allow inline style; scripts are 'self' there
+	# as everywhere. The app shows a worktree's images, which it fetches with the account's token and shows from
+	# memory: blob: images, which only its own scripts can make; and a worktree's PDFs the same way, in a frame the
+	# browser's own viewer fills (blob: frames, typed as a PDF by the app itself)
+	@terminal path /terminal.html /app/*
+	header @terminal Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; frame-src blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+	# the session channel's requests are small, and the app reads a body whole before its handler runs, so their cap
+	# is here (proofpane_open/ade/link.py); but a move's transcript and bundle, which their routes stream to a file,
+	# are each at most 32 MiB (proofpane_open/ade/moves.py), and a link's History list and a conversation, which grow
+	# by a third once sealed (end-to-end encryption, proofpane_open/ade/e2e.py), each at most 2 MiB, as the app reads;
+	# and the statements of the account's keys a link sends in after a restore (up to 50, each with its passkey's
+	# answer, proofpane_open/ade/e2e_keys.py), at most 256 KiB
+	@link {
+		path /api/ade/link/*
+		not path /api/ade/link/moves/*/transcript /api/ade/link/moves/*/bundle
+		not {
+			method PUT
+			path /api/ade/link/history /api/ade/link/history/talk
+		}
+		not {
+			method POST
+			path /api/ade/link/e2e
+		}
+	}
+	request_body @link {
+		max_size 64KB
+	}
+	@move_files path /api/ade/link/moves/*/transcript /api/ade/link/moves/*/bundle
+	request_body @move_files {
+		max_size 32MiB
+	}
+	@link_history {
+		method PUT
+		path /api/ade/link/history /api/ade/link/history/talk
+	}
+	request_body @link_history {
+		max_size 2MiB
+	}
+	@link_e2e {
+		method POST
+		path /api/ade/link/e2e
+	}
+	request_body @link_e2e {
+		max_size 256KiB
+	}
+	# the second screen's requests are small too, and read whole: a step parked for a signer, an assertion a signer hands
+	# back, a step a signer composed (proofpane_open/ade/signers.py)
+	@signer path /api/ade/signer/* /api/ade/signers /api/ade/signers/* /api/ade/sign-requests /api/ade/sign-requests/*
+	request_body @signer {
+		max_size 64KB
+	}
+	# the Claude app connector's requests are small too, and the app reads them whole: its MCP endpoint and its OAuth
+	# routes (proofpane_open/ade/connector.py, proofpane_open/oauth.py)
+	@connector path /mcp /oauth/*
+	request_body @connector {
+		max_size 64KB
+	}
+	reverse_proxy 127.0.0.1:8000
+}

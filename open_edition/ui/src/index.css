@@ -1,0 +1,278 @@
+@import "tailwindcss";
+@import "@xterm/xterm/css/xterm.css";
+
+/* The ADE's design tokens, in Proofpane's own palette (its frontend's globals.css and the Tailwind grays it is drawn
+   with): a gray-950 page, gray-900 panels, gray-800 raised surfaces and dividers, gray-700 control borders. Dark first:
+   an ADE is open all day next to a terminal. One accent, the Proofpane cyan, for focus, selection and links; the one
+   filled action per screen is cyan with white ink. Status colours carry meaning and nothing else. contrast.test.ts
+   holds every text colour readable on every surface, in both themes. */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  --color-bg: #030712;
+  --color-panel: #111827;
+  --color-raised: #1f2937;
+  --color-hover: #1f2937;
+  /* between Proofpane's gray-800 and gray-700: a selected row or a pressed-looking button, under which every text
+     colour still reads (gray-700 itself left the muted grey and the rose under 4.5:1) */
+  --color-active: #2a3341;
+  --color-line: #1f2937;
+  --color-line-strong: #374151;
+  --color-fg: #f3f4f6;
+  --color-fg-dim: #d1d5db;
+  --color-muted: #9ca3af;
+  /* a step lighter than Proofpane's gray-500, which is 3.7:1 on a panel: the faint grey carries times, hints and
+     headings, so it reads at 4.5:1 too */
+  --color-faint: #89919e;
+
+  --color-accent: #22d3ee;
+  /* Proofpane fills its primary button cyan-600; white on cyan-600 is 3.7:1, under the 4.5:1 a label needs, so the
+     fill is one step darker (cyan-700, 5.4:1) and darker again on hover (cyan-800). */
+  --color-primary: #0e7490;
+  --color-primary-hover: #155e75;
+  --color-primary-ink: #ffffff;
+
+  --color-run: #38bdf8;
+  --color-wait: #fbbf24;
+  --color-done: #34d399;
+  --color-fail: #fb7185;
+  --color-idle: #64748b;
+
+  --color-scroll-track: #1f2937;
+  --color-scroll-thumb: #4b5563;
+
+  --radius-sm: 4px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+}
+
+/* The light palette ("bright", the attribute Proofpane's own frontend sets): the same tokens, for a light page.
+   theme.ts sets data-theme on <html>. */
+:root[data-theme="bright"] {
+  --color-bg: #ffffff;
+  --color-panel: #f9fafb;
+  --color-raised: #ffffff;
+  --color-hover: #f3f4f6;
+  --color-active: #e5e7eb;
+  --color-line: #e5e7eb;
+  --color-line-strong: #d1d5db;
+  --color-fg: #111827;
+  --color-fg-dim: #374151;
+  --color-muted: #4b5563;
+  --color-faint: #646b77;
+  /* one step darker than the dark theme's own step down would be (cyan-800, amber-800, emerald-800): readable on a
+     selected row's gray-200 too */
+  --color-accent: #155e75;
+  --color-run: #0369a1;
+  --color-wait: #92400e;
+  --color-done: #065f46;
+  --color-fail: #be123c;
+  --color-idle: #64748b;
+  --color-scroll-track: #e5e7eb;
+  --color-scroll-thumb: #9ca3af;
+}
+
+@layer base {
+  html, body, #root { height: 100%; }
+  html { color-scheme: dark; }
+  html[data-theme="bright"] { color-scheme: light; }
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  ::selection { background: color-mix(in srgb, var(--color-accent) 30%, transparent); }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; }
+}
+
+/* Flat, solid scrollbars, as Proofpane draws them: the default overlay pill of the macOS webview picks up the content
+   under it, which is noisy in the desktop app. Where the ::-webkit-scrollbar rules apply (WebKit, Chromium) they are the
+   ones used; elsewhere the standard properties, which in Chromium would turn these rules off, so only there. */
+::-webkit-scrollbar { width: 10px; height: 10px; background: var(--color-scroll-track); }
+::-webkit-scrollbar-track { background: var(--color-scroll-track); border: none; box-shadow: none; }
+::-webkit-scrollbar-thumb { background: var(--color-scroll-thumb); background-clip: padding-box; border: 0 solid transparent; border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-faint); }
+::-webkit-scrollbar-corner { background: var(--color-scroll-track); }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: var(--color-scroll-thumb) var(--color-scroll-track); }
+}
+
+@layer components {
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px;
+    border-radius: var(--radius-md); border: 1px solid var(--color-line-strong);
+    background: var(--color-raised); color: var(--color-fg); font-size: 12.5px; font-weight: 500;
+    white-space: nowrap; transition: background-color .12s, border-color .12s;
+  }
+  .btn:hover:not(:disabled) { background: var(--color-active); border-color: var(--color-faint); }
+  .btn:disabled { opacity: .5; }
+  .btn-primary { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-ink); }
+  .btn-primary:hover:not(:disabled) { background: var(--color-primary-hover); border-color: var(--color-primary-hover); }
+  /* an action inside a session's tab, beside the screen's one filled action: Proofpane's outlined cyan */
+  .btn-outline { background: transparent; border-color: color-mix(in srgb, var(--color-accent) 55%, transparent); color: var(--color-accent); }
+  .btn-outline:hover:not(:disabled) { background: color-mix(in srgb, var(--color-accent) 10%, transparent); border-color: var(--color-accent); }
+  .btn-ghost { background: transparent; border-color: transparent; color: var(--color-fg-dim); }
+  .btn-ghost:hover:not(:disabled) { background: var(--color-hover); border-color: transparent; color: var(--color-fg); }
+  .btn-danger { color: var(--color-fail); }
+  .btn-sm { height: 24px; padding: 0 8px; font-size: 12px; }
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
+    border-radius: var(--radius-md); color: var(--color-muted); background: transparent; border: 0;
+  }
+  .icon-btn:hover:not(:disabled) { background: var(--color-hover); color: var(--color-fg); }
+  .input {
+    height: 30px; width: 100%; padding: 0 10px; border-radius: var(--radius-md);
+    border: 1px solid var(--color-line-strong); background: var(--color-bg); color: var(--color-fg);
+    font-size: 13px; outline: none;
+  }
+  .input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent); }
+  textarea.input { height: auto; padding: 8px 10px; line-height: 1.5; resize: vertical; }
+  .input::placeholder { color: var(--color-faint); opacity: 1; }
+  .kbd {
+    display: inline-flex; align-items: center; height: 18px; padding: 0 5px; border-radius: 4px;
+    border: 1px solid var(--color-line-strong); background: var(--color-panel); color: var(--color-muted);
+    font-family: var(--font-mono); font-size: 10.5px;
+  }
+  /* a keyboard's keys are not shown where there is likely none (a phone, a tablet without one) */
+  @media (pointer: coarse) { .kbd { display: none; } }
+  /* a control a finger has to reach: 44 by 44 pixels at least on a touch screen (WCAG's 2.5.5, Apple's and Google's
+     guidance), whatever size it draws at with a mouse */
+  @media (pointer: coarse) { .touch-target { min-width: 44px; min-height: 44px; } }
+  .label { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--color-muted); }
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 999px;
+    border: 1px solid var(--color-line-strong); color: var(--color-fg-dim); font-size: 11.5px;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 999px; flex: none; }
+  .panel { background: var(--color-panel); border: 1px solid var(--color-line); border-radius: var(--radius-lg); }
+}
+
+/* xterm sits on the app's own background, edge to edge. */
+.xterm { padding: 6px 0 0 10px; height: 100%; }
+.xterm .xterm-viewport { background: transparent !important; }
+
+@keyframes pulse-dot { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+.animate-pulse-dot { animation: pulse-dot 1.4s ease-in-out infinite; }
+
+/* react-diff-view, on the dark tokens. */
+.ade-diff {
+  --diff-background-color: var(--color-bg);
+  --diff-text-color: var(--color-fg);
+  --diff-font-family: var(--font-mono);
+  --diff-selection-background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  --diff-selection-text-color: var(--color-fg);
+  --diff-gutter-insert-background-color: #0f2a20;
+  --diff-gutter-insert-text-color: #6ee7b7;
+  --diff-gutter-delete-background-color: #2e1419;
+  --diff-gutter-delete-text-color: #fda4af;
+  --diff-gutter-selected-background-color: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  --diff-gutter-selected-text-color: var(--color-fg);
+  --diff-code-insert-background-color: #0c2219;
+  --diff-code-insert-text-color: var(--color-fg);
+  --diff-code-delete-background-color: #261016;
+  --diff-code-delete-text-color: var(--color-fg);
+  --diff-code-insert-edit-background-color: #155234;
+  --diff-code-insert-edit-text-color: #d1fae5;
+  --diff-code-delete-edit-background-color: #5c1a27;
+  --diff-code-delete-edit-text-color: #ffe4e6;
+  --diff-code-selected-background-color: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  --diff-code-selected-text-color: var(--color-fg);
+  --diff-omit-gutter-line-color: var(--color-line-strong);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ade-diff .diff-gutter { color: var(--color-muted); padding: 0 8px; cursor: pointer; min-width: 44px; }
+.ade-diff .diff-gutter:hover { color: var(--color-accent); }
+/* a line number one comments from is a button filling its cell, reached by the keyboard too */
+.ade-diff .diff-gutter:has(.diff-comment) { padding: 0; }
+.ade-diff .diff-comment { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 0 8px; text-align: right; cursor: pointer; }
+.ade-diff .diff-comment:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; color: var(--color-accent); }
+.ade-diff .diff-code { padding: 0 12px; white-space: pre-wrap; word-break: break-word; }
+.ade-diff .diff-hunk-header { background: var(--color-panel); color: var(--color-muted); }
+.ade-diff .diff-widget-content { background: var(--color-panel); }
+
+/* cmdk */
+.palette-group [cmdk-group-heading] { padding: 8px 10px 4px; font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--color-faint); }
+.palette-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: 6px; font-size: 13px; color: var(--color-fg-dim); cursor: pointer; }
+.palette-item[data-selected="true"] { background: var(--color-active); color: var(--color-fg); box-shadow: inset 2px 0 0 var(--color-accent); }
+
+/* Claude's replies */
+.markdown > :first-child { margin-top: 0; }
+.markdown > :last-child { margin-bottom: 0; }
+.markdown p { margin: 0 0 .7em; }
+.markdown h1, .markdown h2, .markdown h3, .markdown h4 { margin: 1.1em 0 .45em; font-weight: 600; line-height: 1.3; }
+.markdown h1 { font-size: 1.25em; } .markdown h2 { font-size: 1.12em; } .markdown h3 { font-size: 1.02em; }
+.markdown ul, .markdown ol { margin: 0 0 .8em; padding-left: 1.4em; }
+.markdown ul { list-style: disc; } .markdown ol { list-style: decimal; }
+.markdown li { margin: .2em 0; }
+.markdown li::marker { color: var(--color-muted); }
+.markdown a { color: var(--color-accent); text-decoration: underline; text-underline-offset: 2px; }
+.markdown code { font-family: var(--font-mono); font-size: .88em; padding: .1em .35em; border-radius: 4px; background: var(--color-raised); border: 1px solid var(--color-line); }
+.markdown pre { margin: .2em 0 .9em; padding: 10px 12px; overflow-x: auto; border-radius: 8px; background: var(--color-panel); border: 1px solid var(--color-line); }
+.markdown pre code { padding: 0; border: 0; background: none; font-size: 12px; line-height: 1.55; }
+.markdown blockquote { margin: 0 0 .8em; padding-left: 12px; border-left: 2px solid var(--color-line-strong); color: var(--color-fg-dim); }
+.markdown table { border-collapse: collapse; margin: 0 0 .9em; font-size: .94em; display: block; overflow-x: auto; }
+.markdown th, .markdown td { border: 1px solid var(--color-line); padding: 4px 9px; text-align: left; }
+.markdown th { background: var(--color-panel); font-weight: 600; }
+.markdown hr { border: 0; border-top: 1px solid var(--color-line); margin: 1em 0; }
+
+/* What claude is writing, as it writes it: a caret after the last block, and a shimmer while it thinks. */
+@keyframes pp-blink { 50% { opacity: 0 } }
+.caret {
+  display: inline-block; width: .45em; height: 1.05em; margin-left: 2px; vertical-align: -.17em;
+  background: var(--color-accent); animation: pp-blink 1s steps(1) infinite;
+}
+@keyframes pp-shimmer { from { background-position: 100% 0 } to { background-position: -100% 0 } }
+.shimmer {
+  background: linear-gradient(90deg, var(--color-muted) 30%, var(--color-fg) 50%, var(--color-muted) 70%) 0 0 / 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: pp-shimmer 1.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .caret, .shimmer, .animate-pulse-dot { animation: none; }
+  .shimmer { color: var(--color-muted); background: none; }
+}
+
+/* Prism's token classes (refractor), on the dark tokens: the diff and the file viewer. */
+.token.comment, .token.prolog, .token.doctype, .token.cdata { color: #6b7685; font-style: italic; }
+.token.punctuation { color: #8b95a3; }
+.token.namespace { opacity: .8; }
+.token.property, .token.tag, .token.constant, .token.symbol, .token.deleted { color: #f38ba8; }
+.token.boolean, .token.number { color: #fab387; }
+.token.selector, .token.attr-name, .token.string, .token.char, .token.builtin, .token.inserted, .token.template-string { color: #a6e3a1; }
+.token.operator, .token.entity, .token.url, .language-css .token.string, .style .token.string { color: #89dceb; }
+.token.atrule, .token.attr-value, .token.keyword, .token.control, .token.directive { color: #cba6f7; }
+.token.function, .token.class-name, .token.maybe-class-name { color: #89b4fa; }
+.token.regex, .token.important, .token.variable, .token.parameter { color: #f9e2af; }
+.token.important, .token.bold { font-weight: 600; }
+.token.italic { font-style: italic; }
+
+/* The light theme's diff and code colours (GitHub's light ones, near enough). */
+:root[data-theme="bright"] .ade-diff {
+  --diff-gutter-insert-background-color: #ccffd8;
+  --diff-gutter-insert-text-color: #116329;
+  --diff-gutter-delete-background-color: #ffd7d5;
+  --diff-gutter-delete-text-color: #82071e;
+  --diff-code-insert-background-color: #e6ffec;
+  --diff-code-delete-background-color: #ffebe9;
+  --diff-code-insert-edit-background-color: #abf2bc;
+  --diff-code-insert-edit-text-color: #11161c;
+  --diff-code-delete-edit-background-color: #ff8182;
+  --diff-code-delete-edit-text-color: #11161c;
+}
+:root[data-theme="bright"] .token.comment, :root[data-theme="bright"] .token.prolog, :root[data-theme="bright"] .token.doctype, :root[data-theme="bright"] .token.cdata { color: #6e7781; }
+:root[data-theme="bright"] .token.punctuation { color: #24292f; }
+:root[data-theme="bright"] .token.property, :root[data-theme="bright"] .token.tag, :root[data-theme="bright"] .token.constant, :root[data-theme="bright"] .token.symbol, :root[data-theme="bright"] .token.deleted { color: #0550ae; }
+:root[data-theme="bright"] .token.boolean, :root[data-theme="bright"] .token.number { color: #0550ae; }
+:root[data-theme="bright"] .token.selector, :root[data-theme="bright"] .token.attr-name, :root[data-theme="bright"] .token.string, :root[data-theme="bright"] .token.char, :root[data-theme="bright"] .token.builtin, :root[data-theme="bright"] .token.inserted, :root[data-theme="bright"] .token.template-string { color: #0a3069; }
+:root[data-theme="bright"] .token.operator, :root[data-theme="bright"] .token.entity, :root[data-theme="bright"] .token.url { color: #24292f; }
+:root[data-theme="bright"] .token.atrule, :root[data-theme="bright"] .token.attr-value, :root[data-theme="bright"] .token.keyword, :root[data-theme="bright"] .token.control, :root[data-theme="bright"] .token.directive { color: #cf222e; }
+:root[data-theme="bright"] .token.function, :root[data-theme="bright"] .token.class-name, :root[data-theme="bright"] .token.maybe-class-name { color: #8250df; }
+:root[data-theme="bright"] .token.regex, :root[data-theme="bright"] .token.important, :root[data-theme="bright"] .token.variable, :root[data-theme="bright"] .token.parameter { color: #953800; }

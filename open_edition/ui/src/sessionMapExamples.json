@@ -1,0 +1,76 @@
+{
+  "from": "The two routes' examples, with agents_more, which the workspace's agent serves beyond them (how many of a session's agents it left out past the 50 it gives). The second session is a session and an agent whose effort is a number, a token budget, and agents left out. The workspace writes a number only for an agent's effort (a session's is its status line's level, or a chat's chosen one, read back from the session's record, which its own programs can write); the page reads a number for either as a budget. The tests' stand-in for the workspace's map (tests/session_map_stand_in.py) answers with these, and the page's fixtures are made from them; tests/test_workspace_map_served.py runs the same routes against the real agent.",
+  "map": {
+    "at": 1760730000,
+    "sessions": [
+      {
+        "id": "0123456789ab",
+        "title": "the session's title, as the list shows it",
+        "program": "claude",
+        "repo": "owner/name",
+        "branch": "work/a1",
+        "account": {"kind": "claude", "id": "default"},
+        "model": "the model the session last reported, or null",
+        "effort": "max",
+        "state": "working",
+        "started_at": 1760720000,
+        "updated_at": 1760729990,
+        "context_tokens": 724500,
+        "agents_read": "yes",
+        "agents": [
+          {
+            "id": "the agent's id",
+            "name": "its name, or else its description, cut to 80 characters",
+            "agent_type": "Explore",
+            "status": "running",
+            "started_at": 1760700000,
+            "ended_at": null,
+            "tokens": 200600,
+            "model": "or null",
+            "effort": "high"
+          }
+        ],
+        "agents_more": 0
+      },
+      {
+        "id": "0123456789ac",
+        "title": "a session on a token budget, as the list shows it",
+        "program": "claude",
+        "repo": "owner/name",
+        "branch": "work/a3",
+        "account": {"kind": "claude", "id": "default"},
+        "model": "the model the session last reported, or null",
+        "effort": 31999,
+        "state": "working",
+        "started_at": 1760721000,
+        "updated_at": 1760729995,
+        "context_tokens": 120000,
+        "agents_read": "yes",
+        "agents": [
+          {
+            "id": "an agent given a budget",
+            "name": "an agent whose effort is a token budget",
+            "agent_type": "general-purpose",
+            "status": "completed",
+            "started_at": 1760725000,
+            "ended_at": 1760726000,
+            "tokens": 48200,
+            "model": "or null",
+            "effort": 16000
+          }
+        ],
+        "agents_more": 3
+      }
+    ]
+  },
+  "session_map": {
+    "at": 1760730000,
+    "session": "0123456789ab",
+    "calls_read": "yes",
+    "main": {"calls": [{"tool": "Read", "target": "src/a.py", "failed": false, "at": 1760729000}], "more": 0},
+    "agents": [{"id": "the agent's id", "calls": [], "more": 12}],
+    "turns_read": "yes",
+    "turns": [{"agent": null, "requests": 3, "input_tokens": 1200, "output_tokens": 300}],
+    "cut": false
+  }
+}

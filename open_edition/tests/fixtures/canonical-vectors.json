@@ -1,0 +1,105 @@
+[
+ {
+  "name": "quotes and backslashes",
+  "value": {
+   "text": "say \"hi\" \\ there"
+  },
+  "canonical": "{\"text\":\"say \\\"hi\\\" \\\\ there\"}"
+ },
+ {
+  "name": "newline tab and a control character",
+  "value": {
+   "text": "a\nb\tc\u0001d\u007fe"
+  },
+  "canonical": "{\"text\":\"a\\nb\\tc\\u0001d\u007fe\"}"
+ },
+ {
+  "name": "line and paragraph separators",
+  "value": {
+   "text": "a\u2028b\u2029c"
+  },
+  "canonical": "{\"text\":\"a\u2028b\u2029c\"}"
+ },
+ {
+  "name": "non-ASCII",
+  "value": {
+   "text": "\u00e9\u8bd5\ud83d\ude00"
+  },
+  "canonical": "{\"text\":\"\u00e9\u8bd5\ud83d\ude00\"}"
+ },
+ {
+  "name": "keys out of order",
+  "value": {
+   "to": "x",
+   "account": "a",
+   "v": 2,
+   "id": "i"
+  },
+  "canonical": "{\"account\":\"a\",\"id\":\"i\",\"to\":\"x\",\"v\":2}"
+ },
+ {
+  "name": "a nested object with keys out of order",
+  "value": {
+   "links": [
+    {
+     "name": "mac",
+     "id": "2"
+    },
+    {
+     "kind": "cloud",
+     "id": "1"
+    }
+   ],
+   "a": {
+    "z": 1,
+    "b": 2
+   }
+  },
+  "canonical": "{\"a\":{\"b\":2,\"z\":1},\"links\":[{\"id\":\"2\",\"name\":\"mac\"},{\"id\":\"1\",\"kind\":\"cloud\"}]}"
+ },
+ {
+  "name": "integers at the edges",
+  "value": {
+   "max": 9007199254740991,
+   "min": -9007199254740991,
+   "zero": 0
+  },
+  "canonical": "{\"max\":9007199254740991,\"min\":-9007199254740991,\"zero\":0}"
+ },
+ {
+  "name": "keys sorted by UTF-16 code units, not code points",
+  "value": {
+   "\uffff": 1,
+   "\ud83d\ude00": 2,
+   "z": 3
+  },
+  "canonical": "{\"z\":3,\"\ud83d\ude00\":2,\"\uffff\":1}"
+ },
+ {
+  "name": "empty containers, true, false, null",
+  "value": {
+   "o": {},
+   "l": [],
+   "t": true,
+   "f": false,
+   "n": null
+  },
+  "canonical": "{\"f\":false,\"l\":[],\"n\":null,\"o\":{},\"t\":true}"
+ },
+ {
+  "name": "a payload as the page signs it",
+  "value": {
+   "v": 2,
+   "deployment": "proofpane-oss.fly.dev",
+   "purpose": "instruction",
+   "account": "u1",
+   "nonce": "eyJ.abc",
+   "id": "00000000000000000000000000000000",
+   "to": "l1",
+   "text": "run the tests\n\tthen reply",
+   "created_at": 1790000000,
+   "expires_at": 1790003600
+  },
+  "canonical": "{\"account\":\"u1\",\"created_at\":1790000000,\"deployment\":\"proofpane-oss.fly.dev\",\"expires_at\":1790003600,\"id\":\"00000000000000000000000000000000\",\"nonce\":\"eyJ.abc\",\"purpose\":\"instruction\",\"text\":\"run the tests\\n\\tthen reply\",\"to\":\"l1\",\"v\":2}"
+ }
+]

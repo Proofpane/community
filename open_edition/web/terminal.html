@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Terminal · Proofpane Community</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="vendor/xterm/xterm.css">
+<link rel="stylesheet" href="style.css">
+<script src="theme.js"></script>
+</head>
+<body class="terminal-page">
+<header>
+  <h1>Proofpane <span class="tag">Community</span></h1>
+  <p class="row-buttons"><span id="term-title" class="small"></span>
+    <button type="button" id="term-reconnect" class="muted-button" hidden>Connect again</button></p>
+</header>
+<main class="terminal-main">
+  <p id="term-state" class="note">Connecting...</p>
+  <div id="terminal"></div>
+  <div id="term-bar" class="term-bar">
+    <form id="term-line" class="term-line">
+      <input id="term-input" autocapitalize="off" autocorrect="off" spellcheck="false" autocomplete="off"
+             enterkeyhint="send" aria-label="Text for the program" placeholder="Type here, then Send">
+      <button type="submit">Send</button>
+      <button type="button" id="term-type" class="muted-button" title="Send the text without Enter">Type</button>
+    </form>
+    <p id="term-keys" class="term-keys">
+      <button type="button" data-key="enter">Enter</button>
+      <button type="button" data-key="esc">Esc</button>
+      <button type="button" data-key="tab">Tab</button>
+      <button type="button" data-key="up" aria-label="Up">&#8593;</button>
+      <button type="button" data-key="down" aria-label="Down">&#8595;</button>
+      <button type="button" data-key="left" aria-label="Left">&#8592;</button>
+      <button type="button" data-key="right" aria-label="Right">&#8594;</button>
+      <button type="button" data-key="ctrl_c">Ctrl-C</button>
+      <button type="button" data-key="ctrl_d">Ctrl-D</button>
+      <button type="button" id="term-paste" class="muted-button">Paste</button>
+      <button type="button" id="term-copy" class="muted-button">Copy</button>
+    </p>
+    <p id="term-note" class="small" hidden></p>
+  </div>
+</main>
+<script src="vendor/xterm/xterm.js"></script>
+<script src="vendor/xterm/addon-fit.js"></script>
+<script src="terminal.js"></script>
+</body>
+</html>

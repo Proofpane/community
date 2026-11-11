@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Console · Proofpane Community</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<script src="theme.js"></script>
+</head>
+<body class="console-page">
+<header>
+  <h1>Proofpane <span class="tag">Community</span></h1>
+  <nav><span id="con-version" class="small"></span> <span id="con-state" class="small"></span>
+    <a href="/#ade">The ADE</a></nav>
+</header>
+<main id="con-main" class="console">
+  <p id="con-note" class="error" hidden></p>
+  <p id="con-start-row" class="row-buttons" hidden><span class="small">The workspace is stopped; its files stay.</span>
+    <button type="button" id="con-start">Start the workspace</button></p>
+  <aside id="con-side">
+    <section id="con-queue-box" class="con-queue" hidden>
+      <h2 class="con-h">Needs you <span id="con-queue-count" class="small"></span></h2>
+      <ul id="con-queue" class="con-list"></ul>
+    </section>
+    <h2 class="con-h">Sessions <span id="con-count" class="small"></span></h2>
+    <ul id="con-list" class="con-list"></ul>
+    <p id="con-empty" class="small" hidden>No session yet: start a chat below.</p>
+    <details id="con-new-box">
+      <summary>New chat</summary>
+      <form id="con-new">
+        <label>Repository <select name="repo" required></select></label>
+        <label>What to do: its first line is the claim Verify checks when the session finishes
+          <textarea name="task" rows="3" required></textarea></label>
+        <div id="con-new-voice" class="voice-row"></div>
+        <div id="con-new-settings"></div>
+        <p id="con-claude" class="error" hidden>Sign in to Claude first, on <a href="/#ade">the ADE page</a>: Sign in to
+          Claude, at the top of its Workspace section. A chat starts once Claude is signed in there.</p>
+        <button type="submit" disabled>Start the chat</button>
+      </form>
+    </details>
+    <div id="con-side-grip" class="con-side-grip" title="Drag to resize · double-click to reset"></div>
+  </aside>
+  <div id="con-panes" class="con-panes n0">
+    <section id="con-pick" class="con-pane con-pick">
+      <p class="small">Pick a session on the list, or start a chat. On a wide screen, "Beside" opens a session next to
+        the others, up to four; the lines between them drag. A question Claude asks waits for your answer, in its chat
+        and under Needs you.</p>
+      <p class="small">Every session runs in your workspace in the cloud, a machine of its own on Fly with the
+        repositories you cloned there: not on your computer, and not in the Claude app. Closing this page leaves it
+        running. The amounts beside a chat ("est.") are Claude Code's own estimates at API prices, not a bill: signed
+        in with a Claude plan, you pay the plan, not each token.</p>
+      <p class="small">To speak instead of typing: the microphone beside a chat's field, where your browser offers
+        one, types what you say for you to read and send. Your browser's own speech service does the listening (Apple's
+        in Safari, Google's in Chrome), not Proofpane. Your keyboard's own dictation works here too.</p>
+      <p class="small">A chat's Connectors (MCP) lists the servers it has: a repository's own, from its .mcp.json, run
+        only once you approve them there, each as it is shown (a changed one asks again); the ones you add there, and
+        your Claude account's connectors, run as Claude Code runs them.</p>
+    </section>
+  </div>
+</main>
+<script src="chat-settings.js"></script>
+<script src="voice.js"></script>
+<script src="console.js"></script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+{
+ "about": "End-to-end encryption: what the page (ui/src/e2eCrypto.ts, WebCrypto) seals from fixed keys and nonces, for the Python side to open, made by ui/src/e2eVectors.test.ts, which holds this file to what the page writes. Keys are base64url without padding; private keys raw (32 bytes) and, for the content key, as PKCS#8 DER too; plaintext_text is the plaintext's RFC 8785 bytes as text. Envelopes and grants are in the shape of e2e_v1.json. Every AES-256-GCM blob is stored as nonce (12 bytes), ciphertext and tag (nonce_and_wrapped), with its key a subkey of a master key, HKDF-SHA256(MK, salt empty, info \"proofpane-e2e/1 \" + purpose + \"|\" + account), given as subkey: the chain link wraps the previous master key's 32 bytes under the chain subkey of the next; the roster is its plaintext under the roster subkey; the content key's wrap is its PKCS#8 under the content-wrap subkey. The credential's own wrap is under HKDF-SHA256(the PRF output, salt empty, info credential_info), its plaintext {anchor, ck} with ck the base64url of the key's PKCS#8. The recovery key is HKDF-SHA256(the code's 20 bytes, salt empty, info \"proofpane-e2e/1 recovery|\" + account); its anchor is under HKDF-SHA256(the code, salt empty, info \"proofpane-e2e/1 recovery anchor|\" + account), its AAD that same text.",
+ "version": 1,
+ "account": "acct-e2e-page",
+ "link_id": "fedcba9876543210fedcba9876543210",
+ "content_key": {
+  "private": "BKwDdmIx-kjIXhJXJ03uvreo2FfxKVdTPh4zV3Ufng0",
+  "pkcs8": "MC4CAQAwBQYDK2VuBCIEIASsA3ZiMfpIyF4SVydN7r63qNhX8SlXUz4eM1d1H54N",
+  "public": "58PEpY8Pwx6MXcg3CJgNAXVlhmoNJCUVgIx6JPICeE4",
+  "key_id": "90e8192495a497800de0df7314caa649"
+ },
+ "envelopes": [
+  {
+   "name": "event: a step to the owner",
+   "slot": "proofpane-e2e/1|acct-e2e-page|fedcba9876543210fedcba9876543210|event|step|||0000000000000000000000000000e001",
+   "plaintext": {
+    "said_at": null,
+    "session": null,
+    "text": "Sealed by the page."
+   },
+   "plaintext_text": "{\"said_at\":null,\"session\":null,\"text\":\"Sealed by the page.\"}",
+   "ephemeral_private": "lcU18BgkpfRn0ZDpT095--JOv_1OiZd5UEQm-4jIv44",
+   "nonce": "_tUi2eIA3MRkhLdZ",
+   "envelope": "e2e1.AZDoGSSVpJeADeDfcxTKpkmeUM5V-jVMYVR1iDgRosFRSqwLosaytAOqKL_wLlrQdP7VItniANzEZIS3WVTWWiXqf9ZS8UyVe0CQdD-A0Iln_hvI8DTTW3JjALRCjEWF0lKaDBC3r42rqK9Yf_D6gB0dhY0kNV1BsiabAsfO4J6_H-HpKu0rl08"
+  },
+  {
+   "name": "event: a question to the owner",
+   "slot": "proofpane-e2e/1|acct-e2e-page|fedcba9876543210fedcba9876543210|event|question|||0000000000000000000000000000e002",
+   "plaintext": {
+    "said_at": null,
+    "session": null,
+    "text": "Per user, or per org?"
+   },
+   "plaintext_text": "{\"said_at\":null,\"session\":null,\"text\":\"Per user, or per org?\"}",
+   "ephemeral_private": "4V4LfKWd6t_r4iy6Jw41cn9jnbeahlALtRiL73J3AkY",
+   "nonce": "C822YdKUfCGzy0Pr",
+   "envelope": "e2e1.AZDoGSSVpJeADeDfcxTKpkkyzoVCqlYmMlx6byyxyheCBnW5FxrSyN3pYcovNEtyLwvNtmHSlHwhs8tD60jbfk34S0KbOAcRTUf3_M2S8Czg4zkMhEdZK4MaXSF_zjvAFjJ4ol1GYan2CLdUXxnko1isLvheWQPAXolFdKQG0TdZcWzgMJAh7B_ctg"
+  },
+  {
+   "name": "event: a reply to the command it took, with the command's seq",
+   "slot": "proofpane-e2e/1|acct-e2e-page|fedcba9876543210fedcba9876543210|event|done||77|0000000000000000000000000000e003",
+   "plaintext": {
+    "said_at": null,
+    "session": null,
+    "text": "done: 4 passed"
+   },
+   "plaintext_text": "{\"said_at\":null,\"session\":null,\"text\":\"done: 4 passed\"}",
+   "ephemeral_private": "BnGGbYFWI4x0eaK3ysmdmEPn2UA6IeBJA3TkmjlatWg",
+   "nonce": "xrZWWMYvwYCZK1Tc",
+   "envelope": "e2e1.AZDoGSSVpJeADeDfcxTKpknCk-ZigiNJKNhm2FI08PmtvKBi_DvwXs5ivxBiq0apCMa2VljGL8GAmStU3OfGOKr7_WnWeJ8JDJMuopwUTYmE-7zfu24XYIJWCqq-w-jPh5j4Abj73kwApN9W4P5hpNFIm1JlVs-q4ko9qXp1913IX1Kg"
+  },
+  {
+   "name": "event: a mirrored note of the session's words, naming its session",
+   "slot": "proofpane-e2e/1|acct-e2e-page|fedcba9876543210fedcba9876543210|event|note|session||0000000000000000000000000000e004",
+   "plaintext": {
+    "said_at": 1790000000456,
+    "session": "s-0042",
+    "text": "(2 of 2) Checked."
+   },
+   "plaintext_text": "{\"said_at\":1790000000456,\"session\":\"s-0042\",\"text\":\"(2 of 2) Checked.\"}",
+   "ephemeral_private": "mbsDr8l88cPXXxIyO3JzHobzwyBJXLG2pQvQuaKnHAw",
+   "nonce": "zEMdtRghDVOEYNQs",
+   "envelope": "e2e1.AZDoGSSVpJeADeDfcxTKpklUJm5R0ugr8zVKwvISVGCedh6UtCPW6BxXgfKPKISLDMxDHbUYIQ1ThGDULJ_kGW_Ss8v6SkMpoaWU8Vfq_EV67_7SJz1eiFPE1xYyAWvsW82TOXXJ9go_5nu_ApFjUUZsZcLBc0pX2S5Lgf2Ai4DqOv4-g272bJQj7p5Y_dZxqajrMA"
+  },
+  {
+   "name": "event: text in other scripts, and what JSON escapes",
+   "slot": "proofpane-e2e/1|acct-e2e-page|fedcba9876543210fedcba9876543210|event|note|||0000000000000000000000000000e005",
+   "plaintext": {
+    "said_at": null,
+    "session": null,
+    "text": "été λ 😀 \"q\" \\ tab\there\nnext\u0001\u007f end"
+   },
+   "plaintext_text": "{\"said_at\":null,\"session\":null,\"text\":\"été λ 😀 \\\"q\\\" \\\\ tab\\there\\nnext\\u0001\u007f end\"}",
+   "ephemeral_private": "WIYybnxcGW65UEIq1t2k_3OoFn3N1SY-f_foME8Hczo",
+   "nonce": "cP8OfEfVulQxbACB",
+   "envelope": "e2e1.AZDoGSSVpJeADeDfcxTKpklFaeIiE-NdmMGOd_nHeT0dRVbH-VCXZYX3pL1pWzZjWXD_DnxH1bpUMWwAgeqtynha3hASp7oOhK1Ewbnn9ETWGvhKovAqCVTnRijdIhWJLcOwbretTdd10j0ay3Bg1__svmX2ldJK92HB70ISH6AzsVOqGlnRE-w_IRNHLzFtroKWxvET49NUXoR7brlhxO7dkguV10rGpA"
+  },
+  {
+   "name": "history: a listed row",
+   "slot": "proofpane-e2e/1|acct-e2e-page|fedcba9876543210fedcba9876543210|history|s-0042|0",
+   "plaintext": {
+    "branch": "dev",
+    "project": "~/work/page",
+    "repositories": [
+     "~/work/page"
+    ],
+    "title": "The Encryption pane"
+   },
+   "plaintext_text": "{\"branch\":\"dev\",\"project\":\"~/work/page\",\"repositories\":[\"~/work/page\"],\"title\":\"The Encryption pane\"}",
+   "ephemeral_private": "4vtl9lZ_3PSqP35MJjWgVYS0jLUYHzat9Uz6N1sCYHA",
+   "nonce": "NTFdh3nkW9pNeUvk",
+   "envelope": "e2e1.AZDoGSSVpJeADeDfcxTKpkm9FIwQ0vZScyIJs3z37Wt-kbcKHFVSYzsKWuWRnExdbzUxXYd55FvaTXlL5N0Xo2cj4bcWWEQehvtB4Q63HPi0NBSM4ya897-_o4bHLatC_8RIXd1mlHBxHfwF5qrDM9pJH0DYh6XC2iR2AnfEAXtPhbjuADCS2n47UjNGdMlZmUfpSK5_8s8RZ-Lm8Z_EcKOx8u5X--FOaldbUXf_A_J8UA"
+  },
+  {
+   "name": "history: a withheld row, its project alone",
+   "slot": "proofpane-e2e/1|acct-e2e-page|fedcba9876543210fedcba9876543210|history|s-0043|1",
+   "plaintext": {
+    "project": "~/private"
+   },
+   "plaintext_text": "{\"project\":\"~/private\"}",
+   "ephemeral_private": "GofPV7AVKbjXQDQ-JAeyPyXVI2LpwXvPpOXksILLjeY",
+   "nonce": "91jZXRLbHIULDfBa",
+   "envelope": "e2e1.AZDoGSSVpJeADeDfcxTKpknlzjpF9yLwv64SMqOXqEBM6O8U25sHpC8oAlfzcUynIvdY2V0S2xyFCw3wWrzIB0PJjgTjoO1fVyXGJ3nTBq80oSygjbgkWBJotDZSN_F78D8odA"
+  },
+  {
+   "name": "talk: the owner's message, second of two, one before them",
+   "slot": "proofpane-e2e/1|acct-e2e-page|fedcba9876543210fedcba9876543210|talk|s-0042|1|2|1|owner|1790000002|1790000001500",
+   "plaintext": {
+    "text": "and the roster?"
+   },
+   "plaintext_text": "{\"text\":\"and the roster?\"}",
+   "ephemeral_private": "RrzEmSfs0vDyFx16EO0838TbAS5MjYuMvyyv7Riq8ws",
+   "nonce": "bj-RcD8ojIRZNyXK",
+   "envelope": "e2e1.AZDoGSSVpJeADeDfcxTKpkmZ10iAESzpNHZrTi2O8eyFJTgwdDVYaIp56hw0R98EJ24_kXA_KIyEWTclyo2g6WKD79cu5gEav-czwXyD-SCeJAzIEkIckrS_RxVE7-rLbFhwjB9V-w"
+  },
+  {
+   "name": "talk: the session's message, with no times",
+   "slot": "proofpane-e2e/1|acct-e2e-page|fedcba9876543210fedcba9876543210|talk|s-0042|0|2|1|session||",
+   "plaintext": {
+    "text": "It names each key."
+   },
+   "plaintext_text": "{\"text\":\"It names each key.\"}",
+   "ephemeral_private": "GPTRSA6FEmvJipLf0bo5mwhTh9gskH-P0S95yH81tC4",
+   "nonce": "SmZAlG30HYuUPK1D",
+   "envelope": "e2e1.AZDoGSSVpJeADeDfcxTKpkm1gKRalJ47PIIcitmouq9nTyT3D9CoCfeMNg_YgHkrXEpmQJRt9B2LlDytQ6ymtsgP__2Rsyo6b7QVpB-TFjf9YB_VO_gbWGvCXtUX3lEPZQTd6p0XvrsPCg"
+  }
+ ],
+ "grant": {
+  "to": "cred-page-0001",
+  "mk": "1IPuY4yX4Q6aRUj68YJcsfyGSzMWbNGiL7cVg2XK8rk",
+  "mk_id": "5e1efd26d52b32f7807ffc9f4e88c0fb",
+  "private": "SdpmItrjGNiEM0a9aRrrgrhJtHpEOxEB0pX04g3jSvE",
+  "public": "Tmw1wZpR9sraWw9AfqEVju6EtJhhBDp8Oqj7QdAHnCw",
+  "slot": "proofpane-e2e/1|acct-e2e-page|grant|cred-page-0001|5e1efd26d52b32f7807ffc9f4e88c0fb",
+  "ephemeral_private": "uOARHSP1q13WSxWa2qMRFNNM_29Iah_q40XdEkeXz4s",
+  "nonce": "FO19wpOR98VeSVpC",
+  "envelope": "e2e1.ASmcRoLAK_jWjc_MIBisOvbFG_oxJpCcllPBPCf11UvUR9-Lac-LfVxpd300lyJyVhTtfcKTkffFXklaQgx7Girok6t_ZNMNxDM0pVJH4lhU3D3LIni3Ay8FdoqMihEneA73r4D8en0U6CvkLA"
+ },
+ "recovery_grant": {
+  "to": "recovery",
+  "mk": "1IPuY4yX4Q6aRUj68YJcsfyGSzMWbNGiL7cVg2XK8rk",
+  "mk_id": "5e1efd26d52b32f7807ffc9f4e88c0fb",
+  "private": "a5ynj2TmkqG9GtJRuKVqY4EeUFq3_9iZ_1qE9YGgv4Y",
+  "public": "BJfaO7zBWgU6xHdrnQ5HXrfliW8EJ63pCokhI2mxnA8",
+  "slot": "proofpane-e2e/1|acct-e2e-page|grant|recovery|5e1efd26d52b32f7807ffc9f4e88c0fb",
+  "ephemeral_private": "2qeHKLn2EGkPuK7meD0tfrL55wLqwjIEp1ufvZnq5Oc",
+  "nonce": "dyIZJXpiS4gK6H1Y",
+  "envelope": "e2e1.AZ5KlIOb7y66Fw-Ttu67Yn7aSgO7eN7YjXqg3A5wO_As6fol4wm1ltUZ4NlvY1AsDnciGSV6YkuICuh9WNfECX0ci5QKIL_6TXi0ZKLhazbDh15XQHh1NgAbR_9ZKbezBCVGsHkNjUYCJq2Kpg"
+ },
+ "chain": {
+  "mk": "FmZ7PABE7jOEV30EZzJLgmZT0lNdS7LyeHYrTpB1VM0",
+  "mk_id": "6db51bbfb5a0af52eb1932e774f3d31f",
+  "previous_mk": "1IPuY4yX4Q6aRUj68YJcsfyGSzMWbNGiL7cVg2XK8rk",
+  "previous": "5e1efd26d52b32f7807ffc9f4e88c0fb",
+  "subkey": "nntRd34Vmqm7yyCLEZza2GCYwcch2IMZVJxYlSJSCYM",
+  "aad": "proofpane-e2e/1 chain|acct-e2e-page|6db51bbfb5a0af52eb1932e774f3d31f|5e1efd26d52b32f7807ffc9f4e88c0fb",
+  "nonce": "0ot4QIel4lKQfBcD",
+  "wrapped": "TG3ZCko1H-Nauf8t6mRev9SIXC8SushiNjPODRk1bw-TpTJvL4YcwuHSXLvcfOap",
+  "nonce_and_wrapped": "0ot4QIel4lKQfBcDTG3ZCko1H-Nauf8t6mRev9SIXC8SushiNjPODRk1bw-TpTJvL4YcwuHSXLvcfOap"
+ },
+ "roster": {
+  "mk": "FmZ7PABE7jOEV30EZzJLgmZT0lNdS7LyeHYrTpB1VM0",
+  "mk_id": "6db51bbfb5a0af52eb1932e774f3d31f",
+  "subkey": "k3Gf_ih65-qXsSvfgILoC6kbJYn2tJ-Ez5gCVqpB-1A",
+  "aad": "proofpane-e2e/1 roster|acct-e2e-page|6db51bbfb5a0af52eb1932e774f3d31f",
+  "plaintext": {
+   "credentials": [
+    {
+     "credential_id": "cred-page-0001",
+     "passkey_id": "passkey-0001",
+     "public_key": "Tmw1wZpR9sraWw9AfqEVju6EtJhhBDp8Oqj7QdAHnCw"
+    }
+   ],
+   "recovery": "BJfaO7zBWgU6xHdrnQ5HXrfliW8EJ63pCokhI2mxnA8"
+  },
+  "plaintext_text": "{\"credentials\":[{\"credential_id\":\"cred-page-0001\",\"passkey_id\":\"passkey-0001\",\"public_key\":\"Tmw1wZpR9sraWw9AfqEVju6EtJhhBDp8Oqj7QdAHnCw\"}],\"recovery\":\"BJfaO7zBWgU6xHdrnQ5HXrfliW8EJ63pCokhI2mxnA8\"}",
+  "nonce": "jGVhTbu0Tm8ypOdN",
+  "wrapped": "48G8bM__gq3ra07K1RG0UY47Mc3IDOvtsv2_ECcVBBdMDR_6V9HQynrfC2fyZKXo0J022fKKSbgh-vh09Zwi3FmIJ6Hirnz8trOwbhY7jrah2DnoWyp7fc1z6xSV5o3ft7v1fXI06EVXbpUmm2z2ZcbOKv5e2kJa1R-HIjOmWIkwChOdUbb7D-YeXhJBrVa3R2r6mtNeRUsr75GixjY-DiCOGRgEVxfWZ4k7nFjIpk1nkg4AawDDkDhMDV-PFZ7Aulk5uKiProIPSWYS43dzgS0k1hI",
+  "nonce_and_wrapped": "jGVhTbu0Tm8ypOdN48G8bM__gq3ra07K1RG0UY47Mc3IDOvtsv2_ECcVBBdMDR_6V9HQynrfC2fyZKXo0J022fKKSbgh-vh09Zwi3FmIJ6Hirnz8trOwbhY7jrah2DnoWyp7fc1z6xSV5o3ft7v1fXI06EVXbpUmm2z2ZcbOKv5e2kJa1R-HIjOmWIkwChOdUbb7D-YeXhJBrVa3R2r6mtNeRUsr75GixjY-DiCOGRgEVxfWZ4k7nFjIpk1nkg4AawDDkDhMDV-PFZ7Aulk5uKiProIPSWYS43dzgS0k1hI"
+ },
+ "content_key_wrap": {
+  "mk": "FmZ7PABE7jOEV30EZzJLgmZT0lNdS7LyeHYrTpB1VM0",
+  "mk_id": "6db51bbfb5a0af52eb1932e774f3d31f",
+  "subkey": "RfiX3IppIgZ-WuNXwSOYa-R3_F8gXWDsmKUewk71XOk",
+  "aad": "proofpane-e2e/1 content key|acct-e2e-page|90e8192495a497800de0df7314caa649|6db51bbfb5a0af52eb1932e774f3d31f",
+  "plaintext_pkcs8": "MC4CAQAwBQYDK2VuBCIEIASsA3ZiMfpIyF4SVydN7r63qNhX8SlXUz4eM1d1H54N",
+  "nonce": "wIN2niS2xo5qQWo5",
+  "wrapped": "x7x01M161RGN5hbgWotCoBE74d74BXHv_YF385IFeqlAuLPoNrm74ss9Uo23wHkXbre7PHKhXRHKmugq8d7u-Q",
+  "nonce_and_wrapped": "wIN2niS2xo5qQWo5x7x01M161RGN5hbgWotCoBE74d74BXHv_YF385IFeqlAuLPoNrm74ss9Uo23wHkXbre7PHKhXRHKmugq8d7u-Q"
+ },
+ "credential_wrap": {
+  "credential_id": "cred-page-0001",
+  "prf": "nFoZu7yEC7eIryqcaZ1nGSFHsWhvbBblddFJ5Py69dY",
+  "credential_info": "proofpane-e2e/1 credential|acct-e2e-page|cred-page-0001",
+  "aad": "proofpane-e2e/1 credential|acct-e2e-page|cred-page-0001",
+  "anchor": "5e1efd26d52b32f7807ffc9f4e88c0fb",
+  "private": "SdpmItrjGNiEM0a9aRrrgrhJtHpEOxEB0pX04g3jSvE",
+  "pkcs8": "MC4CAQAwBQYDK2VuBCIEIEnaZiLa4xjYhDNGvWka64K4SbR6RDsRAdKV9OIN40rx",
+  "plaintext_text": "{\"anchor\":\"5e1efd26d52b32f7807ffc9f4e88c0fb\",\"ck\":\"MC4CAQAwBQYDK2VuBCIEIEnaZiLa4xjYhDNGvWka64K4SbR6RDsRAdKV9OIN40rx\"}",
+  "nonce": "ws5a4jSx7uahuov5",
+  "wrapped": "_g7OKVrCIKv_S2v3L7ww8vnBBfsD4dMpOGpi81f69zhelSrF7VyMHXA3teg-ohQ5ZYBi0S51gImC3BJaTCtaBfhQhAtJ8hCCX3O7NTJkee6Ca9M0UgGtod58fNNTb0I6m5l3Am5lDbnV47NOP164FlM-82KkPjeRGfr8ihhkPpbO5bC8CA",
+  "nonce_and_wrapped": "ws5a4jSx7uahuov5_g7OKVrCIKv_S2v3L7ww8vnBBfsD4dMpOGpi81f69zhelSrF7VyMHXA3teg-ohQ5ZYBi0S51gImC3BJaTCtaBfhQhAtJ8hCCX3O7NTJkee6Ca9M0UgGtod58fNNTb0I6m5l3Am5lDbnV47NOP164FlM-82KkPjeRGfr8ihhkPpbO5bC8CA"
+ },
+ "recovery": {
+  "code": "GX5B HMPR IV3J AEYT KDLW YHE5 MPUP BEYY",
+  "code_bytes": "NfoTsfFFdpATE1DXbBydY-jwkxg",
+  "private": "a5ynj2TmkqG9GtJRuKVqY4EeUFq3_9iZ_1qE9YGgv4Y",
+  "public": "BJfaO7zBWgU6xHdrnQ5HXrfliW8EJ63pCokhI2mxnA8",
+  "anchor": {
+   "mk_id": "5e1efd26d52b32f7807ffc9f4e88c0fb",
+   "aad": "proofpane-e2e/1 recovery anchor|acct-e2e-page",
+   "plaintext_text": "{\"anchor\":\"5e1efd26d52b32f7807ffc9f4e88c0fb\"}",
+   "nonce": "DSEud7OvpjXC5gzP",
+   "wrapped": "8oKUqSvYSWxjDbjQmSfZJZrngfpkNfsKVXuhafnZrwh11VS3zjiwGKLYef1RiQfPzDQH7O9P6IFFinlVyQ",
+   "nonce_and_wrapped": "DSEud7OvpjXC5gzP8oKUqSvYSWxjDbjQmSfZJZrngfpkNfsKVXuhafnZrwh11VS3zjiwGKLYef1RiQfPzDQH7O9P6IFFinlVyQ"
+  }
+ }
+}
