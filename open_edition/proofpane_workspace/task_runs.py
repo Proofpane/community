@@ -1586,10 +1586,12 @@ class TaskRuns:
         started here; AgentNotFound for a task id that is not one."""
         if not (isinstance(task_id, str) and shapes.TASK_ID.fullmatch(task_id)):
             raise agentry.AgentNotFound("No such task.")
-        index = dict(self.agents._picked())     # every run this workspace has a record of, with when it was queued
+        # every run this workspace has a record of, in the order they were queued (_picked, which tells apart two runs
+        # queued in one second); one with no entry there first, as one queued at 0 was
+        at = {run_id: n for n, (run_id, _) in enumerate(self.agents._picked())}
         mine = [run_id for run_id, task in list(self.task_of.items()) if task == task_id]
         out = []
-        for run_id in sorted(mine, key=lambda r: ((index.get(r) or {}).get("queued_at") or 0, r)):
+        for run_id in sorted(mine, key=lambda r: (at.get(r, -1), r)):
             try:
                 r = self.agents.read(run_id)
             except (agentry.AgentError, OSError, ValueError):

@@ -517,20 +517,26 @@ def _listening(pid):
 
 
 def _listeners():
-    """{socket inode: (address, port)} of the TCP sockets listening in this network namespace (Linux's /proc)."""
+    """{socket inode: (address, port)} of the TCP sockets listening in this network namespace (Linux's /proc); a
+    kernel without IPv6 has no tcp6 there, which ports.listening skips too."""
     sockets = {}
     for name, v6 in (("tcp", False), ("tcp6", True)):
-        with open(f"/proc/self/net/{name}", encoding="ascii") as fh:
-            sockets.update(ports.parse_proc_net_tcp(fh.read(), v6))
+        try:
+            with open(f"/proc/self/net/{name}", encoding="ascii") as fh:
+                sockets.update(ports.parse_proc_net_tcp(fh.read(), v6))
+        except FileNotFoundError:
+            pass
     return sockets
 
 
 def test_the_agent_listens_on_localhost_only_and_its_files_are_private(tmp_path):
-    # where there is no lsof (Linux), the sockets that began to listen as it started: the agent keeps its memory
-    # private (prctl, __main__), so not even its own user reads its file descriptors in /proc
+    # on Linux, the sockets that began to listen as it started: the agent keeps its memory private (prctl, __main__),
+    # so not even its own user reads its file descriptors in /proc, and lsof, which reads them there, finds none of
+    # its sockets but as root (GitHub's runners have lsof, and run the suite as another user); lsof elsewhere, as
+    # ports.listening chooses by the platform too
     home = tmp_path / "home"
     home.mkdir()
-    before = None if shutil.which("lsof") else _listeners()
+    before = _listeners() if sys.platform.startswith("linux") else None
     a = Agent(str(tmp_path / "ws"), str(home))
     try:
         if before is None:

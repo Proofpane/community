@@ -515,10 +515,13 @@ def test_a_backend_is_an_account_by_its_id_or_a_key_by_its_provider():
 @pytest.fixture
 def repo(tmp_path, monkeypatch):
     """A repository with a tracked config file and a .gitignore that takes a .env back in, and a home whose git
-    excludes name both (written after the first commit, as a person's would be)."""
+    excludes name both (written after the first commit, as a person's would be). XDG_CONFIG_HOME, which git and
+    exclude_files read before HOME, is cleared, so the machine's own configuration stays out (GitHub's runners set
+    it)."""
     home = tmp_path / "home"
     (home / ".config" / "git").mkdir(parents=True)
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     path = str(tmp_path / "r")
     make_repo(path)
     with open(os.path.join(path, "tracked.cfg"), "w") as fh:
@@ -4631,6 +4634,28 @@ def test_the_attempts_route_lists_a_task_s_ended_and_queued_attempts_after_a_res
         assert got[0]["state"] == ended["state"], got
     finally:
         w.stop()
+
+
+def test_two_attempts_queued_in_one_second_are_listed_and_started_in_the_order_they_were_queued(tmp_path, monkeypatch):
+    # a run's queued_at is a second: two runs queued in one second, which the case above meets on a machine as fast as
+    # GitHub's runners, were ordered by their ids, in the attempts route and in the runs the pump starts (runs, queued).
+    # Read in this process with the clock held, after a later change to the first's record, which moves its change
+    # number past the second's, and again after a restart over the same records
+    from proofpane_workspace import workspace as ws_module
+    (tmp_path / "home").mkdir()
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setattr(time, "time", lambda: 1_800_000_000.25)
+    root = str(tmp_path / "ws")
+    first = ws_module.Workspace(root)
+    first.agents.put({"id": AGENT_ID, "name": "Builder", "brief": "work", "repo": None})
+    queued = ["f0f0f0f0f0f0", "0f0f0f0f0f0f"]       # their ids' order is not theirs
+    for n, run_id in enumerate(queued, 1):
+        first.agents.queue(AGENT_ID, trigger={"kind": "task", "id": TASK}, run_id=run_id,
+                           task=message(fence=n, attempt=n))
+    first.agents._change(queued[0], lambda record: None)
+    for ws in (first, ws_module.Workspace(root)):
+        assert [a["run_id"] for a in ws.agents.task_runs.attempts_view(TASK)["attempts"]] == queued
+        assert [r["id"] for r in ws.agents.runs(states=("queued",))] == queued
 
 
 def test_the_owner_s_checks_run_on_a_returned_commit_in_a_fresh_checkout(tws):

@@ -396,7 +396,7 @@ def _held_run(record, run_id, agent_id):
     if run.get("state") not in STATES:
         run["state"] = "failed"
         run["reason"] = "its record was changed"
-    for key in ("seq", "queued_at", "started_at", "ended_at", "steps", "requests", "bytes"):
+    for key in ("seq", "queued_at", "queued_seq", "started_at", "ended_at", "steps", "requests", "bytes"):
         value = run.get(key)
         if value is not None and (not isinstance(value, int) or isinstance(value, bool) or not 0 <= value < 2 ** 53):
             run[key] = None
@@ -1273,14 +1273,17 @@ class Agents:
         self._meta[record["id"]] = {"agent_id": record["agent_id"], "state": run.get("state"),
                                     "reason": run.get("reason"), "cause": run.get("cause"),
                                     "seq": run.get("seq") or 0, "queued_at": run.get("queued_at") or 0,
+                                    "queued_seq": run.get("queued_seq") or 0,
                                     "started_at": run.get("started_at"), "ended_at": run.get("ended_at"),
                                     "pruned": run.get("pruned") is True, "bytes": run.get("bytes") or 0}
 
     def _picked(self, agent_id=None, states=None):
-        """[(run id, its index entry)] of the agent's runs (or every agent's), in `states` only, as queued."""
+        """[(run id, its index entry)] of the agent's runs (or every agent's), in `states` only, as queued: by the
+        second each was queued in, then by the change number its queueing was written with (queued_seq), which tells
+        apart two runs queued in one second; a record from before queued_seq was kept has none, and its id decides."""
         got = [(rid, m) for rid, m in list(self._meta.items())
                if (agent_id is None or m["agent_id"] == agent_id) and (states is None or m["state"] in states)]
-        return sorted(got, key=lambda x: (x[1]["queued_at"], x[0]))
+        return sorted(got, key=lambda x: (x[1]["queued_at"], x[1]["queued_seq"], x[0]))
 
     def _change(self, run_id, change):
         with self._lock:
@@ -1471,6 +1474,9 @@ class Agents:
                                                                   "id": source}, **dispatch),
                               "queued_at": now, "brief_version": agent["brief_version"], "steps": 0,
                               "files": files}}
+            # the change number the write below gives it, the lock held: the order runs were queued in, which
+            # queued_at's second does not tell for two queued in one second (_picked)
+            record["run"]["queued_seq"] = self._seq + 1
             if message is not None:
                 record["run"]["task"] = {k: message[k] for k in ("id", "fence", "step", "attempt", "backend")}
                 record["run"]["backend"] = dict(message["backend"])
