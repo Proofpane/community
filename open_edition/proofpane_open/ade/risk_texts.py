@@ -75,7 +75,7 @@ OPERATOR_SETTING = "OPEN_EDITION_OPERATOR"
 
 # ---- the quotations -------------------------------------------------------------------------------------------------
 #
-# Each as read at its address on 2026-11-11, the curly apostrophes made straight.
+# Each as read at its address on 2026-11-12, the curly apostrophes made straight.
 # Each is read again before a release and then carries that date (read_on), which the release check holds against the
 # release's date. A clause that cannot be read for a release has no words, its read_on and source_date None, and in
 # unread words that say it was not read for this release, and where it is. Nothing here builds such words, so nothing
@@ -84,7 +84,7 @@ OPERATOR_SETTING = "OPEN_EDITION_OPERATOR"
 # (every clause read, the organisation notice's words on training set from the data-use clauses, the release check
 # passing for the day of the reading): a new reading changes those copies, and rewrites those tests, too.
 
-READ_ON = "2026-11-11"
+READ_ON = "2026-11-12"
 CONSUMER_TERMS = "https://www.anthropic.com/legal/consumer-terms"
 COMMERCIAL_TERMS = "https://www.anthropic.com/legal/commercial-terms"
 CLAUDE_CODE_LEGAL = "https://code.claude.com/docs/en/legal-and-compliance"
