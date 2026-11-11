@@ -252,7 +252,7 @@ export interface Edge { from: string; to: string; fromName: string; toName: stri
 
 /** The map's edges from what the page holds: the owner's open commands to each session, the proposals one session made
  *  for another, and what waits on the owner from each as Approvals counts it (linkWaiting: its open prompts, its
- *  proposals and its open questions to him or to all). */
+ *  proposals and its open questions to them or to all). */
 export function mapEdges(s: LinkSessions | null | undefined): Edge[] {
   if (!s) return [];
   const name = new Map(s.links.map((l) => [l.id, l.name]));

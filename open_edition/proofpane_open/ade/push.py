@@ -239,7 +239,7 @@ WORDS = {
     "approval": ("A command waits for you", "Open Approvals.", "/app/#approvals"),
     "board": ("A board needs you", "Open the ADE.", "/#ade"),
     "link-question": ("A question waits for you", "Open Linked sessions to read it.", "/app/#channel"),
-    # a session's open waiting to the owner that refers to no command: it says only that one waits on him
+    # a session's open waiting to the owner that refers to no command: it says only that one waits on them
     "link-waiting": ("A session waits for you", "Open Linked sessions.", "/app/#channel"),
     "link-look": ("A linked session needs a look", "Open Linked sessions.", "/app/#channel"),
     "link-ask": ("A session asks to be linked", "Open Linked sessions to see it.", "/app/#channel"),

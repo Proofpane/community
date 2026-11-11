@@ -13,12 +13,12 @@ alone; the others reach the workspace only while it runs, and never start it.
     GET   /api/ade/skill-improve/repos/{repo}/candidates      each folder at the branch's head that may be proposed for,
                                                               and why each other may not
     GET   /api/ade/skill-improve/proposals/{id}               one proposal, its repository looked at first
-    POST  /api/ade/skill-improve/proposals/{id}/merge         {method?}: into his copy, or on GitHub once a pull
+    POST  /api/ade/skill-improve/proposals/{id}/merge         {method?}: into their copy, or on GitHub once a pull
                                                               request is open
     POST  /api/ade/skill-improve/proposals/{id}/pull-request  its branch pushed to origin and its pull request opened
     POST  /api/ade/skill-improve/proposals/{id}/remake        brought up to date, the same proposal on a new commit
     POST  /api/ade/skill-improve/proposals/{id}/reject        {reason?}: rejected, its ref removed, its bar going on
-    POST  /api/ade/skill-improve/proposals/{id}/take          a found proposal taken as his
+    POST  /api/ade/skill-improve/proposals/{id}/take          a found proposal taken as theirs
     POST  /api/ade/skill-improve/proposals/{id}/go-back       for a found proposal, a proposal to go back
 """
 

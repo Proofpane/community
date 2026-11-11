@@ -2,7 +2,8 @@
 and each place that names Community's own licence says so and calls it nothing else: NOTICE, the README, the notices
 the builds write beside the app (desktop/licenses.py for its Python and Rust crates, ui/licenses.ts for its npm
 packages), the Licenses dialog, and the UI package's manifest and its lock and the desktop and phone apps'
-Cargo manifests, by the licence's SPDX identifier."""
+Cargo manifests, by the licence's SPDX identifier. The sign-in pages' sources hold none of the words that said
+otherwise: a deployment's own terms are its operator's note (OPEN_EDITION_SIGN_IN_NOTE), not the pages'."""
 
 import json
 import os
@@ -39,6 +40,12 @@ def test_the_readme_says_community_is_open_source_under_the_apache_licence():
     assert "Proofpane Community is open source under the Apache License 2.0 (`LICENSE`" in readme
     found = NOT_OPEN.search(readme)
     assert found is None, found and found.group(0)
+
+
+def test_the_sign_in_pages_sources_hold_none_of_the_words_that_said_community_was_not_open_source():
+    for parts in (("web", "index.html"), ("ui", "src", "components", "SignIn.tsx")):
+        found = NOT_OPEN.search(re.sub(r"\s+", " ", _text(*parts)))
+        assert found is None, "%s: %s" % ("/".join(parts), found and found.group(0))
 
 
 def test_the_notices_the_builds_write_say_so():

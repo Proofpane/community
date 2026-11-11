@@ -657,7 +657,7 @@ def _git_env(cwd=None, own=False, network=False):
     made) must fail, not be taken for a repository around the workspace; and git's places there are checked first
     (check_places). Every git as RUN_GIT says, with lazy fetches off and every transport refused but for a command that
     reaches a remote (`network`); but the owner's own actions (`own`: New session, Finish, Update, Land and Ship) run
-    as his own git would, the repository's hooks and its promisor among it, in a repository whose places the check
+    as their own git would, the repository's hooks and its promisor among it, in a repository whose places the check
     accepts, outside an agent's worktree (guard)."""
     extra = {"GIT_TERMINAL_PROMPT": "0", "LC_ALL": "C"}
     guarded = False

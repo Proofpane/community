@@ -1951,7 +1951,7 @@ def poll_all(now=None):
     calls (skill_counts.read, which reaches those the app read for before too, once an hour each), and every account
     with an agent whose machine runs is synced. An owner the business skills' loop names (skill_improve.users_to_poll)
     whom no sync reaches, having no agent, has the account's thread of the judge and the loop started all the same, so
-    that his controller's tasks' skills are reviewed whether or not he has an agent."""
+    that their controller's tasks' skills are reviewed whether or not they have an agent."""
     from . import controller, skill_counts, skill_improve
     now = int(time.time() if now is None else now)
     with store.connect() as db:

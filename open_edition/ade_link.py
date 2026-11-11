@@ -15,7 +15,7 @@ system `python3`.
     ade_link.py --dir DIR heartbeat
     ade_link.py --dir DIR post KIND TEXT [--to NAME] [--ref SEQ]      KIND: step question waiting done note; ask the
                                                                        owner with question --to owner; a waiting to
-                                                                       him says only that you are blocked on him
+                                                                       them says only that you are blocked on them
     ade_link.py --dir DIR checkpoint FILE|- [--force]                 a JSON object of at most 4,000 bytes
     ade_link.py --dir DIR next [--ack] [--turn]
     ade_link.py --dir DIR ack SEQ
@@ -76,7 +76,7 @@ The owner's inbox:
                                                     decision, and exits 0
     ade_link.py --dir DIR propose --to NAME --file PATH
                                                     propose a message to another linked session: sealed to the owner,
-                                                    who signs it as his own instruction to it, or closes it
+                                                    who signs it as their own instruction to it, or closes it
 
 It keeps prompts.json (the items it posted and has not closed: the Claude Code session and agent of each, its tool and
 a digest of its input, the digest of the text posted, the numbering, the seq and the deadline, never the input), its
@@ -14306,9 +14306,9 @@ def _sign_composed(signer, terminal, what):
 # before it prints anything: "Approve" allows a permission prompt, a question's option numbers answer it, "Deny" denies
 # with fixed words and ends the turn, and the owner's own words deny with them. A prompt nobody answered by its deadline
 # it refuses with fixed words that name the deadline (PROMPT_UNANSWERED), and the turn goes on; a prompt that reads
-# open, one the owner hid in his list included, keeps it waiting until then. Any other close (the owner's, a report), an
-# answer it cannot check or any failure prints nothing, which leaves the prompt where Claude Code shows it. A prompt it
-# may not decide from the list (an agent's, a plan approval, a tool the guard does not judge, a question with no
+# open, one the owner hid in their list included, keeps it waiting until then. Any other close (the owner's, a report),
+# an answer it cannot check or any failure prints nothing, which leaves the prompt where Claude Code shows it. A prompt
+# it may not decide from the list (an agent's, a plan approval, a tool the guard does not judge, a question with no
 # options to number, a text past the rules, an account that does not seal, a session with no owner keys pinned, a step
 # the guard keeps for the owner at the machine) is posted as an item to look at, and the hook ends at once. On
 # PostToolUse and PostToolUseFailure it reports, for this Claude Code session's own newest open item whose tool and
@@ -15248,7 +15248,7 @@ def cmd_manager(link, args):
     if _int(decided) and decided > 0:
         lines.append(MANAGER_MARK + f"{decided} decision{'s' if decided != 1 else ''} of the owner's made with the "
                      "sign-in alone: no instruction to this session; ask the owner in the session channel "
-                     "(ade_link.py post question \"...\" --to owner), whose answer he signs")
+                     "(ade_link.py post question \"...\" --to owner), whose answer they sign")
     information = packet.get("information") if isinstance(packet.get("information"), dict) else {}
     for q in information.get("requirements") or []:
         if not isinstance(q, dict):
@@ -15270,7 +15270,7 @@ def cmd_manager(link, args):
 
 # a request's id as the Manager's packet gives it, which a plan names (manager-act plan --request)
 _REQUEST_ID = re.compile(r"[0-9a-f]{32}")
-# a question to the owner is the session channel's, whose answer he signs (post question --to owner): no act
+# a question to the owner is the session channel's, whose answer they sign (post question --to owner): no act
 MANAGER_ACTS = ("plan", "start", "state", "stop", "continue")
 # what each act needs given (manager-act's arguments by their names)
 ACT_NEEDS = {"plan": ("request", "words", "title", "repos"), "start": ("requirement", "repo", "model", "effort"),
@@ -15331,7 +15331,7 @@ def cmd_manager_act(link, args):
 
 
 def cmd_propose(link, args):
-    """A message this session proposes to another linked session, for the owner to sign as his own instruction to it:
+    """A message this session proposes to another linked session, for the owner to sign as their own instruction to it:
     the file's words, held to a command's rules, sealed to the owner and
     never sent in the clear, posted as a proposal for the session named. The owner signs it in Approvals, its first
     line naming this session, or closes it; it reaches the other session only signed. Allowed only while the owner's
@@ -15415,11 +15415,11 @@ def _main(argv=None):
                  "branch", "base", "state"):
         p.add_argument("--" + name)
     p = add("post")
-    # what reaches the owner: a question asks him; a waiting says only that this session waits on him
-    p.description = ("Ask the owner anything with question --to owner (post question \"...\" --to owner), which he "
-                     "answers signed. A waiting to him says only that this session is blocked on him: his devices are "
-                     "told once that a session waits, and it stays listed as waiting until this session posts again "
-                     "or he closes it.")
+    # what reaches the owner: a question asks them; a waiting says only that this session waits on them
+    p.description = ("Ask the owner anything with question --to owner (post question \"...\" --to owner), which they "
+                     "answer signed. A waiting to them says only that this session is blocked on them: their devices "
+                     "are told once that a session waits, and it stays listed as waiting until this session posts "
+                     "again or they close it.")
     p.add_argument("kind", choices=("step", "question", "waiting", "done", "note"))
     p.add_argument("text")
     p.add_argument("--to")

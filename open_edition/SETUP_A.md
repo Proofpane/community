@@ -1,7 +1,7 @@
 # Setup A: the hosted ADE in front, the agents on your own computer
 
-Setup A is for a customer of Proofpane Community who prefers to run the agents on their own computer. A customer who
-does not can use the hosted workspace instead, a workspace in the browser where they run the official, unmodified agent
+Setup A is for a person who uses a hosted ADE and prefers to run the agents on their own computer. One who does
+not can use the hosted workspace instead, a workspace in the browser where they run the official, unmodified agent
 programs, signed in with their own subscription or their own key, each session in a git worktree of its own, which is
 off unless the deployment names a provider (`OPEN_EDITION_ADE`) [the manual, The hosted workspace]; so setup A is not
 the only way.

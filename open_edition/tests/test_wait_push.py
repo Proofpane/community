@@ -1,7 +1,8 @@
-"""A session that waits on the owner tells him. An open
-`waiting` post to the owner or to all that refers to no command is told to him once, in the fixed words of a kind of
-its own, never its words or its session's name, until that link posts again or he closes it on the page; a `waiting`
-that refers to a command (a take's renewal, "working on it") is told as before, never pushed, and so is a note."""
+"""A session that waits on the owner tells them. An open
+`waiting` post to the owner or to all that refers to no command is told to them once, in the fixed words of a kind
+of its own, never its words or its session's name, until that link posts again or they close it on the page; a
+`waiting` that refers to a command (a take's renewal, "working on it") is told as before, never pushed, and so is a
+note."""
 
 import json
 import re
@@ -158,8 +159,8 @@ def test_the_old_pages_notifier_tells_the_same_item_in_the_same_words(tmp_path):
 
 
 def test_the_clients_post_says_to_ask_the_owner_with_a_question(capsys):
-    """The client's post usage: a waiting to the owner says only that the session is blocked on him; anything he is
-    asked is a question to him."""
+    """The client's post usage: a waiting to the owner says only that the session is blocked on them; anything they
+    are asked is a question to them."""
     import ade_link
     with pytest.raises(SystemExit):
         ade_link.main(["post", "--help"])
@@ -254,6 +255,6 @@ def test_the_clients_post_help_says_a_waiting_says_only_the_session_is_blocked(c
         ade_link.main(["post", "--help"])
     out = " ".join(capsys.readouterr().out.split())
 
-    assert "says only that this session is blocked on him" in out, out
+    assert "says only that this session is blocked on them" in out, out
     assert "question --to owner" in " ".join((ade_link.__doc__ or "").split())
 

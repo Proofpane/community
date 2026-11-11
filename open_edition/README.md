@@ -112,6 +112,12 @@ Some tests skip rather than fail where they cannot run, and a skipped test check
 read the skips before taking a green run as theirs. No test runs a coding agent installed where the tests run.
 The image is `Dockerfile`'s, built from the repository root; `fly.toml` is an example deployment.
 
+The phone app's sign-in, and a hosted place the desktop app adds, offer the hosted Community's address,
+`https://proofpane-oss.fly.dev` (`DEFAULT_SERVER`, in `ui/src/components/TitleBar.tsx`), and take another typed in
+their Server field. A fork that serves its own deployment changes `DEFAULT_SERVER` to that deployment's address before
+it builds the apps, and the example address in the two messages that refuse a server that is not https
+(`ui/src/components/SignIn.tsx`).
+
 ## Settings
 
 | Variable | Meaning |
@@ -123,6 +129,7 @@ The image is `Dockerfile`'s, built from the repository root; `fly.toml` is an ex
 | `OPEN_EDITION_MDS_URL` | Where the FIDO Metadata Service's blob is fetched from (default `https://mds3.fidoalliance.org/`), to judge which passkeys are hardware keys; empty, nothing is fetched |
 | `OPEN_EDITION_OSS_ROOT` | Where the open packages are (default `../oss` from the source tree) |
 | `OPEN_EDITION_DOMAIN` | The address Caddy serves and gets a certificate for (default `localhost`) |
+| `OPEN_EDITION_SIGN_IN_NOTE` | A line the older pages' sign-in (`web/index.html`) shows, the operator's own words about this deployment, such as on whose terms it is offered (`fly.toml`, the example, sets the hosted Community's); unset, or nothing but white space, the page shows none. The ADE app's sign-in, at `/app/` and in the apps, shows none either. Read at each request as one line (white space at either end dropped, each run of it inside made one space) |
 | `OPEN_EDITION_KEYSTORE_KEY` | 32 bytes in base64: the key the ADE seals repository tokens with (AES-256-GCM), and each account's pairing with its Proofpane organisation (its device's id and token). Unset, the ADE connects public repositories only and pairs no account with Proofpane; set but not 32 bytes, it refuses to store a token rather than quietly store none |
 | `OPEN_EDITION_GITHUB_API` | GitHub's API base (default `https://api.github.com`); a GitHub Enterprise Server's is `https://HOST/api/v3`. HTTPS only, or HTTP to this machine for a test server |
 | `OPEN_EDITION_ADE_PUSH_EVERY` | Seconds between the notifier's rounds (default 60); 0 turns the notifier off |
@@ -137,7 +144,7 @@ The image is `Dockerfile`'s, built from the repository root; `fly.toml` is an ex
 | `OPEN_EDITION_CONNECTOR_CLIENT_HOSTS` | The hosts whose Client ID Metadata Documents the ADE reads, comma-separated (default `claude.ai`) |
 | `OPEN_EDITION_CONNECTOR_CLIENT_DOCUMENTS` | Client ID Metadata Documents read whenever they are stale outside the hour's 100 reads of documents not known here, as one read here before is: their exact client_ids, comma-separated (default Claude Code's, `https://claude.ai/oauth/claude-code-client-metadata`; empty for none). Their host must still be one of the hosts above |
 | `OPEN_EDITION_ADE_CONNECTOR_HOLD` | Seconds a newly allowed app waits before its connection takes effect (default 180; a whole number from 0 to 86,400, else the default) |
-| `OPEN_EDITION_ADE_TASK_RELAY` | Whether a task whose account refused it may move by itself to another of the owner's accounts, or go to the owner's custodian (default off: off unless set, since 2026-10-16, because moving a task between accounts to keep it going is the owner's choice). `1`, `true`, `yes` or `on` is on, and `0`, `false`, `no` or `off` off, in any case and with white space at either end dropped; anything else is the default. Read at each use. A task's own Relay switch starts as this when the task is made, and turns on only while this is on ("Tasks", in the manual). With the relay off, a task whose account runs out of room waits for that account's reset, going on there by itself while Auto-resume is on, or for its owner where no reset is known; its owner moves it with Continue on..., or turns the relay on: this setting first, then the task's own switch, since a task made while this is off keeps its switch off after this is turned on, until its owner turns it on |
+| `OPEN_EDITION_ADE_TASK_RELAY` | Whether a task whose account refused it may move by itself to another of the owner's accounts, or go to the owner's custodian (default off: off unless set, because moving a task between accounts to keep it going is the owner's choice). `1`, `true`, `yes` or `on` is on, and `0`, `false`, `no` or `off` off, in any case and with white space at either end dropped; anything else is the default. Read at each use. A task's own Relay switch starts as this when the task is made, and turns on only while this is on ("Tasks", in the manual). With the relay off, a task whose account runs out of room waits for that account's reset, going on there by itself while Auto-resume is on, or for its owner where no reset is known; its owner moves it with Continue on..., or turns the relay on: this setting first, then the task's own switch, since a task made while this is off keeps its switch off after this is turned on, until its owner turns it on |
 | `OPEN_EDITION_ADE_TASK_AUTO_RESUME` | Whether a task waiting for a known reset resumes by itself at it (default on; read as `OPEN_EDITION_ADE_TASK_RELAY` is). A task's own Auto-resume switch turns on only while this is on |
 | `OPEN_EDITION_ADE_TASK_CROSS_GROUPS` | Whether a task may cross between the owner's personal plans and an organisation's seats (default off; read as `OPEN_EDITION_ADE_TASK_RELAY` is). A task's own Cross organisations switch turns on only while this is on |
 | `OPEN_EDITION_ADE_TASK_TEAMMATE` | Whether a task may be handed to a teammate, by an offer or by custody (default on; read as `OPEN_EDITION_ADE_TASK_RELAY` is). It also needs the fly provider and `OPEN_EDITION_OPERATOR` ("Handing a task to a teammate", in the manual), and custody's hand-off, the relay's second step, needs the relay on as well: this deployment's `OPEN_EDITION_ADE_TASK_RELAY` and the task's own switch |
@@ -151,7 +158,22 @@ The image is `Dockerfile`'s, built from the repository root; `fly.toml` is an ex
 | `OPEN_EDITION_PROOFPANE_ADDRESSES` | Comma-separated Proofpane addresses an account may pair the ADE with, for its linked sessions' usage: each `https://` with a host and at most a port, or `http://` to this machine for a Proofpane run on it. Default `https://api.proofpane.com`; empty for none. The server itself spends the pairing code and posts the usage there, so the operator names the addresses, never the person pairing |
 | `OPEN_EDITION_APP_ORIGINS` | Comma-separated origins, besides the site's own, whose pages may call the API (CORS) and open its sockets: the phone app's own pages. Default `tauri://localhost,http://tauri.localhost,https://tauri.localhost`; empty for none. Every request still needs a sign-in, and no answer sets a cookie |
 | `OPEN_EDITION_ADE` | The hosted workspace's provider: `local` or `fly`. Unset (the default), there is no hosted workspace. `local` gives an admin a shell on this machine and is refused where `FLY_APP_NAME` is set |
-| `OPEN_EDITION_WORKSPACE_*`, `OPEN_EDITION_FLY_API` | The fly provider's settings: "The hosted workspace", in the manual |
+| `OPEN_EDITION_WORKSPACE_APP` | The fly provider's Fly app for the workspace machines, never this app's own; required. With `OPEN_EDITION_ADE=fly` the app reads the `OPEN_EDITION_WORKSPACE_*` settings and `OPEN_EDITION_FLY_API` when it starts: a required one missing, or any one wrong, and it does not start; the provider needs `OPEN_EDITION_KEYSTORE_KEY` too |
+| `OPEN_EDITION_WORKSPACE_IMAGE` | The workspace image, as Fly's registry names it (`workspace_image/Dockerfile`'s); required |
+| `OPEN_EDITION_WORKSPACE_FLY_TOKEN` | A deploy token for the workspace app alone (`fly tokens create deploy -a <app>`); required |
+| `OPEN_EDITION_WORKSPACE_OWN_NETWORK` | `yes` where the workspace app and this app are alone on their Fly private network, `no` where they share it with other apps; required, since a workspace runs its user's code (`ade/fly_provider.py` says what each means) |
+| `OPEN_EDITION_WORKSPACE_REGION` | The workspace machines' Fly region: default this app's own (`FLY_REGION`), else `syd` |
+| `OPEN_EDITION_WORKSPACE_CPUS` | A machine's shared CPUs, 1 to 8 (default 1) |
+| `OPEN_EDITION_WORKSPACE_MEMORY_MB` | A machine's memory, 256 to 16,384 and a multiple of 256 (default 2048) |
+| `OPEN_EDITION_WORKSPACE_VOLUME_GB` | Each user's volume, their home in the workspace, 1 to 500 (default 5) |
+| `OPEN_EDITION_WORKSPACE_IDLE_MINUTES` | Minutes unused after which a machine stops by itself, 5 to 1,440 (default 30) |
+| `OPEN_EDITION_WORKSPACE_FOR` | Who may have a workspace: `admins` (the default) or `everyone` |
+| `OPEN_EDITION_WORKSPACE_MAX` | The most workspaces this deployment makes, 1 to 1,000 (default 10) |
+| `OPEN_EDITION_WORKSPACE_CAP_USD` | The cap on what all the workspace machines together spend in a calendar month (UTC): 50 US dollars, which this lowers (0.01 to 50) and nothing raises. A start is refused when the month's spending and an hour of every machine that would then run passes it, and every started machine is stopped when the spending and a quarter of an hour of them would reach it. The spending is this app's estimate from Fly's published prices, not Fly's bill |
+| `OPEN_EDITION_WORKSPACE_USD_PER_HOUR` | What a started machine of this size costs an hour, for that estimate, 0.001 to 100 (default 0.03) |
+| `OPEN_EDITION_WORKSPACE_SHARE_USD` | An account's share of the cap a month, unless it is an admin's, whose share is the whole cap: 0.01 to 50, never more than the cap (default the cap divided by `OPEN_EDITION_WORKSPACE_MAX`) |
+| `OPEN_EDITION_WORKSPACE_KEEP_DAYS` | Days a workspace is kept after its account leaves the hosted choice, 1 to 3,650 (default 30) |
+| `OPEN_EDITION_FLY_API` | Fly's Machines API (default `https://api.machines.dev`): an https address, or an http one to this machine or to Fly's own `_api.internal` (`http://_api.internal:4280`) |
 | `OPEN_EDITION_ADE_TRIGGER_HOURS` | On the fly provider, the hours a month a user's machine may run before that user's schedules, hooks and tasks are held back (default 200; a whole number, else the default; one below 0 is read as 0) |
 
 ## Licence

@@ -82,8 +82,8 @@ function Acted({ acts, at, said = true }: { acts: ReturnType<typeof useActs>; at
 /** Everything waiting for the owner, in one place: what connected apps proposed (first: Proposals.tsx), tool calls a
  *  chat asks about, the sessions agents asked for (the agent's asks.py), which start only when the owner starts them,
  *  the asks for more in a task's grant (TaskGrant.tsx), which change nothing until the owner signs them with a passkey,
- *  what his linked sessions report waits for him (LinkInbox.tsx: their prompts, questions and proposals), and commands
- *  a hook held (with an app's proposed answer on its own item). */
+ *  what the owner's linked sessions report as waiting (LinkInbox.tsx: their prompts, questions and proposals), and
+ *  commands a hook held (with an app's proposed answer on its own item). */
 export function Approvals(props: { records: SessionRecord[]; requests: HookRequest[]; sessionAsks?: SessionAsk[]; proposals?: Proposal[]; grantWidenings?: GrantWideningView[]; onClose: () => void; onOpen: (id: string) => void;
   /** the linked sessions' item a link opened (App.tsx's #item=<seq>), brought into view */
   item?: number }) {
@@ -107,7 +107,7 @@ export function Approvals(props: { records: SessionRecord[]; requests: HookReque
   const proposedFor = (q: HookRequest) => proposals.find((p) => p.state === "proposed" && p.kind === "approval" && p.request_id === q.id);
   // the linked sessions' prompts, questions to the owner and proposals, as the store last read them
   const linked = useStore((s) => linkWaiting(s.links));
-  // a prompt a Close hid that still waits: never counted (he hid it), but the empty state says it waits below
+  // a prompt a Close hid that still waits: never counted (they hid it), but the empty state says it waits below
   const hiddenWaiting = useStore((s) => { const h = s.links?.hidden_waiting; return Array.isArray(h) && h.length > 0; });
   const widenings = props.grantWidenings || [];
   const none = asks.length === 0 && props.requests.length === 0 && terminals.length === 0 && wanted.length === 0

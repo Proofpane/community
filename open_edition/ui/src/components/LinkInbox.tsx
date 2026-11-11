@@ -1,15 +1,15 @@
-// The owner's inbox from his linked sessions: what a linked session
-// reports waits for him in Approvals, beside the held commands, and in that session's own conversation, with the same
+// The owner's inbox from their linked sessions: what a linked session
+// reports waits for them in Approvals, beside the held commands, and in that session's own conversation, with the same
 // buttons in both. A prompt is the session's report of a prompt Claude Code showed it, never Claude Code's own: its
 // sealed text is opened with the account's keys (e2e.ts) and shown as a question's words are, never raw, and it is
-// answered with a passkey: "Approve", "Deny", the numbers of the options chosen, or his own words, each of which goes
+// answered with a passkey: "Approve", "Deny", the numbers of the options chosen, or their own words, each of which goes
 // in the clear, as the page says first. Close takes the sign-in alone, carries no words and decides nothing; a prompt's
 // Close hides it: it stays open, answerable until its deadline among the
 // hidden and closed prompts the inbox lists below the open ones, and at its deadline its session's hook refuses it
 // unanswered, where that hook is this version's and can check that with the ADE then, so that its session goes on,
 // which the page never says happened: the server knows only that the deadline passed. An item to look at is decided
-// where the session shows it, and a Close closes it, as before. A proposal is a session's words for another of his
-// sessions, which reach it only as his own signed instruction, its first line naming the session that proposed it.
+// where the session shows it, and a Close closes it, as before. A proposal is a session's words for another of their
+// sessions, which reach it only as their own signed instruction, its first line naming the session that proposed it.
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight, ExternalLink, KeyRound, Loader2, Radio, X } from "lucide-react";
 import { Api, ApiError, APP, server, toOwner, type LinkClosedPrompt, type LinkEvent, type LinkPrompt, type LinkProposal } from "../api";
@@ -50,7 +50,7 @@ export function readsAsFixed(text: string): boolean {
 
 export type PromptAnswerForm = "approve" | "deny" | "numbers" | "words";
 /** What an answer to a prompt is, as the server reads it, or null where it refuses it: an answer carries no field
- *  saying which button made it, only its text, so his own words may not read as a button's. */
+ *  saying which button made it, only its text, so their own words may not read as a button's. */
 export function promptAnswerForm(text: string): PromptAnswerForm | null {
   if (text === PROMPT_APPROVE) return "approve";
   if (text === PROMPT_DENY) return "deny";
@@ -59,7 +59,7 @@ export function promptAnswerForm(text: string): PromptAnswerForm | null {
 }
 
 export const OWN_WORDS_REFUSED = "Your own words may not read as Approve, Deny or a choice of options: use the buttons for those.";
-/** Why his own words will not do as an answer to a prompt, said before anything is signed; null when they will. */
+/** Why their own words will not do as an answer to a prompt, said before anything is signed; null when they will. */
 export const ownWordsProblem = (text: string) => (promptAnswerForm(text) === "words" ? null : OWN_WORDS_REFUSED);
 
 // ---- a prompt's text, once opened -----------------------------------------------------------------------------------
@@ -221,9 +221,9 @@ function At({ t, clockOnly = false }: { t: number; clockOnly?: boolean }) {
 }
 
 /** How a prompt in the hidden and closed list ended, and when, as GET /api/ade/link/prompts/closed says (its `ended`):
- *  the owner's signed answer, his Close that hid it, its deadline, its session's report or a close on the page; never
+ *  the owner's signed answer, their Close that hid it, its deadline, its session's report or a close on the page; never
  *  that the list decided what the session did. At its deadline the server knows only that the deadline passed with no
- *  answer of his: an older ade_link.py, a clock out of step, an ADE its session could not reach or a window that
+ *  answer of theirs: an older ade_link.py, a clock out of step, an ADE its session could not reach or a window that
  *  answered first all leave no refusal, and the record never says what the hook did, so the page
  *  says it went unanswered and no more. `asks`: a question, answered with its options, never
  *  the word Approve; `deadline`: its deadline, by the server's clock. */
@@ -761,7 +761,7 @@ export function PromptCard({ p, name, live = true, unlock = true, onNotice, end,
         </div>
       )}
       {approveOffered && (
-        // one press signs: what it sends in the clear, in a locked tab what the touch does, and which of his passkeys
+        // one press signs: what it sends in the clear, in a locked tab what the touch does, and which of their passkeys
         // the session refuses with the pin line that makes it take them, said before it
         <div className="mt-2">
           <ClearNote a={{ kind: "approve" }} />
@@ -828,8 +828,8 @@ export function PromptCard({ p, name, live = true, unlock = true, onNotice, end,
 
 // ---- a proposal ----------------------------------------------------------------------------------------------------
 
-/** One proposal a linked session made for another of the owner's sessions: its words, sealed to him, signed as his own
- *  instruction to the session it names and no other, its first line naming the proposer; or closed, which decides
+/** One proposal a linked session made for another of the owner's sessions: its words, sealed to them, signed as their
+ *  own instruction to the session it names and no other, its first line naming the proposer; or closed, which decides
  *  nothing and sends nothing. */
 export function ProposalCard({ p, live = true, unlock = true, onNotice, shown = false }: {
   p: LinkProposal; live?: boolean; unlock?: boolean; onNotice?: (text: string) => void; shown?: boolean;

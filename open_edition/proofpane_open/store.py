@@ -2000,7 +2000,7 @@ ADDED_COLUMNS = (("ade_repos", "verify_config", "TEXT"), ("users", "token_gen", 
                  ("ade_link_events", "closed_reason", "TEXT"),
                  ("ade_link_events", "prompt_answer", "INTEGER NOT NULL DEFAULT 0"),
                  ("ade_link_events", "for_id", "TEXT"), ("ade_links", "proposes", "INTEGER NOT NULL DEFAULT 0"),
-                 # the owner's Close of a prompt (ade/link.py): when it hid the prompt from his open
+                 # the owner's Close of a prompt (ade/link.py): when it hid the prompt from their open
                  # list, which leaves it open and answerable until its deadline, and the account that hid it
                  ("ade_link_events", "hidden_at", "INTEGER"), ("ade_link_events", "hidden_by", "TEXT"),
                  ("ade_e2e_pending", "by_code", "INTEGER"),

@@ -206,7 +206,7 @@ within the bounds (the Manager on, a model and an effort the owner allows, its r
 waiting for the go, planned from a goal signed to the session and kept by no sub-goal's own manager, a repository it may
 touch, and under the cap). An act is done only once the ADE took it (exit 0, its id printed); one refused (exit 2)
 prints the ADE's why, sent again is refused again, and is not done another way. The session asks the owner in the
-session channel, `post question "<words>" --to owner`, whose answer he signs. When its hold ends the ADE ends the tasks
+session channel, `post question "<words>" --to owner`, whose answer they sign. When its hold ends the ADE ends the tasks
 it reported, and End all stops the session through its link: resumed, it stops each task it started. In this build a
 linked Manager's tasks run on its own machine, in its folder, and each one's state is the session's own report
 (`state`), which the page marks as the session's. Holding the role gives no reach over other sessions. A session whose

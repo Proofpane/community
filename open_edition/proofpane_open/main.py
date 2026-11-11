@@ -441,6 +441,19 @@ def health(token=Depends(bearer)):
     return {"ok": True, "version": VERSION, "release": kept["release"], **({"commit": kept["commit"]} if signed_in else {})}
 
 
+SIGN_IN_NOTE = "OPEN_EDITION_SIGN_IN_NOTE"
+
+
+@app.get("/api/auth/sign-in-note")
+def sign_in_note():
+    # the operator's own words for the older pages' sign-in (web/index.html; the ADE app's sign-in asks for none),
+    # such as on whose terms this deployment is offered: one line, read at each request (white space at either end
+    # dropped, each run of it inside made one space), and no note where the setting is unset or holds nothing but
+    # white space. It needs no sign-in: that page shows it before one
+    line = " ".join(os.environ.get(SIGN_IN_NOTE, "").split())
+    return {"note": line or None}
+
+
 @app.post("/api/auth/login")
 def login(body: Login, request: Request):
     user_id = auth.login(body.email, body.password, _client(request))

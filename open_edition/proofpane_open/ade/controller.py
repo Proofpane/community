@@ -715,7 +715,7 @@ def end_all(user, now=None):
     stops none itself: it knows the controller's sessions only by ids a record gave, which could name any of the
     owner's sessions. The journal line counts the open sessions the app has. A linked session kept as the Manager's
     holder is stopped through its link, as the owner's Stop on its card does (link_commands.stop_in: its next tool
-    calls held until a resume he signs), and its packet says End all was pressed (manager_link.packet_for), so that,
+    calls held until a resume they sign), and its packet says End all was pressed (manager_link.packet_for), so that,
     resumed, it stops the tasks it started: the app stops none of them itself either."""
     from . import link_commands
     now = _now(now)

@@ -1927,6 +1927,12 @@ window.addEventListener("hashchange", () => { if (me) route(); });
   const m = /^#invite=([A-Za-z0-9_-]+)$/.exec(location.hash);
   // the ADE app is the front door: an invitation, and a visit that names no page, open there
   if (m || (!location.hash && !stored("pp-open-token"))) { location.replace("/app/" + location.hash); return; }
+  // the operator's note for the sign-in page, where this deployment sets one (OPEN_EDITION_SIGN_IN_NOTE): written as
+  // text, and its paragraph stays hidden without one
+  api("GET", "/api/auth/sign-in-note").then((r) => {
+    $("signin-note").textContent = r.note || "";
+    $("signin-note").hidden = !r.note;
+  }).catch(() => { /* no note: the paragraph stays hidden */ });
   if (m) {
     inviteToken = m[1];
     history.replaceState(null, "", location.pathname);  // the token does not stay in the address bar

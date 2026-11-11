@@ -30,8 +30,8 @@ workspace keeps the state of these places it last accepted, for each repository 
   repository among it), is a change of that repository.
 
 A change found is accepted at once when no agent's run has worked since the places were last found as accepted: the
-owner's own sessions made it (his hooks, installed by a tool). Otherwise the repository (or every git, for the
-settings outside them) is held: no git of the workspace's runs there until the owner resumes one of the agents held
+owner's own sessions made it (hooks of the owner's, installed by a tool). Otherwise the repository (or every git, for
+the settings outside them) is held: no git of the workspace's runs there until the owner resumes one of the agents held
 for it (agents.py), which accepts its places as they are then.
 
 What was accepted, and what is held, is kept here and in a file of the workspace's root (RECORD, which the gate refuses

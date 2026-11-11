@@ -24,9 +24,9 @@ import { Tool } from "./RunTree";
 // one panel. What it shows is names, times and counts, and a session's title as the list shows it (the first line of
 // its first prompt where it was never named); never a
 // reply, and an agent's name nowhere but here (never in a notification, a push or the page's title). The owner's
-// linked sessions are drawn on it too, each with its count of what waits for him,
-// which opens Approvals, the one list: its open prompts, its questions to him, the proposals it made and its asks for
-// more in a task's grant; never their words.
+// linked sessions are drawn on it too, each with its count of what waits for the owner,
+// which opens Approvals, the one list: its open prompts, its questions to the owner, the proposals it made and its asks
+// for more in a task's grant; never the sessions' words.
 
 const KIND_WORDS: Record<string, string> = { claude: "Claude", codex: "Codex" };
 
@@ -176,9 +176,9 @@ export function ControlView({ pop, empty, onOpenSession, onNew, onApprovals }: {
   );
 }
 
-/** The owner's linked sessions (the open edition's ade/link.py), each a node with its count of what waits for him from
- *  it, which opens Approvals: its open prompts (those to look at too), its questions to him, the proposals it made and
- *  its asks for more in a task's grant. A count and a name, never what any of them says. */
+/** The owner's linked sessions (the open edition's ade/link.py), each a node with its count of what waits for the owner
+ *  from it, which opens Approvals: its open prompts (those to look at too), its questions to the owner, the proposals
+ *  it made and its asks for more in a task's grant. A count and a name, never what any of them says. */
 function LinkedSessions({ links, onApprovals }: { links: LinkSessions; onApprovals: () => void }) {
   const widenings = useStore((s) => s.grantWidenings);
   return (

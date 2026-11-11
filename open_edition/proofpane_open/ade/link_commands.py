@@ -186,8 +186,8 @@ def hidden_character(value):
         prev = code
     return None
 # the owner's commands, a move too: counted in the owner's budget and a link's queue, taken and withdrawn as a command
-# is, told of when not taken; _COMMAND_SQL leaves out his answers to prompts, which only their hook claims, never take,
-# and which count in a budget of their own, in no queue and in no notice
+# is, told of when not taken; _COMMAND_SQL leaves out the owner's answers to prompts, which only the prompts' hook
+# claims, never take, and which count in a budget of their own, in no queue and in no notice
 _SIGNED_SQL = "kind IN ('instruction', 'answer', 'move') AND link_id = 'owner'"
 _COMMAND_SQL = _SIGNED_SQL + " AND prompt_answer = 0"
 
@@ -604,7 +604,7 @@ def _prompt_answered(db, user_id, payload, target, prompt, now):
 
 def _proposal_signed(db, user_id, payload, purpose, now):
     """Inside post_command's transaction: the linked session's proposal (an event of kind proposal) whose client_id is
-    the signed payload's id, which the owner signs now as his own instruction, or None. It must be open (409), be
+    the signed payload's id, which the owner signs now as their own instruction, or None. It must be open (409), be
     signed as an instruction (409), to the session it names (409), and its first line must name who proposed it,
     exactly "Proposed by NAME:", with words after it (409): the signed payload has no field for that, so the words
     do."""

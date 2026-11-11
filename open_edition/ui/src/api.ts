@@ -587,8 +587,8 @@ export interface LinkEvent {
    *  page leaves it out, so each turn shows once */
   posted_again?: boolean;
   said_at?: number;          // when its first words were said there, in milliseconds
-  /** a prompt's or a proposal's close: the owner's answer, his close, the session's own report (report:EVENT), its
-   *  deadline, or (a proposal) his signed instruction; null while it is open */
+  /** a prompt's or a proposal's close: the owner's answer, their close, the session's own report (report:EVENT), its
+   *  deadline, or (a proposal) their signed instruction; null while it is open */
   closed_reason?: string | null;
   closed_at?: number | null;
   /** an answer of the owner's to a prompt: never a command for the model, claimed by the prompt hook alone */
@@ -603,15 +603,15 @@ export interface LinkPrompt extends LinkEvent {
   deadline_at: number;
   look: boolean;
 }
-/** How a prompt in the hidden and closed list ended: `waiting`, hidden by the owner's Close and still waiting for his
- *  answer; by his signed answer, `approved`, `refused` (his "Deny") or `words` (his own words); `deadline`, its deadline
- *  passed with no answer of his, which is all the server knows (not what its session's hook did then); `report`, closed
- *  by its session's report; `closed`, closed on the page, as a Close closes an item to look at, and closed a prompt
- *  before it hid one. */
+/** How a prompt in the hidden and closed list ended: `waiting`, hidden by the owner's Close and still waiting for their
+ *  answer; by their signed answer, `approved`, `refused` (their "Deny") or `words` (their own words); `deadline`, its
+ *  deadline passed with no answer of theirs, which is all the server knows (not what its session's hook did then);
+ *  `report`, closed by its session's report; `closed`, closed on the page, as a Close closes an item to look at, and
+ *  closed a prompt before it hid one. */
 export type LinkPromptEnded = "waiting" | "approved" | "refused" | "words" | "deadline" | "report" | "closed";
 /** A prompt of the account's, as GET /api/ade/link/prompts/closed lists it: one the owner hid that still waits, or one
- *  closed in the last 24 hours. The view an open prompt has, and when he hid it (null where he did not), when and why
- *  it closed (null while it waits), whether it still waits, answerable until its deadline, and how it ended. */
+ *  closed in the last 24 hours. The view an open prompt has, and when they hid it (null where they did not), when and
+ *  why it closed (null while it waits), whether it still waits, answerable until its deadline, and how it ended. */
 export interface LinkClosedPrompt extends LinkPrompt {
   hidden_at: number | null;
   closed_at: number | null;
@@ -621,7 +621,7 @@ export interface LinkClosedPrompt extends LinkPrompt {
 }
 /** A linked session's proposal of a message to another of the owner's sessions, while it is open: the session that
  *  posted it (`link_id`, `from`), the one it is for (`for_id`, `for`, its name), and its deadline. Its words are
- *  sealed to the owner, and reach that session only as his own signed instruction. */
+ *  sealed to the owner, and reach that session only as their own signed instruction. */
 export interface LinkProposal extends LinkEvent {
   link_id: string;
   for_id: string;
@@ -680,7 +680,7 @@ export interface LinkView {
   /** whether the owner lets it read the other sessions' whole checkpoints (any session sees who else is linked, when
    *  each was heard and what each is doing) */
   reads_others?: boolean;
-  /** whether the owner lets it propose messages to his other sessions (off unless he turns it on) */
+  /** whether the owner lets it propose messages to their other sessions (off unless they turn it on) */
   proposes?: boolean;
   /** the owner's stop: held by the session's own hook until a resume the owner signs */
   stopped_at?: number | null;
@@ -726,13 +726,13 @@ export interface LinkReplaced {
 }
 export interface LinkSessions {
   links: LinkView[]; questions: (LinkEvent & { link_id: string })[]; public_url: string;
-  /** the open waitings to the owner, or to all, that refer to no command, oldest first: each told to his
-   *  devices once, until its session posts again or he dismisses it */
+  /** the open waitings to the owner, or to all, that refer to no command, oldest first: each told to their
+   *  devices once, until its session posts again or they dismiss it */
   waitings?: (LinkEvent & { link_id: string })[];
   /** the open prompts the linked sessions reported, those to look at too, oldest first; one the owner hid is left out
    *  (closedLinkPrompts lists it) */
   prompts?: LinkPrompt[];
-  /** the seqs of the account's prompts a Close hid that are still open: never counted as waiting (he hid them), but
+  /** the seqs of the account's prompts a Close hid that are still open: never counted as waiting (they hid them), but
    *  Approvals' empty state says one waits below; none from a server from before it */
   hidden_waiting?: number[];
   /** the open proposals the linked sessions made */
@@ -914,7 +914,7 @@ export function proposalAlerts(ps: Proposal[] | null | undefined): number {
 }
 
 /** What the channel has that needs the owner: each silent session, each open question to the owner or to all, each
- *  open waiting to him that refers to no command, and each session waiting for an answer to its request to
+ *  open waiting to them that refers to no command, and each session waiting for an answer to its request to
  *  be linked. */
 export function channelAlerts(s: LinkSessions | null | undefined): number {
   if (!s) return 0;
@@ -922,7 +922,7 @@ export function channelAlerts(s: LinkSessions | null | undefined): number {
     + (s.waitings ?? []).length + (s.asks ?? []).filter((a) => a.state === "pending").length;
 }
 
-/** A question to the owner, or to all: one his inbox holds (one to another session is that session's). */
+/** A question to the owner, or to all: one their inbox holds (one to another session is that session's). */
 export const toOwner = (q: Pick<LinkEvent, "to">) => q.to === "owner" || q.to === "all";
 
 /** What the link channel holds for the owner's one list (Approvals): its open prompts, those to look at too, its open
@@ -1252,7 +1252,7 @@ export const Api = {
     api<{ resumed_at: number }>(`/api/ade/link/links/${encodeURIComponent(id)}/resume`, { method: "POST", body: signed }),
   setLinkReadsOthers: (id: string, allowed: boolean) =>
     api<{ reads_others: boolean }>(`/api/ade/link/links/${encodeURIComponent(id)}/reads-others`, { method: "PUT", body: { allowed } }),
-  /** The owner's switch, by the sign-in: whether a linked session may propose messages to his other sessions. */
+  /** The owner's switch, by the sign-in: whether a linked session may propose messages to their other sessions. */
   setLinkProposes: (id: string, allowed: boolean) =>
     api<{ proposes: boolean }>(`/api/ade/link/links/${encodeURIComponent(id)}/proposes`, { method: "PUT", body: { allowed } }),
   /** A machine session's moves into the workspace, by any of the account's links, newest first. */

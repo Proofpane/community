@@ -1,5 +1,6 @@
 # Proofpane Community as a Fly app: an example. Put your own values in place of the placeholders (<app>, <region>,
-# <domain>, <org>, <network>) before the first deploy.
+# <domain>, <org>, <network>) before the first deploy, and your own words in OPEN_EDITION_SIGN_IN_NOTE, or leave it out:
+# its words here are the hosted Community's terms.
 #
 # Deploy from the repository root, since the image copies oss/. flyctl reads the ignore file named by --ignorefile, or
 # else .dockerignore in the working directory (Fly's deploy reference); the root has none, so without the flag the
@@ -40,6 +41,10 @@ primary_region = "<region>"
   # 90 days after the deletion ("forever" keeps it for good).
   OPEN_EDITION_ADE_TASK_CROSS_GROUPS = "off"
   OPEN_EDITION_ADE_ACCOUNT_RECORD_DAYS = "90"
+  # The note the older pages' sign-in (web/index.html) shows, and only where it is set; the ADE app's sign-in shows
+  # none. These are the hosted Community's words about the terms it is offered on: a deployment of its own says its
+  # own, or leaves the setting out and shows none
+  OPEN_EDITION_SIGN_IN_NOTE = "This edition is by invitation, free to use, and carries no service commitment."
 
 [mounts]
   source = "open_edition_data"

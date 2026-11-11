@@ -524,7 +524,8 @@ def _common_folder(path):
     looking no higher than `path`), or None where git reads no repository there: a .git file is read as git reads it,
     its spaces and its bytes among them (gitplaces.git_folder reads some
     otherwise). Read with the HISTORY guards alone, the user's own settings kept, as the workspace's own gits keep them:
-    a repository git reads only where his safe.directory allows it (a folder another user owns) is read here as there,
+    a repository git reads only where the user's safe.directory allows it (a folder another user owns) is read here as
+    there,
     not as no repository."""
     try:
         code, out, err = _git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=path, guards=(HISTORY,),
@@ -1689,9 +1690,9 @@ def _not_merged_now(disable_code, view):
 
 def _ended(record, repo, p, how, at, commit=None):
     """Proposal `p` of `repo` in `record` given its end (`merged`, `taken` or `back`) at `at`, with the commit a merge
-    into the owner's copy moved his branch to, where it is one: a merged one's state `merged`, and a merged proposal to
-    go back ending the found one it was made for, as `back`; the owner's tap's end (_end) and a restore's of an end the
-    app recorded (restore) alike."""
+    into the owner's copy moved their branch to, where it is one: a merged one's state `merged`, and a merged proposal
+    to go back ending the found one it was made for, as `back`; the owner's tap's end (_end) and a restore's of an end
+    the app recorded (restore) alike."""
     p["ended"] = dict({"how": how, "at": at}, **({"commit": commit} if commit else {}))
     if how == "merged":
         p["state"] = "merged"
@@ -2475,7 +2476,7 @@ class SkillImprove:
         info = {r.get("name"): r for r in self.ws.repos()}.get(repo)
         if not info or not info.get("linked"):
             raise SkillImproveError("A proposal is merged into a branch of the owner's own copy only for a repository "
-                                    "added from his machine.")
+                                    "added from their machine.")
         return self.ws._repo_path(repo)
 
     def _published(self, path, pid, p):
@@ -2661,13 +2662,13 @@ class SkillImprove:
                                     "its bar.") from None
 
     def take(self, pid):
-        """POST /skill-improve/proposals/<id>/take: the owner's tap that takes a found proposal as his."""
+        """POST /skill-improve/proposals/<id>/take: the owner's tap that takes a found proposal as theirs."""
         repo, p = self._proposal(check_id(pid))
         self._end(repo, pid, "taken")
         return {"id": pid, "ended": "taken"}
 
     def remake(self, pid):
-        """POST /skill-improve/proposals/<id>/remake: the owner's tap that brings a proposal into his own copy up to
+        """POST /skill-improve/proposals/<id>/remake: the owner's tap that brings a proposal into their own copy up to
         date: refused unless its ref still names its head, the folder's tree at the branch's head is still the base's,
         and checkout_writes' checks pass at that head; then the same blob at the same path and mode, with the same
         message, as a new commit on the branch's head, made in a new clone, the record's entry gaining that head as a
@@ -3025,7 +3026,7 @@ class SkillImprove:
     def look(self, repo):
         """GET /skill-improve/branches?repo=: the branch's head (origin's after the loop's fetch, for a clone), and for
         each proposal the record holds there: what its ref names, where git can tell; its end; and, for one not ended,
-        the head of its own branch (in a copy added from the owner's machine, whichever his copy has checked out), and
+        the head of its own branch (in a copy added from the owner's machine, whichever their copy has checked out), and
         whether it reached that branch, by one of its commits being the head or an ancestor of it, or by its blob at
         its path in the tree of the head or of a commit of the head's history since its first base (a squash or a
         cherry-pick), with the change's commit, and whether the tree of its skill's folder at the head is the one at
@@ -3052,12 +3053,12 @@ class SkillImprove:
                         entry["ref"] = ref_value(base.path, REF.format(id=p["id"]))
                         entry["ref_names_head"] = bool(p["commits"]) and entry["ref"] == p["commits"][-1]
                     if p["ended"] is not None and (p["ended"].get("commit") or p["ended"]["how"] != "merged"):
-                        # its bar ended: nothing of the branch read for it, the commit a merge into his copy moved his
-                        # branch to said as the change's; only a merge on GitHub has its version read from the branch,
-                        # for an app whose call of the merge was lost
+                        # its bar ended: nothing of the branch read for it, the commit a merge into their copy moved
+                        # their branch to said as the change's; only a merge on GitHub has its version read from the
+                        # branch, for an app whose call of the merge was lost
                         entry["change_commit"] = p["ended"].get("commit")
                         continue
-                    # its own branch: in a copy added from the owner's machine, read there whichever branch his copy
+                    # its own branch: in a copy added from the owner's machine, read there whichever branch their copy
                     # has checked out; a clone's is origin's branch, which the loop fetched (not
                     # the branch checked out now)
                     head = base.head

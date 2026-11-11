@@ -203,7 +203,7 @@ def packet_for(link_row, now=None):
     up, are counted (unsigned_requests) and given as no instruction. A goal whose instruction was withdrawn is
     withdrawn with it, and one past its life untaken is counted (expired_requests), not given: the session can take
     neither. The owner's decisions are made with the sign-in alone, so they are counted
-    (unsigned_decisions) and given as none: the holder asks the owner in the session channel, whose answers he signs.
+    (unsigned_decisions) and given as none: the holder asks the owner in the session channel, whose answers they sign.
     With the holder's own hold, End all's count and, where it was pressed while this hold lasted, when, and a fresh
     read of who holds the role: 403 for a link that does not hold it now; 503 with the app's
     words where the packet cannot be built."""
@@ -252,7 +252,7 @@ ACT_KINDS = ("plan", "start", "state", "stop", "continue")
 # a linked Manager's question to the owner: an answer the Manager's own questions take is
 # made with the sign-in alone, so the holder asks in the session channel, where the owner's answer comes signed
 ASK_IN_CHANNEL = ("A linked Manager asks the owner in the session channel: ade_link.py post question \"...\" --to "
-                  "owner, whose answer he signs.")
+                  "owner, whose answer they sign.")
 
 
 def act(link_row, data, now=None):

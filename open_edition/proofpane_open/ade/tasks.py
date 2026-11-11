@@ -1,5 +1,5 @@
 """Tasks: an agent's job
-in 1 to 20 steps, each attempt a run in the owner's workspace on one of his accounts or keys, under the task's one
+in 1 to 20 steps, each attempt a run in the owner's workspace on one of their accounts or keys, under the task's one
 lease and fence; its checkpoints, effects, packet and journal; the relay across the owner's accounts and groups; the
 owner's controls and their remedies; and the task's account record, kept as the deployment's setting says.
 
@@ -759,12 +759,12 @@ def _same_standing(row, report):
 
 def confirm_account(user, owner_id, confirmation, shown, now=None):
     """POST /accounts/{id}/confirm: the owner's confirmation (task-account-own:<id>) that the account, as last
-    reported, is his own; it joins relays after a hold (task.account_own) with a content-free notice. `shown` is what the
-    page showed when the owner pressed, `{report, org_id}`, or None where the request named nothing (a page from before
-    this check): refused (400, NOT_SHOWN) for None, and (409, SHOWN_CHANGED) where the account was read again since and
-    its report, any of its fields, or its orgId differs from what was shown, before the confirmation is spent, so that a
-    read between the owner's look and the key confirms nothing. Refused (412) while its report and auth status disagree
-    (naming the field), or while its plan is in no group."""
+    reported, is their own; it joins relays after a hold (task.account_own) with a content-free notice. `shown` is what
+    the page showed when the owner pressed, `{report, org_id}`, or None where the request named nothing (a page from
+    before this check): refused (400, NOT_SHOWN) for None, and (409, SHOWN_CHANGED) where the account was read again
+    since and its report, any of its fields, or its orgId differs from what was shown, before the confirmation is spent,
+    so that a read between the owner's look and the key confirms nothing. Refused (412) while its report and auth status
+    disagree (naming the field), or while its plan is in no group."""
     from .. import passkeys
     now = _now(now)
     with store.connect() as db:
@@ -836,9 +836,9 @@ def _account_hold_applied(db, hold, now):
 
 def _organisation_reread(db, confirmed, grp, before, after, now):
     """A confirmation that changes how one of the owner's organisations is read as a whole (_kind_of_group): it holds an
-    Enterprise seat of his for the first time, and reads as an Enterprise one, or it holds none any more, and does not
-    read as an Enterprise one. The tasks on its other accounts, whose own group and kind did not change, are told and
-    bound as the tasks on the confirmed account are (_account_moved), so that no task starts crossing by itself, or
+    Enterprise seat of theirs for the first time, and reads as an Enterprise one, or it holds none any more, and does
+    not read as an Enterprise one. The tasks on its other accounts, whose own group and kind did not change, are told
+    and bound as the tasks on the confirmed account are (_account_moved), so that no task starts crossing by itself, or
     keeps a press, because its organisation came to be read otherwise under it (told nothing, a task pressed between two
     seats of an organisation holding both kinds, under point 5's "After this the task crosses nowhere by itself", would
     cross onto a personal plan by itself once its Enterprise seat was confirmed again as a Team one). Each task on one
@@ -1301,7 +1301,7 @@ def _on_group(db, task):
 
 
 def _kind_of_group(db, user_id, grp):
-    """The kind of one of the owner's groups: its seats' plan, or None where none of his accounts is in it. An
+    """The kind of one of the owner's groups: its seats' plan, or None where none of their accounts is in it. An
     organisation can hold seats of both kinds (one confirmed before it moved from Team to Enterprise, one after); it
     then reads as an Enterprise one, whichever seat's
     account id comes first, so that no relay crosses into or out of any of its seats, its Team seat among them, and a
@@ -2110,7 +2110,7 @@ def _reserve_lifted(db, user_id, backend):
 def _queue(db, user_id, task, backend, chosen_by, now, tells, cap_usd=None, pressed=False):
     """Queue the task's next attempt on `backend`: refused while an attempt holds the lease or an effect
     is unknown; one more fence, the lease to the new run, its packet built from the store and kept, attempt.queued.
-    `pressed`: the owner chose this backend (Continue on..., Next on...), so a start it fails needs him rather than
+    `pressed`: the owner chose this backend (Continue on..., Next on...), so a start it fails needs them rather than
     moving the relay on. Returns the run's id, or None when the packet could not be built (the
     task then needs the owner)."""
     if task["lease_run"]:
@@ -2211,7 +2211,7 @@ LATE = "late: its task's lease is another attempt's, or another fence's"
 
 
 def _snapshot(db, user_id, backend):
-    """The account record's snapshot of a backend now: one of the owner's accounts as he confirmed it, or a key's
+    """The account record's snapshot of a backend now: one of the owner's accounts as they confirmed it, or a key's
     vendor and label, never the key."""
     if backend.get("kind") == "key":
         vendor, label = KEY_NAMES.get(backend["provider"], (backend["provider"], backend["provider"]))
@@ -2221,7 +2221,7 @@ def _snapshot(db, user_id, backend):
 
 def _account_snapshot(ref, owner):
     """One of the owner's accounts' snapshot from its row (`owner`, None for none) as it stands, or as it stood when the
-    row was read: what he confirmed it as."""
+    row was read: what they confirmed it as."""
     confirmed = _json(owner["confirmed"], {}) if owner is not None else {}
     return {"ref": ref, "email": confirmed.get("email"), "plan": confirmed.get("plan"),
             "organization": confirmed.get("organization"),
@@ -2744,7 +2744,7 @@ def _continue_after_end(db, user_id, task, run, t, backend, offer, now, tells):
     changed = bool(marks.get("changed_by_owner")) and not go and not owner_stop
     if owner_stop:
         # the owner's Stop, whatever ended the attempt at the workspace (it may have ended there, refused say, before
-        # the press reached it): the task waits for him, its step counted if the attempt did it, done only when its
+        # the press reached it): the task waits for them, its step counted if the attempt did it, done only when its
         # last step is
         if step_done and _advance(db, task, now):
             _done(db, user_id, task, now)
@@ -2935,7 +2935,7 @@ def _relay(db, user_id, task, refused, now, tells, identity=False):
     each its weekly reserve alone holds back, its warned window's reset, a reserve's only while
     auto-resume is on (_wait_for_reset); or the owner, when no reset is known. With the relay off, only the account the
     task is on, after its reset. Only the move, which queues an attempt of the owner's agent, is held as a firing is: a
-    hand-off starts no run of his agent, and a wait, or the owner's turn, is never put off."""
+    hand-off starts no run of their agent, and a wait, or the owner's turn, is never put off."""
     entries = _relay_entries(db, task, now)
     if not (on("relay") and task["relay"]):
         own = [e for e in entries if e["owner_id"] == refused]
@@ -3056,7 +3056,7 @@ def _wait_for_reset(db, user_id, task, entries, now, tells, identity=False):
     account its weekly reserve alone holds back gives the reserve's reset only while auto-resume is on (_reserve_waits):
     with it off nothing starts the task at that reset, so where no other
     reset is known the task waits, suspended, for nothing but a Continue (HELD_BY_A_RESERVE), as a firing
-    held past midnight with auto-resume off does (_held_continuation): never needing him, since a custody task waiting
+    held past midnight with auto-resume off does (_held_continuation): never needing them, since a custody task waiting
     so goes back to its owner by custody's own return, and an owner's task waiting so may still be offered. Where a
     refused reset and a reserve's are the earliest at the same second, the line names the reserve too."""
     untils = []
@@ -3095,7 +3095,7 @@ def _wait_for_reset(db, user_id, task, entries, now, tells, identity=False):
 
 
 def _press_onto(db, task, backend):
-    """What an owner's press onto one of his accounts does to the task's binding: onto a Team organisation's
+    """What an owner's press onto one of their accounts does to the task's binding: onto a Team organisation's
     seats, a task bound to none is bound there and its crossings go on; onto another organisation's seats while it is
     bound, or onto or off an Enterprise organisation's, its crossings end, and a task bound to none is bound to the
     Enterprise organisation it is put on."""
@@ -3156,8 +3156,8 @@ def _account_moved(db, owner_row, from_group, to_group, now, read=None):
     its group is not the task's, nor go home, and waits for its owner. Nothing is moved or queued here.
 
     Every task of the owner's on the account that has not ended and is not deleted, an offered one and a received one
-    among them, also gets an account record entry, `regrouped`, holding the account as he confirmed it before
-    (`owner_row`, read before the hold's end changed it) and as he confirmed it now, and a journal line,
+    among them, also gets an account record entry, `regrouped`, holding the account as they confirmed it before
+    (`owner_row`, read before the hold's end changed it) and as they confirmed it now, and a journal line,
     task.account_regrouped, saying whose usage its attempts on the account now run on and why: this confirmation, not a
     press or the relay; what it changed of the task's binding (`bound`, the fields whose values it changed) or why it
     changed none; and whether the task's relay takes the account now, read after the binding's change, or that this
@@ -3204,12 +3204,12 @@ def _account_moved(db, owner_row, from_group, to_group, now, read=None):
 def _presses_dropped(db, owner_row, now):
     """An account confirmed again into another group, or as another kind of seat of its organisation, or a seat of an
     organisation another account's confirmation reads otherwise (_organisation_reread): a press of the owner's that
-    names it and is not used yet (asked: Continue on... while an attempt works, Next on..., or either kept for his next
-    Continue) was made against the group the account was in and over the risk texts of the seat it was, so it is dropped
-    from each of his tasks that has not ended, to be made again, if he still wants it, against the account as it is now
-    (a confirmation as another kind of seat of the same organisation drops it too, the press having been made over the
-    texts the account had as it was confirmed then). A selection of its own: _account_moved visits only the tasks on
-    the account, and a
+    names it and is not used yet (asked: Continue on... while an attempt works, Next on..., or either kept for their
+    next Continue) was made against the group the account was in and over the risk texts of the seat it was, so it is
+    dropped from each of their tasks that has not ended, to be made again, if they still want it, against the account as
+    it is now (a confirmation as another kind of seat of the same organisation drops it too, the press having been made
+    over the texts the account had as it was confirmed then). A selection of its own: _account_moved visits only the
+    tasks on the account, and a
     task on another account can carry a press naming it. A task offered then keeps its press while the offer is out,
     which _account_moved leaves out too: its state_version is its offer's fence, so a drop then would refuse the
     teammate's acceptance. Its offer is marked instead (press_dropped_at), and the press is dropped as the offer ends,
@@ -3252,8 +3252,8 @@ def _regrouped_relay(db, task, now):
     whatever accounts the owner has now or adds later (_group_reached: from an Enterprise seat the set does not hold,
     none is); "home" where it is away from its home group, its crossings not ended and no crossing on (_crossing_on), so
     that its relay set is that group alone and _next's first branch takes it there or waits; else "relay", another
-    account in the relay's order. `left_out` is the entry's words. `custodian` is whether the owner's custodian, if he
-    has one, may take it then (_custodian_may_take; False where that cannot be read, as _custody takes a track it
+    account in the relay's order. `left_out` is the entry's words. `custodian` is whether the owner's custodian, if
+    there is one, may take it then (_custodian_may_take; False where that cannot be read, as _custody takes a track it
     cannot ask for none): in the "home" case only after an attempt on the account is refused, the one way _relay, which
     alone asks custody, is reached there."""
     try:
@@ -3303,7 +3303,7 @@ def _group_reached(here, grp):
 
 
 def _custodian_may_take(db, task, now):
-    """Whether the owner's custodian, if he has one, may take the task by itself once the relay finds no account with
+    """Whether the owner's custodian, if there is one, may take the task by itself once the relay finds no account with
     room (_custody, task_offers.custody_candidate): the teammate track on for the owner (task_offers.enabled), the task
     not received from a teammate, its repository's address recorded, the task confirmed for custody as it stands
     (custody_digest), and an account custody's refusal reads, read as custody reads it (task_offers._members: one of
@@ -3509,7 +3509,7 @@ def start(user, task_id, state_version, now=None):
 
 def continue_(user, task_id, state_version, now=None):
     """POST /tasks/{id}/continue: the current step's next attempt on the same backend, now, the owner's press lifting
-    what held it; or on the backend he asked for while it worked."""
+    what held it; or on the backend they asked for while it worked."""
     now = _now(now)
 
     def act(db, task, tells):
@@ -4301,7 +4301,7 @@ def settle(user_id, now=None):
 def _end_not_taken(db, task, now):
     """A task whose ended attempt the app cannot settle (its end raises, every time it is read): the lease freed and the
     task waiting for the owner with why, rather than running for ever on an attempt that ended, where no control of
-    his could reach it. One that is not settled for another reason (its attempt still lives) is left as it is."""
+    theirs could reach it. One that is not settled for another reason (its attempt still lives) is left as it is."""
     run = db.execute("SELECT state FROM ade_agent_runs WHERE run_id = ?", (task["lease_run"],)).fetchone()
     if run is None or run["state"] not in agents.ENDED:
         return
@@ -4454,12 +4454,12 @@ def _check_snapshot(snapshot):
 def account_record(db, user_id, task_id, kind, accounts, *, step, run_id=None, fence=None, via=None, now=None) -> int:
     """Write one entry of the task's account record and return its seq: `kind` one of ACCOUNT_RECORD_KINDS; `accounts`
     the entry's snapshots, one for an attempt or a hand-off, the two of a crossing (from, to), the two of "regrouped"
-    (one of the owner's accounts as he confirmed it before, then as he confirmed it now, one reference), none for
+    (one of the owner's accounts as they confirmed it before, then as they confirmed it now, one reference), none for
     "deleted"; `step` the step the attempt runs (for a crossing, the step of the attempt it begins; for a hand-off,
     "regrouped" or "deleted", the task's step then); `run_id` and `fence` for an attempt, or the attempt a crossing
     begins, None for a hand-off, "regrouped" and "deleted"; `via` (ACCOUNT_RECORD_VIA) for a hand-off alone. A
-    snapshot is {"ref": BackendRef, "email", "plan", "organization", "org_id"} for one of the owner's accounts, as he
-    confirmed them; {"ref": BackendRef, "vendor", "label"} for a key, never the key; {"teammate": <their user id>,
+    snapshot is {"ref": BackendRef, "email", "plan", "organization", "org_id"} for one of the owner's accounts, as the
+    owner confirmed them; {"ref": BackendRef, "vendor", "label"} for a key, never the key; {"teammate": <their user id>,
     "plan", "organization", "org_id"} for a teammate, from their account row as it stands when they accept, never
     their email, "organization" and "org_id" null for a personal plan (shapes.PERSONAL_PLANS), whose organisation is
     never written. Anything else, a snapshot of another
@@ -4562,7 +4562,7 @@ def task_record(user, task_id):
 
 
 def delete_account_record(db, user_id, task_id, now=None) -> int:
-    """The owner's Delete of one task's account record, after its route has used his confirmation for
+    """The owner's Delete of one task's account record, after its route has used their confirmation for
     task-account-record:<task id> (passkeys): every entry of it removed at once, its "deleted" entry among them, and
     their number returned. Refused (AgentError 412, "delete the task first") while the task's row is there and not
     deleted; AgentError 404 when neither the task's row nor any entry of the user's names it (another user's task, or
@@ -4582,7 +4582,7 @@ def _check_record_deletable(db, user_id, task_id):
 
 
 def delete_record(user, task_id, confirmation, now=None):
-    """DELETE /tasks/{id}/account-record: the owner's Delete, with his confirmation (task-account-record:<task id>);
+    """DELETE /tasks/{id}/account-record: the owner's Delete, with their confirmation (task-account-record:<task id>);
     the sign-in alone is refused, as every confirmed change is."""
     from .. import passkeys
     now = _now(now)
@@ -4748,7 +4748,7 @@ def _firing_held(db, user, agent, now):
 def _held_continuation(db, user_id, task, now):
     """Right before an automatic continuation queues an attempt (the next step, Back home, the relay's move): when it is
     held as a firing, the task waits, suspended with why; until midnight UTC for a day's runs spent, when auto-resume,
-    which then takes it, is on; otherwise for the owner's Continue, which is his own press and no firing. True when it
+    which then takes it, is on; otherwise for the owner's Continue, which is their own press and no firing. True when it
     was held."""
     agent = db.execute("SELECT * FROM ade_agents WHERE id = ?", (task["agent_id"],)).fetchone()
     hold = _firing_hold(db, user_id, agent, now)

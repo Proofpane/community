@@ -17,7 +17,7 @@ proofpane_workspace/skill_improve.py). Off until the owner turns a repository's 
   from the workspace holds it, asks for its objects and checks each of them (their ids, the one parent, the one path,
   the same mode), has the critic read it, and only then has the workspace publish its ref. A proposal refused at any of
   these steps never reaches the shared repository, and its ref, where it has one, is removed.
-- The owner's ways, each his tap and never the loop's: Merge into his copy (a repository added from his
+- The owner's ways, each a tap of theirs and never the loop's: Merge into their copy (a repository added from their
   machine), Bring it up to date, Open a pull request and then Merge (GitHub), Reject, and for a found proposal Take it as
   mine or Go back.
 - The look, at each view of a proposal and once a day: the branch's head read for each proposal not ended,
@@ -1088,9 +1088,9 @@ def _way(user, pid, action, body=None, call=None, timeout=CALL_TIMEOUT):
 
 
 def merge(user, pid, method="squash", call=None, now=None):
-    """The owner's Merge: into a branch of his own copy (the workspace's accept), or on GitHub once a pull request is
+    """The owner's Merge: into a branch of their own copy (the workspace's accept), or on GitHub once a pull request is
     open (the workspace's merge, which reads GitHub's own view first). Each only for a proposal `open` or
-    `pull_request`: into his copy, its ref naming its head; on GitHub, the pull request's head being the proposal's
+    `pull_request`: into their copy, its ref naming its head; on GitHub, the pull request's head being the proposal's
     commit, as GitHub's view says (the workspace reads no ref there). Either way the commit the page shows (the row's
     head) is sent, and the workspace refuses to merge another. Recorded as merged by the owner, the version after it
     kept for the watch: on GitHub, the version the workspace read from origin's branch after the merge, the skill
@@ -1144,9 +1144,9 @@ def pull_request(user, pid, call=None, now=None):
 
 
 def remake(user, pid, call=None, now=None):
-    """The owner's Bring it up to date (his copy, where only other paths moved): the same proposal on a new commit, its
-    new objects checked as any proposal's and its blob, path, mode and texts its own, the base and head it replaces kept
-    in `heads`, then published; no new review or critic."""
+    """The owner's Bring it up to date (their copy, where only other paths moved): the same proposal on a new commit,
+    its new objects checked as any proposal's and its blob, path, mode and texts its own, the base and head it replaces
+    kept in `heads`, then published; no new review or critic."""
     now = _now(now)
     row = _owned(user["id"], pid)
     if row["state"] not in ("open", "outdated") or row["ended"] is not None:
@@ -1198,7 +1198,7 @@ def take(user, pid, call=None, now=None):
     now = _now(now)
     row = _owned(user["id"], pid)
     if row["state"] != "found" or row["ended"] is not None:
-        raise SkillImproveError(409, "Only a found proposal is taken as his.")
+        raise SkillImproveError(409, "Only a found proposal can be taken as yours.")
     endpoint, got = _way(user, pid, "take", call=call)
     found = _json(row["found"], {}) or {}
     found["version"] = found.get("commit")

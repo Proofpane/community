@@ -18,10 +18,10 @@ passkeys and checked by the session itself before it acts; everything else here 
   prompt hook to the owner, sealed when the owner may answer it from the list, or an item to look at; and a `proposal`,
   sealed, of a message for another linked session, which reaches it only as the owner's own signed instruction, from a
   link the owner lets propose. Each has a deadline the server keeps, and records why it closed: a prompt by the owner's
-  answer (an item to look at, by his close), its own session's report, or its deadline, and nothing else; a proposal by
-  its signing, the owner's close or its deadline. The owner's Close of a prompt he may answer hides it from his open
-  list and leaves it open, answerable until its deadline, in his list of closed prompts; his Close of an
-  item to look at, which holds no hook, closes it, closed_reason owner, as his Close of any prompt did before. The
+  answer (an item to look at, by their close), its own session's report, or its deadline, and nothing else; a proposal
+  by its signing, the owner's close or its deadline. The owner's Close of a prompt they may answer hides it from their
+  open list and leaves it open, answerable until its deadline, in their list of closed prompts; their Close of an
+  item to look at, which holds no hook, closes it, closed_reason owner, as their Close of any prompt did before. The
   owner's answer to a prompt is the prompt hook's to claim (link_commands.claim_prompt), never a command for the
   model.
 - Limits, all counted from the tables: text 4,000 characters, a checkpoint 4,000 bytes, 600 events an hour per link of
@@ -587,8 +587,8 @@ def set_reads_others(user_id, link_id, allowed, now=None):
 
 def set_proposes(user_id, link_id, allowed):
     """The owner lets a session propose messages for the other linked sessions, or no longer:
-    off for a new link, and changed with his sign-in alone, since a proposal reaches nobody until he signs
-    it. A proposal still open when it is turned off stays his to sign or close. 404 for another account's link or a
+    off for a new link, and changed with their sign-in alone, since a proposal reaches nobody until they sign
+    it. A proposal still open when it is turned off stays theirs to sign or close. 404 for another account's link or a
     revoked one."""
     if not isinstance(allowed, bool):
         raise LinkError(422, "Say whether the session may propose: {allowed: true or false}.")
@@ -806,7 +806,7 @@ def post_event(link, data, now=None):
     to = data.get("to")
     to_owner = to is None or to == OWNER or to == link["name"]
     inbox = _inbox_fields(kind, data, to, now)
-    # an answerable prompt's text is the call the owner decides, and a proposal's words are for him alone: sealed, or
+    # an answerable prompt's text is the call the owner decides, and a proposal's words are for them alone: sealed, or
     # not taken; an item to look at may go in the clear, held to a question's rules, while encryption is off
     if kind == "prompt" and not inbox["look"] and not e2e.sealed(data.get("text")):
         raise LinkError(422, PROMPT_SEALED)
@@ -1075,7 +1075,7 @@ def close_due(db, user_id, now):
 CLOSER_GONE = ("closed_by IN (SELECT seq FROM ade_link_events WHERE kind = 'answer' AND taken_at IS NULL AND "
                "(withdrawn_at IS NOT NULL OR expires_at <= ?))")
 OPEN_QUESTION = f"(closed_by IS NULL OR {CLOSER_GONE})"
-# a waiting that tells the owner a session waits on him: to him or to all, referring to no command (a
+# a waiting that tells the owner a session waits on them: to them or to all, referring to no command (a
 # take's renewal refers to one, and says the session is on it), closed by nothing, and its link's newest post of its
 # own in its account, so that the link's next own post ends it: a mirrored note (its hook's copy of what a turn said)
 # and a take's renewal say nothing new of its waiting, and are not one. Read through the index of each link's own
@@ -1104,13 +1104,13 @@ def question_open(db, q, now):
 
 
 def close_question(user_id, seq, now=None):
-    """The owner closes a question, an open waiting to him, a proposal or an item to look at on the page:
-    one note from the owner to the session that posted it, with the fixed text, and nothing of his own; a second Close
+    """The owner closes a question, an open waiting to them, a proposal or an item to look at on the page:
+    one note from the owner to the session that posted it, with the fixed text, and nothing of their own; a second Close
     returns the same row. A question's close wakes its asker; a waiting's, which asked nothing, wakes nobody (its
     session reads the note when it next looks); a proposal's or an item to look at's wakes nobody, decides nothing, and
     records
     closed_reason owner (an item to look at holds no hook: it ended as it posted it, so hiding one would keep nothing
-    waiting, and closing it frees its place among its link's open prompts). A prompt he may answer is hidden instead
+    waiting, and closing it frees its place among its link's open prompts). A prompt they may answer is hidden instead
     (_hide_prompt): {seq: the prompt's, hidden_at}. 409 unless the seq is an open question, prompt or proposal of the
     account."""
     if not isinstance(seq, int) or not 0 < seq <= SEQ_MAX:
@@ -1132,7 +1132,7 @@ def close_question(user_id, seq, now=None):
             if not item_open(q, now):
                 raise LinkError(409, f"That is not an open {q['kind']}.")
         elif q is not None and q["kind"] == "waiting":
-            # an open waiting to him: closed as a question is, and told to its session in the same words
+            # an open waiting to them: closed as a question is, and told to its session in the same words
             if not waiting_open(db, q):
                 raise LinkError(409, "That is not an open waiting.")
         elif q is None or q["kind"] != "question" or not question_open(db, q, now):
@@ -1148,13 +1148,13 @@ def close_question(user_id, seq, now=None):
 
 
 def _hide_prompt(db, user_id, prompt, now):
-    """Inside close_question's transaction: the owner's Close of his prompt `prompt` (its row), one he may answer (not
-    an item to look at), which hides it without giving it up. It leaves his
-    open list (sessions) and so his notifier (alerts), and the store keeps when and by which account; nothing else
+    """Inside close_question's transaction: the owner's Close of their prompt `prompt` (its row), one they may answer
+    (not an item to look at), which hides it without giving it up. It leaves their
+    open list (sessions) and so their notifier (alerts), and the store keeps when and by which account; nothing else
     changes: no note goes to its session, nothing is closed or decided, its hook goes on waiting, and an answer is
-    taken until its deadline, as for any open prompt. His list of closed prompts holds it meanwhile (closed_prompts).
+    taken until its deadline, as for any open prompt. Their list of closed prompts holds it meanwhile (closed_prompts).
     {seq: the prompt's, hidden_at}; the same again while it is open. 409 once it is closed: answered, reported, past its
-    deadline, or closed by his Close before."""
+    deadline, or closed by their Close before."""
     close_due(db, user_id, now)
     if not item_open(prompt, now):
         raise LinkError(409, "That is not an open prompt.")
@@ -1607,9 +1607,9 @@ def sessions(user_id, now=None):
     with its key's fingerprint (link_asks.fingerprint), so the page tells a pairing that moved a link to a new key from
     one still waiting, and whether the owner lets it propose. The open waitings to the owner that refer to no command
     (WAITING_OPEN), of the live links, which the page closes as a question. And the owner's inbox: the open
-    prompts but those his Close hid (closed_prompts lists them), items to look at among them, and the open proposals,
+    prompts but those their Close hid (closed_prompts lists them), items to look at among them, and the open proposals,
     oldest first, each with the link that posted it, its deadline, and a proposal the link it is for, by id and by
-    name; and the seqs of the open prompts his Close hid (hidden_waiting), oldest first, never an item to look at
+    name; and the seqs of the open prompts their Close hid (hidden_waiting), oldest first, never an item to look at
     (nothing waits on one), so the page tells nothing waiting in this list from nothing waiting at all, and the
     summary's stamp of this list (ade/summary.py) moves when one of them stops waiting, its deadline included, which
     nothing else here shows."""
@@ -1707,7 +1707,7 @@ def _prompt_view(row, names, now):
 
 CLOSED_SHOWN = 86400                # how long after its close a prompt stays in the owner's list of closed prompts
 CLOSED_SHOWN_MOST = 50              # the prompts closed in that time the list holds at most: the newest
-# how a prompt the owner answered ended, by the form of his answer (link_commands.prompt_answer_form): never its words
+# how a prompt the owner answered ended, by the form of their answer (link_commands.prompt_answer_form): never its words
 ANSWER_ENDED = {"approve": "approved", "numbers": "approved", "deny": "refused", "words": "words"}
 # the account's prompts with the words of the owner's answer that closed one, for the list of closed prompts, and its
 # order: newest first, by the later of when each was hidden and when it closed
@@ -1719,13 +1719,13 @@ _CLOSED_ORDER = " ORDER BY MAX(COALESCE(p.hidden_at, 0), COALESCE(p.closed_at, 0
 
 def closed_prompts(user_id, now=None):
     """The owner's list of closed prompts: every one of the account's prompts
-    his Close hid that is still open, which he may answer until its deadline (its link's open prompts bound them), and
-    the newest CLOSED_SHOWN_MOST of its prompts closed in the last CLOSED_SHOWN seconds, hidden or not, with how many
-    more closed then it leaves out (closed_more), so a busy day is not served whole on every read; newest first by the
-    later of when each was hidden and when it closed. Each as the open list gives a prompt (_prompt_view), with when it
-    was hidden and how it ended (`ended`): waiting (hidden and still open), approved (the owner's answer Approve, or
-    option numbers), refused (Deny), words (his own words, which the list never carries), deadline, report (its
-    session's report), or closed (his Close of an item to look at, or of any prompt an older release closed).
+    their Close hid that is still open, which they may answer until its deadline (its link's open prompts bound them),
+    and the newest CLOSED_SHOWN_MOST of its prompts closed in the last CLOSED_SHOWN seconds, hidden or not, with how
+    many more closed then it leaves out (closed_more), so a busy day is not served whole on every read; newest first by
+    the later of when each was hidden and when it closed. Each as the open list gives a prompt (_prompt_view), with when
+    it was hidden and how it ended (`ended`): waiting (hidden and still open), approved (the owner's answer Approve, or
+    option numbers), refused (Deny), words (their own words, which the list never carries), deadline, report (its
+    session's report), or closed (their Close of an item to look at, or of any prompt an older release closed).
     {prompts, closed_more, server_time}."""
     now = _now(now)
     since = now - CLOSED_SHOWN
@@ -2224,9 +2224,10 @@ def talk(user_id, link_id, session_id):
 
 def alerts(user_id, now=None):
     """What the notifier sends the owner, each (key, the kind of its notice: push.words): each silent link, each open
-    question to the owner or to all, each open waiting to him that refers to no command (sessions' waitings: until its
-    link posts again or he closes it), each open prompt his Close has not hidden (told as a question is: sessions) and
-    each open proposal, what its commands need (link_commands.alerts), and each session asking to be linked
+    question to the owner or to all, each open waiting to them that refers to no command (sessions' waitings: until its
+    link posts again or the owner closes it), each open prompt their Close has not hidden (told as a question is:
+    sessions)
+    and each open proposal, what its commands need (link_commands.alerts), and each session asking to be linked
     (link_asks.alerts). A notice says only that one waits, never a link's name or a question's, a prompt's or a
     proposal's words, sealed or in the clear: the page shows them. The desktop app's notifier tells the same items."""
     now = _now(now)

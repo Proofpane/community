@@ -1487,7 +1487,7 @@ def _bind_as_custody(db, user_id, task_id, from_user, from_task, now):
     offer's at its acceptance (accept); and either as its way back ends, before its work is applied (_carry_back), so it
     reads whatever moved that task until then, read with its row whatever became of it, a deleted task's among them.
     With the two tasks swapped it binds a custody task as its owner's task is bound, where an account of the owner's
-    confirmed again changed his task's binding while the custodian has it (bind_custody_task).
+    confirmed again changed the owner's task's binding while the custodian has it (bind_custody_task).
 
     A custody task is bound where it is made: on an organisation's seat, or on the personal plans with the owner's
     task's binding where it has one (tasks.create, which _take passes it). It is bound after that

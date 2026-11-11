@@ -1126,8 +1126,8 @@ function SendingLine({ words, what }: { words: string; what: string }) {
 }
 
 /** An open waiting of a linked session's to the owner, or to all, that refers to no command: its session
- *  says it is blocked on him, and his devices were told one waits. Dismiss closes it as a question is closed, telling
- *  its session in the same fixed words; its session's next post ends it too. */
+ *  says it is blocked on them, and their devices were told one waits. Dismiss closes it as a question is closed,
+ *  telling its session in the same fixed words; its session's next post ends it too. */
 export function Waiting({ w, linkId }: { w: LinkEvent; linkId: string }) {
   const account = useAccount();
   const refresh = useStore((s) => s.refreshLinks);
@@ -1227,7 +1227,7 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
   draft?: { key: string; name: string };
   /** opened by a button: the keyboard goes into it as it opens, to its words (or, with none to type, to Review) */
   focus?: boolean;
-  /** a first line the owner does not change, signed before his words: a linked session's proposal names its proposer
+  /** a first line the owner does not change, signed before their words: a linked session's proposal names its proposer
    *  so ("Proposed by NAME:" and a line break) */
   head?: string;
   /** the place's own refusal of the words, said at Review before anything is fetched or signed */
@@ -1356,7 +1356,7 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
       {!prepared && purpose !== "resume" && (
         <>
           {head && (
-            // the line the owner does not change, shown as it is signed, above his words
+            // the line the owner does not change, shown as it is signed, above their words
             <div aria-label="Its first line, which stays" className="mb-1 whitespace-pre-wrap break-words rounded bg-bg px-2 py-1 font-mono text-[12px] text-fg-dim">{visible(head.replace(/\n$/, ""))}</div>
           )}
           {purpose === "instruction" && slash.menu}
