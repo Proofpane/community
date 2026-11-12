@@ -262,6 +262,27 @@ CREATE TABLE IF NOT EXISTS ade_link_events (
 CREATE INDEX IF NOT EXISTS ade_link_events_user ON ade_link_events (user_id, seq);
 CREATE INDEX IF NOT EXISTS ade_link_events_turn ON ade_link_events (user_id, needs_turn, seq);
 CREATE INDEX IF NOT EXISTS ade_link_events_kind ON ade_link_events (user_id, kind, seq);
+-- A delegation the owner's passkey signed, for one link and 300 or 900 seconds, under which their page signs
+-- instructions with a key of its own: its digest, its payload's id, the link and that link's key as signed, the
+-- delegation and the passkey's answer as they came, the passkey, its times, when and why it was ended before its end,
+-- and the place of the last instruction stored
+CREATE TABLE IF NOT EXISTS ade_link_delegations (
+    digest TEXT PRIMARY KEY,
+    id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    link_id TEXT NOT NULL,
+    link_fingerprint TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    credential TEXT NOT NULL,
+    passkey_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    ended_at INTEGER,
+    ended_reason TEXT,
+    last_n INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS ade_link_delegations_link ON ade_link_delegations (link_id, created_at);
+CREATE INDEX IF NOT EXISTS ade_link_delegations_user ON ade_link_delegations (user_id, ended_at);
 -- each linked machine's Claude Code sessions, as its link last listed them: titles, folders and times (a withheld one's title
 -- and branch stay on its machine); a conversation, where the link lets it go, in ade_link_history_talks
 CREATE TABLE IF NOT EXISTS ade_link_history (
@@ -2093,7 +2114,11 @@ ADDED_COLUMNS = (("ade_repos", "verify_config", "TEXT"), ("users", "token_gen", 
                  ("passkeys", "name_by_server", "INTEGER"),
                  # what a linked session's client last reported of its own Claude Code session with a heartbeat, as
                  # JSON (ade/link.py, heartbeat), and when it came; NULL where it reported none
-                 ("ade_links", "reported", "TEXT"), ("ade_links", "reported_at", "INTEGER"))
+                 ("ade_links", "reported", "TEXT"), ("ade_links", "reported_at", "INTEGER"),
+                 # what a link's client said it takes on its last read of its state, and when; and the digest of the
+                 # delegation an instruction was signed under in a signing window (ade_link_delegations)
+                 ("ade_links", "features", "TEXT"), ("ade_links", "features_at", "INTEGER"),
+                 ("ade_link_events", "delegation", "TEXT"))
 
 
 # made once the columns they name are there, in a store made before them too; and the connector's codes and tokens by

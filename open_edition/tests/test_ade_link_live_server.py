@@ -222,7 +222,9 @@ def test_the_feed_bound_leaves_room_for_a_move_s_look_beside_the_watcher(client,
     assert [mac.call("GET", "/feed").status_code for _ in range(121)] == [200] * 120 + [429]
 
 
-@pytest.mark.parametrize("method,path,body,count", [("GET", "/feed", None, 4), ("GET", "/state", None, 5),
+# /state makes three of its reads for signing windows: the account's high security, the link's delegations ended lately,
+# and its instructions stored under one and not yet taken (link_commands.state)
+@pytest.mark.parametrize("method,path,body,count", [("GET", "/feed", None, 4), ("GET", "/state", None, 8),
                                                     ("POST", "/heartbeat", {}, 1)], ids=["feed", "state", "heartbeat"])
 def test_each_read_a_watcher_makes_goes_by_an_index(client, owner, monkeypatch, method, path, body, count):
     """A watcher reads its link's feed every 3 seconds and its state every other round, and beats every 5 minutes

@@ -49,7 +49,9 @@ jobs:
           grep '::' "$RUNNER_TEMP/collected.txt" | cut -d: -f1 | awk '!seen[$0]++' \
             | awk -v k=${{ matrix.shard }} 'NR % 12 == k' > "$RUNNER_TEMP/shard-files.txt"
           test -s "$RUNNER_TEMP/shard-files.txt"
-          pytest $(cat "$RUNNER_TEMP/shard-files.txt") -q --tb=short
+          # A test that runs past 90 seconds has every thread's stack written to the log, and goes on: a run
+          # that stalls then names where.
+          pytest $(cat "$RUNNER_TEMP/shard-files.txt") -q --tb=short -o faulthandler_timeout=90
 
       - name: The open packages' suites (oss/)
         if: ${{ matrix.shard == 0 }}

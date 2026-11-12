@@ -95,7 +95,8 @@ def row(request_id, counts, second, link="mac", session="s1", device=DEVICE, tok
     return {"device_id": device, "token": token, "vendor": "ade", "agent": "default",
             "event_type": "mcp.subscription.usage",
             "payload": {"request_id": request_id, "session_id": session, "ade_kind": "linked", "ade_link_name": link,
-                        "ade_started_by": "person", "ade_sign_in": "unknown", "client": "claude_code", "count": 1,
+                        "ade_started_by": "person", "ade_sign_in": "unknown", "sign_in": "unknown",
+                        "client": "claude_code", "count": 1,
                         "records": [record], "totals": counts}}
 
 
@@ -659,3 +660,17 @@ def test_the_app_pairs_and_forwards_only_with_an_address_its_deployment_names(cl
     assert "no longer" in _usage(client, owner)["last_dropped"]["reason"]
     assert len(Proofpane.asked) == asked and posted(EVENT) == []
 
+
+def test_a_linked_session_s_rows_name_their_sign_in_in_the_word_proofpane_reads(client, owner, served, proofpane,
+                                                                               capsys, tmp_path, monkeypatch):
+    """A link reads no status line, so its rows' kind of sign-in is unknown: said in `sign_in`, the field Proofpane
+    reads, as well as in the ADE's own `ade_sign_in`."""
+    _pair_proofpane(client, owner, proofpane)
+    mac = pair(client, owner, served, capsys, str(tmp_path / "mac"), "mac")
+    path = str(tmp_path / "t.jsonl")
+    _transcript(path, TURN)
+    assert _stop(monkeypatch, capsys, mac, path) == (0, "", "")
+    assert _wait(lambda: len(_rows()) >= 2), posted(EVENT)
+    for r in _rows():
+        p = r["payload"]
+        assert (p.get("sign_in"), p.get("ade_sign_in")) == ("unknown", "unknown"), p

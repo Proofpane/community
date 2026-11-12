@@ -3,6 +3,7 @@ import { Api, ApiError, setToken, token, writesSent, type ChatEvent, type Claude
 import { MODEL_PROVIDERS, type AgentKind, type Session, type SessionState, type Tab } from "./types";
 import { addDelta, settle, type ChatDelta, type Live } from "./live";
 import { FLOOR, offered, type Capabilities } from "./chatSettings";
+import { endEveryWindow, settleWindows } from "./signWindow";
 
 const AGENTS: Record<string, AgentKind> = { claude: "claude", codex: "codex", gemini: "gemini", opencode: "opencode", grok: "grok", qwen: "qwen",
   kimi: "kimicode", mcode: "mcode", shell: "shell", chat: "chat", custom: "custom" };
@@ -357,6 +358,8 @@ export const useStore = create<Store>((set, get) => ({
   },
 
   signOut() {
+    // this tab's signing windows end first, each key dropped and each end posted while the sign-in still holds
+    endEveryWindow();
     // an account with no password (this Mac's own, signed out of in a browser): the sign-in screen says how to get back
     try { if (get().user?.can_sign_in_again === false) localStorage.setItem(NO_PASSWORD, "1"); } catch { /* this page only */ }
     setToken(null);
@@ -482,10 +485,12 @@ export const useStore = create<Store>((set, get) => ({
     // taken as the read goes out: the server's time in its answer is from after it, so a countdown counted from here
     // never shows more time left than there is, but for the part of a second that time leaves out
     const at = performance.now();
+    const askedAt = Date.now();
     try {
       const links = await Api.linkSessions();
       if (!same()) return;
       set({ links, linksAt: at });
+      settleWindows(links.links, askedAt);               // A signing window ended elsewhere drops its key here
       noteRead(set, get, stamps, ["links"]);
     } catch { /* the next poll tries again */ }
   },

@@ -434,8 +434,9 @@ def test_a_codex_session_s_calls_are_posted_as_codex_session_turn(tmp_path, proo
         assert set(by) == {"resp_1", "resp_2"}
         assert by["resp_1"] == {"request_id": "resp_1", "session_id": sid, "ade_kind": "terminal",
                                 "ade_started_by": "person", "ade_sign_in": "subscription", "client": "codex",
-                                "model": "gpt-5-codex", "input_tokens": 120, "output_tokens": 30,
-                                "cache_read_input_tokens": 20, "reasoning_tokens": 5, "ts": iso(born + 2)}
+                                "sign_in": "subscription", "model": "gpt-5-codex", "input_tokens": 120,
+                                "output_tokens": 30, "cache_read_input_tokens": 20, "reasoning_tokens": 5,
+                                "ts": iso(born + 2)}
         assert (by["resp_2"]["input_tokens"], by["resp_2"]["cache_read_input_tokens"]) == (200, 150)
         assert SAID not in json.dumps(Proofpane.asked)
     finally:
@@ -646,3 +647,161 @@ def test_the_manual_states_the_reporter_s_own_numbers():
     assert f"no answer in {report.TIMEOUT:g} seconds" in part
     assert f"{report.RETRY_AFTER:g} seconds on at the soonest" in part
     assert f"{times[report.TRIES]} in all" in part
+
+
+# ---- the kind of sign-in, as Proofpane reads it ------------------------------------------------------------------
+
+# Proofpane reads a usage row's kind of sign-in from `sign_in`, on the reply or else on the row, trimmed and in lower
+# case: `subscription`; `key` (the person's own key) and `provider` (another provider's), both the person's own spend;
+# any other word, or none, unknown. Its table, copied, since Community's tree imports none of Proofpane's code:
+ONE_SIGN_IN_KINDS = {"subscription": "subscription", "key": "own_key", "provider": "own_key"}
+# the workspace's own word for the kind of sign-in, the word Proofpane reads for it, and the kind of spend it keeps
+KINDS = [("subscription", "subscription", "subscription"), ("own_key", "key", "own_key"),
+         ("provider", "provider", "own_key"), ("unknown", "unknown", "unknown")]
+
+
+def _payload(builder, kind):
+    from proofpane_workspace import usage_report
+    attribution = {"session_id": "s1", "ade_kind": "terminal", "ade_started_by": "person", "ade_sign_in": kind,
+                   "client": "claude_code" if builder == "claude" else "codex"}
+    if builder == "claude":
+        return usage_report.claude_payload(attribution, dict(USAGE, request_id="req_1", model="claude-test-1",
+                                                             ts=iso(time.time())))
+    return usage_report.codex_payload(attribution, {"request_id": "resp_1", "model": "gpt-test-1", "input_tokens": 11,
+                                                    "output_tokens": 7, "cache_read_input_tokens": 300,
+                                                    "reasoning_tokens": 2, "ts": iso(time.time())})
+
+
+@pytest.mark.parametrize("builder", ["claude", "codex"])
+@pytest.mark.parametrize("ours,word,spend", KINDS)
+def test_each_payload_builder_names_the_kind_of_sign_in_in_the_word_proofpane_reads(builder, ours, word, spend):
+    """Both payload builders put the kind of sign-in their attribution names in `sign_in`, in the word Proofpane reads
+    for it: `key` for the person's own Anthropic key, `provider` for another provider's, `subscription`, else
+    `unknown`."""
+    p = _payload(builder, ours)
+    said = p.get("sign_in")
+    assert (said, ONE_SIGN_IN_KINDS.get(said, "unknown")) == (word, spend), p
+
+
+@pytest.mark.parametrize("builder", ["claude", "codex"])
+@pytest.mark.parametrize("ours", [k[0] for k in KINDS])
+def test_control_a_row_keeps_the_workspace_s_own_word_for_its_sign_in(builder, ours):
+    """Both payload builders keep the workspace's own word for the kind of sign-in (`ade_sign_in`) on the row, beside
+    `sign_in`."""
+    assert _payload(builder, ours)["ade_sign_in"] == ours
+
+
+def test_a_subscriber_s_terminal_s_row_reaches_proofpane_with_its_sign_in_in_both_words(tmp_path, proofpane):
+    """Through the reporter itself: a subscriber's terminal's reply reaches Proofpane with `sign_in` a subscription."""
+    now = time.time()
+    w = Ws(tmp_path)
+    try:
+        pair(w.home, proofpane, now - 3600)
+        s = w.session()
+        sid, born, work = s["id"], s["created_at"], w.work(s["id"])
+        with open(os.path.join(w.root, "sessions", sid, "status.json"), "w") as fh:
+            json.dump({"at": int(now), "five_hour": {"used_percentage": 12, "resets_at": int(now) + 3600}}, fh)
+        cwd = os.path.realpath(work)
+        write_lines(os.path.join(project(w.home, work), "conv-1.jsonl"), reply(cwd, "msg_1", "req_1", born + 5))
+        w.nudge(sid)
+        (row,) = wait_rows(1)
+        p = row["payload"]
+        said = p.get("sign_in")
+        assert (said, ONE_SIGN_IN_KINDS.get(said, "unknown"), p["ade_sign_in"]) == \
+            ("subscription", "subscription", "subscription"), p
+    finally:
+        w.stop()
+
+
+class _Agents:
+    """A workspace's agents as the reporter reads one of their runs: its record, its folders, no message kept."""
+
+    def __init__(self, tmp_path, record):
+        self.record, self.dir, self.root = record, tmp_path, str(tmp_path / "agents")
+
+    def is_run(self, sid):
+        return True
+
+    def read(self, run_id):
+        return self.record
+
+    def run_dir(self, run_id):
+        return str(self.dir / "runs" / run_id)
+
+    def work(self, run_id):
+        return str(self.dir / "work" / run_id)
+
+    def _kept_file(self, run_id, name, record):
+        return None
+
+
+class _Accounts:
+    def __init__(self, tmp_path):
+        self.dir = str(tmp_path / "accounts")
+
+
+class _Workspace:
+    """A workspace as the reporter reads one of its sessions: its record, its folders, no account, no controller."""
+
+    def __init__(self, tmp_path, record=None, agents=None):
+        self.where, self.record, self.agents, self.controller = tmp_path, record, agents, None
+        self.accounts = _Accounts(tmp_path)
+
+    def _read(self, sid):
+        return self.record
+
+    def _work(self, sid):
+        return str(self.where / "work")
+
+    def _dir(self, sid):
+        return str(self.where / "sessions" / sid)
+
+    def _session_account(self, record):
+        return None
+
+
+def _sourced(tmp_path, ws, sid):
+    """The row the reporter would send for one reply of session `sid`, its attribution as the reporter makes it."""
+    from proofpane_workspace import usage_report
+    (source,) = usage_report.Reporter(ws, home=str(tmp_path / "home"))._sources(sid)
+    return usage_report.claude_payload(source.attribution, dict(USAGE, request_id="req_1", model="claude-test-1",
+                                                                ts=iso(time.time())))
+
+
+@pytest.mark.parametrize("provider,ours,word", [("anthropic", "own_key", "key"), ("kimi", "provider", "provider")])
+def test_a_task_attempt_on_a_key_says_its_sign_in_in_the_workspace_s_word_and_in_proofpane_s(tmp_path, provider, ours,
+                                                                                              word):
+    """Where the reporter itself names the kind of sign-in of an attempt on a key: `own_key` for the person's own
+    Anthropic key, `provider` with the provider's name for another's; and beside each the word Proofpane reads."""
+    record = {"agent_id": "0123456789ab", "created_at": int(time.time()),
+              "run": {"trigger": {"kind": "task", "id": uuid.uuid4().hex},
+                      "backend": {"kind": "key", "provider": provider}}}
+    p = _sourced(tmp_path, _Workspace(tmp_path, agents=_Agents(tmp_path, record)), "attempt-1")
+    said = p.get("sign_in")
+    assert (p["ade_sign_in"], said, ONE_SIGN_IN_KINDS.get(said, "unknown"), p.get("ade_provider")) == \
+        (ours, word, "own_key", None if provider == "anthropic" else provider), p
+
+
+def test_a_claude_terminal_on_another_provider_s_model_says_provider_in_both_words(tmp_path):
+    """Where the reporter itself names the kind of sign-in of a claude terminal on another provider's model: `provider`
+    with the provider's name, and `provider` for Proofpane."""
+    from proofpane_workspace import providers
+    provider = sorted(providers.CATALOG)[0]
+    p = _sourced(tmp_path, _Workspace(tmp_path, record={"program": "claude", "model_provider": provider,
+                                                         "created_at": int(time.time())}), "s1")
+    assert (p["ade_sign_in"], p.get("sign_in"), p.get("ade_provider")) == ("provider", "provider", provider), p
+
+
+@pytest.mark.parametrize("limited,ours", [(True, "subscription"), (False, "unknown")])
+def test_a_one_turn_chat_s_row_says_its_sign_in_in_both_words(tmp_path, limited, ours):
+    """A one-turn chat's row, made from its result where the reporter names its kind of sign-in: a turn that met the
+    plan's limits a subscription, else unknown, in the workspace's word and in Proofpane's."""
+    from proofpane_workspace import usage_report
+
+    class Result:
+        usage, session_id, total_cost_usd = dict(USAGE), "conv-turn-1", None
+
+    row = usage_report.Reporter(_Workspace(tmp_path), home=str(tmp_path / "home"))._turn_row(
+        str(tmp_path / "folder"), None, "claude-test-1", "req_turn_1", Result(), limited)
+    p = row["payload"]
+    assert (p["ade_sign_in"], p.get("sign_in")) == (ours, ours), p

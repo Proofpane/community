@@ -638,8 +638,10 @@ def end_link(db, user_id, link_id, now):
     more in its account's tasks' grants that wait among it, and a hold it has on the Manager's role); 404 when the
     account has no live link of that id. A
     revoke from the page ends a link here, and so does an approval that replaces one (ade/link_asks.py). Returns the
-    seqs of the moves whose files go once the transaction has committed (moves.delete_files)."""
-    from . import moves
+    seqs of the moves whose files go once the transaction has committed (moves.delete_files). Its signing windows end
+    with it (link_commands.end_delegations)."""
+    from . import link_commands, moves
+    link_commands.end_delegations(db, user_id, now, "link_ended", "AND link_id = ?", (link_id,))
     done = db.execute("UPDATE ade_links SET revoked_at = ? WHERE id = ? AND user_id = ? AND revoked_at IS NULL",
                       (now, link_id, user_id)).rowcount
     if not done:
@@ -1657,6 +1659,13 @@ def sessions(user_id, now=None):
         from .signers import payload_id_of, relayed as relayed_by, resume_facts
         relayed = relayed_by(db, user_id, [(c["client_id"], c["signature"]) for cs in commands.values() for c in cs]
                              + [(payload_id_of(r["resume_payload"]), r["resume_signature"]) for r in links])
+        from .link_commands import open_windows
+        windows = open_windows(db, user_id, now)        # each link's open signing window
+        # and the window each of those commands was sent in, with its times and how it ended, for its history line
+        used = sorted({c["delegation"] for cs in commands.values() for c in cs if c["delegation"]})
+        sent_in = {r["digest"]: dict(r) for r in db.execute(
+            "SELECT digest, created_at, expires_at, ended_at, ended_reason FROM ade_link_delegations WHERE user_id = ? "
+            f"AND digest IN ({','.join('?' * len(used))})", (user_id, *used))} if used else {}
 
     # a link's own event that the one pass found: its newest, its newest step or its live view's newest round
     def own(link_id, which, again=frozenset()):
@@ -1683,7 +1692,8 @@ def sessions(user_id, now=None):
                     "last_live": own(r["id"], "live", again.get(r["id"], frozenset())),
                     "stopped_at": r["stopped_at"], "stop_acked_at": r["stop_acked_at"], "resumed_at": r["resumed_at"],
                     "resume_signed": resume_facts(r, relayed),
-                    "commands": [_view(c, names, relayed) for c in commands.get(r["id"], [])]})
+                    "commands": [_sent_in(_view(c, names, relayed), c, sent_in) for c in commands.get(r["id"], [])],
+                    "features": _features_of(r), "delegation": windows.get(r["id"])})
     # each question with its asker's link id, so the page puts it on the right card (a name may return after a revoke),
     # and the address the sessions pair with: the one signatures are checked against, not whatever the page is at
     prompts = [_prompt_view(p, names, now) for p in open_items if p["kind"] == "prompt" and p["hidden_at"] is None]
@@ -1696,6 +1706,24 @@ def sessions(user_id, now=None):
             "waitings": [dict(_view(w, names), link_id=w["link_id"]) for w in waits],
             "prompts": prompts, "hidden_waiting": hidden_waiting, "proposals": proposals,
             "public_url": config.public_url()}
+
+
+def _sent_in(view, row, windows):
+    """A command's view with the signing window it was sent in, from `windows` by digest: its digest,
+    times, and when and why it ended; a command the owner's passkey signed carries none."""
+    if row["delegation"]:
+        view["delegation"] = windows.get(row["delegation"]) or {"digest": row["delegation"]}
+    return view
+
+
+def _features_of(row):
+    """What a link's client said it takes on its last read of its state, [] for nothing or for words
+    that cannot be read."""
+    try:
+        said = json.loads(row["features"]) if row["features"] else []
+    except ValueError:
+        return []
+    return [w for w in said if isinstance(w, str)] if isinstance(said, list) else []
 
 
 def _prompt_view(row, names, now):

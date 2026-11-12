@@ -15,8 +15,10 @@ name a Mac. The manual is not part of this tree yet.
 - **The hosted ADE of Proofpane Community, in your browser, is the front.** Your sessions post their status, their
   questions and a small checkpoint to it and read back what is addressed to them. What they post carries information,
   never an instruction: a session acts on nothing it reads there but a command signed with one of your account's
-  passkeys, which it verifies itself before it acts, so every command takes a passkey. [the manual, The session channel:
-  its opening]
+  passkeys, or an instruction the page signed in a signing window one of them opened, and it verifies either itself
+  before it acts. One touch of your passkey opens a signing window for one session, for 5 or 15 minutes, in which the
+  page signs your instructions to that session; every other command takes a passkey. [the manual, The session
+  channel: its opening; Stage 2a's signing window]
 - Linked sessions, in the app's title bar, opens a card for each session: when it was heard, its session on claude.ai
   (for a session there), what it is doing, the newest thing it posted, what it waits on, its next steps and open items,
   its questions (Answer, and Dismiss question), Open conversation, what it did, and in its menu Link again, Stop and

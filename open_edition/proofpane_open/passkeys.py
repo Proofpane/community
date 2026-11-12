@@ -989,6 +989,9 @@ def remove_in(db, user_id, passkey_id, now):
         raise PasskeyError(409, LAST_HARDWARE_KEY)
     db.execute("DELETE FROM passkeys WHERE id = ? AND user_id = ?", (passkey_id, user_id))
     e2e_keys.passkey_removed(db, user_id, passkey_id, now)
+    # Every signing window this passkey opened ends, and what no session took under it is withdrawn
+    from .ade import link_commands
+    link_commands.end_delegations(db, user_id, now, "passkey_removed", "AND passkey_id = ?", (passkey_id,))
     withdrawn, stopped = _withdraw_signed(db, user_id, now, "= ?", (passkey_id,), moves.WITHDRAWN)
     # and the versions of its tasks' grants it signed, so that none of them stands
     task_grants.passkeys_going(db, user_id, "= ?", (passkey_id,), task_grants.REMOVED, now)
@@ -1385,6 +1388,9 @@ def high_security_in(db, user_id, now, after=None):
     from .ade import e2e_keys, holds, link, moves, task_grants
     db.execute("UPDATE users SET high_security = 1 WHERE id = ?", (user_id,))
     e2e_keys.high_security_turned_on(db, user_id)
+    # Every signing window of the account ends, by either path that turns high security on
+    from .ade import link_commands
+    link_commands.end_delegations(db, user_id, now, "high_security")
     withdrawn, stopped = _withdraw_signed(
         db, user_id, now, "NOT IN (SELECT id FROM passkeys WHERE user_id = ? AND tier = ?)", (user_id, HARDWARE),
         moves.HIGH_SECURITY)

@@ -393,6 +393,17 @@ async def commands(request: Request, user=Depends(current_user)):
     return answer(link_commands.post_command(user["id"], _json(await request.body())))
 
 
+# The owner opens a signing window (a delegation their passkey signed) and ends it
+@router.post("/delegations")
+async def delegations(request: Request, user=Depends(current_user)):
+    return answer(link_commands.open_delegation(user["id"], _json(await request.body())))
+
+
+@router.post("/delegations/{digest}/end")
+def delegation_end(digest: str, user=Depends(current_user)):
+    return answer(link_commands.end_delegation(user["id"], digest))
+
+
 @router.post("/commands/{seq}/withdraw")
 def withdraw(seq: int, user=Depends(current_user)):
     return answer(link_commands.withdraw(user["id"], seq))
@@ -442,9 +453,9 @@ def claim_prompt(seq: int, me=Depends(_link)):
 
 
 @router.get("/state")
-def state(me=Depends(_link)):
+def state(me=Depends(_link), features: str | None = None):
     holds.settle(me["user_id"])
-    return answer(link_commands.state(me))
+    return answer(link_commands.state(me, features=features))
 
 
 # ---- end-to-end encryption: the owner's statements of the account's keys --------------------------------------------

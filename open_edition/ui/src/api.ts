@@ -68,7 +68,9 @@ export const MAX_UPLOAD = 10 * 1024 * 1024;   // the workspace's own limit on a 
 export class ApiError extends Error {
   /** `fromApp`: the answer was the app's own, a JSON object as each of its answers is, not a page from a proxy in front
    *  of it (Caddy, Fly's edge), which answers 502, 503 or 504 in its place when the app cannot be reached. */
-  constructor(public status: number, message: string, public fromApp = true) {
+  /** `data`: the answer's body where it was the app's own JSON, for what a refusal carries beside its words (a signing
+   *  window's 409 names the window's place, signWindow.ts). */
+  constructor(public status: number, message: string, public fromApp = true, public data: unknown = null) {
     super(message);
   }
 }
@@ -200,7 +202,7 @@ export async function api<T = unknown>(path: string, opts: { method?: string; bo
   if (!resp.ok) {
     if (resp.status === 401 && t && !signedOutBy401(t)) throw new ApiError(401, OLD_SIGN_IN, fromApp(data));
     const detail = (data && typeof data === "object" && "detail" in data && (data as { detail: unknown }).detail) || `${resp.status} ${resp.statusText}`;
-    throw new ApiError(resp.status, typeof detail === "string" ? detail : JSON.stringify(detail), fromApp(data));
+    throw new ApiError(resp.status, typeof detail === "string" ? detail : JSON.stringify(detail), fromApp(data), data);
   }
   return data as T;
 }
@@ -561,6 +563,8 @@ export interface LinkEvent {
   text: string;
   /** the id the link that posted it gave it: part of what a sealed text is bound to */
   client_id?: string;
+  /** one of the owner's instructions sent in a signing window: that window, and how it ended */
+  delegation?: SentIn;
   /** the server sealed it as encryption was turned on, its link having sent it in the clear: an answer to such a
    *  question carries the digest of the words its session asked, which that session keeps, not of the sealed text */
   sealed_in_place?: boolean;
@@ -688,7 +692,20 @@ export interface LinkView {
   resumed_at?: number | null;
   /** the owner's newest commands to it, any state */
   commands?: LinkEvent[];
+  /** what its client said it takes on its last read of its state ("delegation-1": instructions under a signing
+   *  window), [] for nothing said */
+  features?: string[];
+  /** its signing window open now, from this tab or any other, with the place of the last instruction stored under it
+   *  and how many it has not taken; null for none */
+  delegation?: LinkWindow | null;
 }
+
+/** A link's open signing window as the links list gives it (link_commands.open_windows). */
+export interface LinkWindow { digest: string; created_at: number; expires_at: number; last_n: number; untaken: number }
+
+/** The signing window a command was sent in, with how it ended (link._sent_in): `ended_reason` end_now, new_window,
+ *  link_ended, re_paired, passkey_removed, high_security, signed_out or stopped, while it ended before its end. */
+export interface SentIn { digest: string; created_at?: number; expires_at?: number; ended_at?: number | null; ended_reason?: string | null }
 /** A session's request to be linked, as its owner sees it (the open edition's ade/link_asks.py): what it calls itself,
  *  its kind, its key's fingerprint, the address it asked from and when; once approved, its hold (when the link is
  *  made, and how many devices its notice was sent toward); approved and not made, why. */

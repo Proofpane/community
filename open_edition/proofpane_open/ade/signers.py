@@ -53,9 +53,11 @@ KEPT_AFTER = 600                            # a request's row is deleted this lo
 MARKER = "second-screen/1"                  # the client data's "proofpane" member a signer writes (ade_link.py)
 # the purposes a page parks (every signed step a signer signs, ade_link.py's SIGN_PURPOSES: never a task's grant, which
 # no signer shows, so one parked would hold a place until its nonce ended; nor a Manager's holder, which the page signs
-# in the browser), those a signer gets a nonce for and composes itself (never an answer, whose question it does not
-# read, nor a statement, whose key work is the page's), and those it posts as commands
-PARKED = tuple(p for p in link_commands.PURPOSES if p not in (link_commands.TASK_GRANT, link_commands.MANAGER))
+# in the browser; nor a signing window's delegation, signed with a passkey in the tab that opens the window), those a
+# signer gets a nonce for and composes itself (never an answer, whose question it does not read, nor a statement, whose
+# key work is the page's), and those it posts as commands
+PARKED = tuple(p for p in link_commands.PURPOSES
+               if p not in (link_commands.TASK_GRANT, link_commands.MANAGER, link_commands.DELEGATION))
 COMPOSED = ("instruction", "resume", link_commands.MOVE)
 POSTED = ("instruction", link_commands.MOVE)
 WAITING, SIGNED = "waiting", "signed"
@@ -606,6 +608,11 @@ def post_for_signer(signer, data, now=None):
     route calls (link_commands.post_command), which checks it as it checks the page's. What came through the signer is
     kept beside it (through)."""
     payload, credential = _signed_body(data)
+    if "delegated" in data:
+        # A signing window's instructions are the page's, signed with its key in the tab that opened it; the
+        # signer relays a step the owner signed there with a passkey, and is no second door to the window's post
+        raise link.LinkError(422, "A signer posts a step the owner signed with a passkey, never one under a signing "
+                                  "window.")
     if payload.get("purpose") not in POSTED:
         raise link.LinkError(422, "A signer posts an instruction or a move; a resume goes to /links/{id}/resume.")
     answer = link_commands.post_command(signer["user_id"], data, now)

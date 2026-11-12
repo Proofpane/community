@@ -67,6 +67,8 @@ Every payload carries, at its top:
   a codex terminal, its account's windows, usage.codex_limits); `provider`, with `ade_provider` naming it, for a claude
   terminal on another provider's model (providers.py) and a task's attempt on another provider's key; `own_key` for a
   task's attempt on its own Anthropic key (providers.KEY_ONLY); else `unknown`.
+- `sign_in`: the same kind in the word Proofpane reads for it (SIGN_IN_WORDS): `subscription`, `key` for the
+  person's own key, `provider`, else `unknown`.
 - `claude_account` for a Claude Code session: `default` or the added account's id, as the plugin's rows name it (a
   session on another provider's model `default`, as there); none for Codex's and for an attempt on a key.
 - `client`: `claude_code`, or `codex`.
@@ -130,6 +132,9 @@ from . import task_shapes as shapes
 EVENT_PATH = "/api/v1/mcp/event"
 CLAUDE_EVENT = "mcp.subscription.usage"
 CODEX_EVENT = "codex.session.turn"
+# the kind of sign-in as Proofpane reads it from a row's `sign_in`, for each of the workspace's own words for it
+# (`ade_sign_in`); anything else is `unknown` there
+SIGN_IN_WORDS = {"subscription": "subscription", "own_key": "key", "provider": "provider"}
 USER_AGENT = "proofpane-workspace-usage/1"
 SENT = "usage-sent.log"
 STATE = "usage-state.json"
@@ -320,7 +325,8 @@ def claude_payload(attribution, reply):
     counts = {f: reply[f] for f in CLAUDE_FIELDS}
     record = dict(counts, request_id=reply["request_id"], session_id=attribution.get("session_id"),
                   model=reply["model"], ts=reply["ts"])
-    return dict(attribution, request_id=reply["request_id"], count=1, records=[record], totals=counts)
+    return dict(attribution, request_id=reply["request_id"], count=1, records=[record], totals=counts,
+                sign_in=_sign_in(attribution))
 
 
 def codex_reply(row, known, offset):
@@ -346,7 +352,12 @@ def codex_payload(attribution, reply):
     return dict(attribution, request_id=reply["request_id"], model=reply["model"],
                 input_tokens=reply["input_tokens"], output_tokens=reply["output_tokens"],
                 cache_read_input_tokens=reply["cache_read_input_tokens"], reasoning_tokens=reply["reasoning_tokens"],
-                ts=reply["ts"])
+                ts=reply["ts"], sign_in=_sign_in(attribution))
+
+
+def _sign_in(attribution):
+    """A row's kind of sign-in in the word Proofpane reads (SIGN_IN_WORDS), from the workspace's own."""
+    return SIGN_IN_WORDS.get(attribution.get("ade_sign_in"), "unknown")
 
 
 def _send(record, event_type, payload):

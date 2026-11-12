@@ -23,8 +23,9 @@ and who began its turn, never a word of it. It sends them here, signed as each o
   {device_id, token, vendor "ade", agent "default", event_type "mcp.subscription.usage", payload: {request_id,
   session_id (Claude Code's own id for the session, which the History list and the mirrored notes name a linked
   machine's session by: the ADE makes none of its own for it), ade_kind "linked", ade_link_name, ade_started_by where
-  the transcript says (person or schedule), ade_sign_in "unknown" (a link reads no status line), client "claude_code",
-  count 1, records [the reply's request_id, session_id, model, its four counts and ts], totals (its four counts)}}.
+  the transcript says (person or schedule), ade_sign_in "unknown" (a link reads no status line), and the same in the
+  word Proofpane reads, sign_in "unknown", client "claude_code", count 1, records [the reply's request_id,
+  session_id, model, its four counts and ts], totals (its four counts)}}.
   No claude_account: the workspace's account ids mean nothing on a linked machine.
 - tried at once, in a thread of its own, so the link's answer never waits on Proofpane, and its events never wait on a
   forward; a try that fails is made again after RETRY_AFTER (1, 5 and 30 minutes, by the sweep that runs every minute
@@ -146,8 +147,8 @@ def event(row, device):
     record.update({f: row[f] for f in FIELDS})
     record["ts"] = row["ts"]
     payload = {"request_id": row["request_id"], "session_id": row["session_id"], "ade_kind": "linked",
-               "ade_link_name": row["link_name"], "ade_sign_in": "unknown", "client": "claude_code", "count": 1,
-               "records": [record], "totals": {f: row[f] for f in FIELDS}}
+               "ade_link_name": row["link_name"], "ade_sign_in": "unknown", "sign_in": "unknown",
+               "client": "claude_code", "count": 1, "records": [record], "totals": {f: row[f] for f in FIELDS}}
     if row["started_by"]:
         payload["ade_started_by"] = row["started_by"]
     return {"device_id": device["device_id"], "token": device["token"], "vendor": "ade", "agent": "default",

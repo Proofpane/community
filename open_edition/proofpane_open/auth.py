@@ -143,6 +143,9 @@ def sign_out_everywhere(user_id, now=None, device=None):
         from .ade import signers
         signers.revoke_all(db, user_id, when)
         holds.cancel_all(db, user_id, when)
+        # Every signing window of the account ends, as a sign-in taken from a lost device may hold one
+        from .ade import link_commands
+        link_commands.end_delegations(db, user_id, when, "signed_out")
     return issue_token(user_id, now, device=device)
 
 

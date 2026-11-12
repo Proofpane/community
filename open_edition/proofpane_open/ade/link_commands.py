@@ -70,8 +70,16 @@ TASK_GRANT = "task-grant"
 # a linked session made the Manager (ade/manager_link.py): the link it
 # names holds the role under the settings whose digest it names, until it expires, a week at most
 MANAGER = "manager"
-PURPOSES = ("instruction", "answer", "resume", MOVE) + STATEMENTS + (TASK_GRANT, MANAGER)
-_NO_TO = STATEMENTS + (TASK_GRANT,)          # the purposes whose payload names no link
+# a signing window: the owner's passkey signs a delegation to a key the owner's page made, for one link's instructions
+# and 300 or 900 seconds; the page signs each instruction under it with that key (an instruction with the delegation's
+# digest and its place, `n`), which the session verifies itself
+DELEGATION = "delegation"
+DELEGATION_LIVES = (300, 900)
+DELEGATION_FEATURE = "delegation-1"
+DELEGATION_TAG = b"proofpane-delegation/1"           # a delegation's digest: the sha256 of this, a zero byte, its bytes
+DELEGATED_TAG = b"proofpane-delegated/1"             # the page key signs this, a zero byte and the instruction's bytes
+PURPOSES = ("instruction", "answer", "resume", MOVE) + STATEMENTS + (TASK_GRANT, MANAGER, DELEGATION)
+_NO_TO = STATEMENTS + (TASK_GRANT, DELEGATION)          # the purposes whose payload names no link
 _STATEMENT_FIELDS = frozenset({"v", "deployment", "purpose", "account", "nonce", "id", "seq", "prev", "created_at",
                                "expires_at"})
 FIELDS = {
@@ -90,6 +98,8 @@ FIELDS = {
                            "rungs", "created_at", "expires_at"}),
     MANAGER: frozenset({"v", "deployment", "purpose", "account", "nonce", "id", "to", "settings", "created_at",
                         "expires_at"}),
+    DELEGATION: frozenset({"v", "deployment", "purpose", "account", "nonce", "id", "delegate", "sessions", "created_at",
+                           "expires_at"}),
 }
 RETIRES = ("all", "grace")           # a revocation retires the earlier keys at once, a routine rotation an hour after
 PAYLOAD_MAX = 20000              # the canonical bytes
@@ -346,7 +356,7 @@ def _check_payload(payload, user_id, purpose, now, timed=True):
             raise link.LinkError(422, "The payload's time is more than 5 minutes from the ADE's.", server_time=now)
         most = {"resume": RESUME_LIFE_MAX, MOVE: MOVE_LIFE_MAX, E2E_KEY: STATEMENT_LIFE_MAX,
                 E2E_OFF: STATEMENT_LIFE_MAX, TASK_GRANT: GRANT_LIFE_MAX,
-                MANAGER: MANAGER_LIFE_MAX}.get(purpose, LIFE_MAX)
+                MANAGER: MANAGER_LIFE_MAX, DELEGATION: max(DELEGATION_LIVES)}.get(purpose, LIFE_MAX)
         if not LIFE_MIN <= expires - created <= most:
             raise link.LinkError(422, f"A {purpose} expires {LIFE_MIN} to {most} seconds after it is made.")
         if expires <= now:
@@ -367,6 +377,8 @@ def _check_payload(payload, user_id, purpose, now, timed=True):
         if not isinstance(payload["settings"], str) or not _DIGEST.fullmatch(payload["settings"]):
             raise link.LinkError(422, "A Manager's holder names its settings by their digest: sha256: and 64 "
                                       "lowercase hex characters.")
+    elif purpose == DELEGATION:
+        _check_delegation(payload)
     else:
         check_text(payload["text"], purpose)
     if purpose == "answer":
@@ -482,13 +494,13 @@ def check_instruction(user_id, data, now=None):
 
 
 def check_room(db, user_id, target, now):
-    """Inside the storing transaction: the owner's commands an hour (OWNER_PER_HOUR, the moves held among them), and
-    what the session `target` holds untaken (QUEUED_PER_LINK); 429 past either."""
+    """Inside the storing transaction: the owner's commands an hour (OWNER_PER_HOUR, the moves held and the signing
+    windows opened among them), and what the session `target` holds untaken (QUEUED_PER_LINK); 429 past either."""
     from . import moves
     hour = now - 3600
     if db.execute(f"SELECT COUNT(*) FROM ade_link_events WHERE user_id = ? AND {_COMMAND_SQL} AND "
                   "received_at > ?", (user_id, hour)).fetchone()[0] + moves.held_since(db, user_id, hour) \
-            >= OWNER_PER_HOUR:
+            + _opened_since(db, user_id, hour) >= OWNER_PER_HOUR:
         raise link.LinkError(429, f"The owner sends at most {OWNER_PER_HOUR} commands an hour.")
     if queued(db, user_id, target["id"], now) + moves.held_open(db, user_id, target["id"], now) >= QUEUED_PER_LINK:
         raise link.LinkError(429, f"A session holds at most {QUEUED_PER_LINK} commands it has not taken.")
@@ -644,6 +656,8 @@ def post_command(user_id, data, now=None):
     which names the move and the workspace session; at most 120 characters, held to what a title in the clear is."""
     from . import holds, moves
     now = _now(now)
+    if isinstance(data, dict) and "delegated" in data:
+        return post_delegated(user_id, data, now)
     purpose = data.get("payload", {}).get("purpose") if isinstance(data, dict) and isinstance(data.get("payload"),
                                                                                                 dict) else None
     if purpose not in SIGNED_KINDS:
@@ -731,6 +745,265 @@ def post_command(user_id, data, now=None):
     return {"seq": seq, "expires_at": payload["expires_at"]}
 
 
+# ---- the signing window: a window the owner opens, and the instructions their page signs in it -------------------
+
+def delegation_digest(raw):
+    """What names a delegation: the sha256, in hex, of DELEGATION_TAG, a zero byte and its
+    canonical bytes."""
+    return hashlib.sha256(DELEGATION_TAG + b"\x00" + raw).hexdigest()
+
+
+def _page_key(text):
+    """The delegated key, an ECDSA P-256 public key from the base64url (no padding) of its SubjectPublicKeyInfo, or
+    None."""
+    import base64
+    from cryptography.exceptions import UnsupportedAlgorithm
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.serialization import load_der_public_key
+    if not isinstance(text, str) or not text or len(text) > 200:
+        return None
+    try:
+        der = base64.urlsafe_b64decode(text + "=" * (-len(text) % 4))
+        if base64.urlsafe_b64encode(der).rstrip(b"=").decode() != text:
+            return None
+        key = load_der_public_key(der)
+    except (ValueError, TypeError, UnsupportedAlgorithm):
+        return None
+    if not isinstance(key, ec.EllipticCurvePublicKey) or not isinstance(key.curve, ec.SECP256R1):
+        return None
+    return key
+
+
+def _page_signed(key, text, message):
+    """Whether `text`, the base64url of 64 bytes r || s (IEEE P1363), is the key's ECDSA P-256 SHA-256 signature over
+    `message`."""
+    import base64
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+    if not isinstance(text, str) or len(text) != 86:
+        return False
+    try:
+        raw = base64.urlsafe_b64decode(text + "==")
+    except (ValueError, TypeError):
+        return False
+    if len(raw) != 64 or base64.urlsafe_b64encode(raw).rstrip(b"=").decode() != text:
+        return False
+    try:
+        key.verify(encode_dss_signature(int.from_bytes(raw[:32], "big"), int.from_bytes(raw[32:], "big")), message,
+                   ec.ECDSA(hashes.SHA256()))
+    except (InvalidSignature, ValueError):
+        return False
+    return True
+
+
+def _check_delegation(payload):
+    """A delegation's own fields: its delegate the page's P-256 key, one session with its key's
+    fingerprint, the kind `instruction` alone, and a life of 300 or 900 seconds (422 otherwise)."""
+    delegate, sessions = payload["delegate"], payload["sessions"]
+    if not isinstance(delegate, dict) or set(delegate) != {"kind", "alg", "key"} or delegate["kind"] != "page-key" \
+            or not _int(delegate["alg"]) or delegate["alg"] != -7 or _page_key(delegate["key"]) is None:
+        raise link.LinkError(422, "A delegation's delegate is {kind: page-key, alg: -7, key}: an ECDSA P-256 key's "
+                                  "SubjectPublicKeyInfo in base64url.")
+    if not isinstance(sessions, list) or len(sessions) != 1 or not isinstance(sessions[0], dict) \
+            or set(sessions[0]) != {"id", "fingerprint", "kinds"} or not isinstance(sessions[0]["id"], str) \
+            or not _ID.fullmatch(sessions[0]["id"]) or not isinstance(sessions[0]["fingerprint"], str) \
+            or not _ID.fullmatch(sessions[0]["fingerprint"]) or sessions[0]["kinds"] != ["instruction"]:
+        raise link.LinkError(422, "A delegation's sessions are one: {id, fingerprint, kinds: [instruction]}, the "
+                                  "link's id and its key's fingerprint.")
+    if payload["expires_at"] - payload["created_at"] not in DELEGATION_LIVES:
+        raise link.LinkError(422, "A signing window lasts 5 or 15 minutes: 300 or 900 seconds.")
+
+
+def _opened_since(db, user_id, since):
+    """The windows the owner opened since `since`: each counts in his commands an hour."""
+    return db.execute("SELECT COUNT(*) FROM ade_link_delegations WHERE user_id = ? AND created_at > ?",
+                      (user_id, since)).fetchone()[0]
+
+
+def end_delegations(db, user_id, now, reason, which="", args=()):
+    """Inside the caller's transaction: every open window of the account that `which` (SQL after AND, with `args`)
+    names ended now, for `reason`, and each instruction under it no session has taken withdrawn, which a session reads
+    as the ADE's word against acting. The digests ended."""
+    rows = [r[0] for r in db.execute(
+        f"SELECT digest FROM ade_link_delegations WHERE user_id = ? AND ended_at IS NULL AND expires_at > ? {which}",
+        (user_id, now, *args))]
+    for digest in rows:
+        db.execute("UPDATE ade_link_delegations SET ended_at = ?, ended_reason = ? WHERE digest = ?",
+                   (now, reason, digest))
+        db.execute("UPDATE ade_link_events SET withdrawn_at = ? WHERE user_id = ? AND delegation = ? AND "
+                   "taken_at IS NULL AND withdrawn_at IS NULL", (now, user_id, digest))
+    return rows
+
+
+@_passkey_errors
+def open_delegation(user_id, data, now=None):
+    """Open a signing window: a delegation the owner signed ({payload, credential}), checked as a command is (its
+    fields, the nonce given for its purpose, its time, the passkey's assertion over its canonical bytes), for one live
+    link of the account (404), whose key is the one signed (409) and whose client said, on its last read of its state,
+    that it takes delegations (409), while the account's high security is off (403). It ends the link's open window,
+    stores the new one, uses the nonce and moves the passkey's counter, all in one transaction. {digest, expires_at}."""
+    from .link_asks import fingerprint
+    now = _now(now)
+    payload, raw, credential, row, auth = _verified(user_id, data, DELEGATION, now)
+    entry = payload["sessions"][0]
+    digest = delegation_digest(raw)
+    with store.connect() as db:
+        db.execute("BEGIN IMMEDIATE")
+        target = db.execute("SELECT * FROM ade_links WHERE id = ? AND user_id = ? AND revoked_at IS NULL",
+                            (entry["id"], user_id)).fetchone()
+        if target is None:
+            raise link.LinkError(404, "No live link of this account has that id.")
+        if fingerprint(link.unb64u(target["public_key"])) != entry["fingerprint"]:
+            raise link.LinkError(409, "The link's key is not the one this window names: it was paired again.")
+        try:
+            said = json.loads(target["features"]) if target["features"] else []
+        except ValueError:
+            said = []
+        if DELEGATION_FEATURE not in said:
+            raise link.LinkError(409, f"{target['name']}'s client has not said it takes signing windows: each "
+                                      "instruction to it takes your passkey.", why="no_window")
+        if passkeys._high_security(db, user_id):
+            raise link.LinkError(403, "High security is on: every command takes a hardware key, and no window opens.")
+        from . import moves
+        hour = now - 3600
+        if db.execute(f"SELECT COUNT(*) FROM ade_link_events WHERE user_id = ? AND {_COMMAND_SQL} AND "
+                      "received_at > ?", (user_id, hour)).fetchone()[0] + moves.held_since(db, user_id, hour) \
+                + _opened_since(db, user_id, hour) >= OWNER_PER_HOUR:
+            raise link.LinkError(429, f"The owner sends at most {OWNER_PER_HOUR} commands an hour.")
+        end_delegations(db, user_id, now, "new_window", "AND link_id = ?", (target["id"],))
+        passkeys.use_nonce(db, payload["nonce"], user_id, DELEGATION, payload["expires_at"], now)
+        passkeys.commit_counter(db, row, auth, now)
+        try:
+            db.execute("INSERT INTO ade_link_delegations (digest, id, user_id, link_id, link_fingerprint, payload, "
+                       "credential, passkey_id, created_at, expires_at, last_n) VALUES (?,?,?,?,?,?,?,?,?,?,0)",
+                       (digest, payload["id"], user_id, target["id"], entry["fingerprint"], raw.decode("utf-8"),
+                        json.dumps(credential, separators=(",", ":")), row["id"], payload["created_at"],
+                        payload["expires_at"]))
+        except sqlite3.IntegrityError:
+            raise link.LinkError(409, "This window is open already.") from None
+    return {"digest": digest, "expires_at": payload["expires_at"]}
+
+
+def post_delegated(user_id, data, now=None):
+    """Store an instruction the owner's page signed under an open window ({payload, delegated: {digest, sig}}): an
+    instruction's every check (its fields but the two more, its text, its time, the nonce given for it) and the
+    window's: this account's (404), open (410), the account's high security off (403), for the payload's link (409),
+    not a proposal's id (409: a proposal is signed with the passkey), its place the next (409, why delegation_n, with
+    the window's last_n), made within the window with a minute left and ending with it (422), and the page key's
+    signature over the tag and its canonical bytes (422). The owner's budget and the link's queue hold as for any
+    command. Stored with the window's digest and passkey, and the signature a session verifies.
+    {seq, expires_at}."""
+    from . import moves
+    now = _now(now)
+    payload, delegated = data.get("payload"), data.get("delegated")
+    if not isinstance(payload, dict) or not isinstance(delegated, dict) or set(delegated) != {"digest", "sig"} \
+            or not isinstance(delegated["digest"], str) or not _HEX64.fullmatch(delegated["digest"]):
+        raise link.LinkError(422, "An instruction under a window is {payload, delegated: {digest, sig}}.")
+    raw = _canonical(payload, {})
+    if payload.get("purpose") != "instruction":
+        raise link.LinkError(422, "Only an instruction is sent under a window.")
+    if set(payload) != FIELDS["instruction"] | {"delegation", "n"}:
+        raise link.LinkError(422, "An instruction under a window has an instruction's fields and two more, "
+                                  "delegation and n.")
+    _check_payload({k: v for k, v in payload.items() if k not in ("delegation", "n")}, user_id, "instruction", now)
+    if not isinstance(payload["delegation"], str) or not _int(payload["n"]) or payload["n"] <= 0:
+        raise link.LinkError(422, "The instruction's delegation is its window's digest, and its n a positive number.")
+    try:
+        _, nonce_expires = passkeys.open_nonce(payload["nonce"], user_id, "instruction", now)
+    except passkeys.PasskeyError as e:
+        raise link.LinkError(e.status, str(e)) from None
+    issued = nonce_expires - passkeys.CHALLENGE_TTL
+    if not issued - 2 <= payload["created_at"] <= issued + NONCE_DRIFT:
+        raise link.LinkError(422, f"The payload's created_at is not the time its nonce was given (within "
+                                  f"{NONCE_DRIFT} seconds after it).")
+    with store.connect() as db:
+        db.execute("BEGIN IMMEDIATE")
+        window = db.execute("SELECT * FROM ade_link_delegations WHERE digest = ? AND user_id = ?",
+                            (delegated["digest"], user_id)).fetchone()
+        if window is None:
+            raise link.LinkError(404, "No such window.")
+        if payload["delegation"] != window["digest"]:
+            raise link.LinkError(422, "The instruction's delegation is not the window it is sent under.")
+        if window["ended_at"] is not None or now > window["expires_at"]:
+            raise link.LinkError(410, "The window has ended: an instruction now takes your passkey.",
+                                 why="delegation_ended")
+        if passkeys._high_security(db, user_id):
+            raise link.LinkError(403, "High security is on: every command takes a hardware key.")
+        target = db.execute("SELECT * FROM ade_links WHERE id = ? AND user_id = ? AND revoked_at IS NULL",
+                            (window["link_id"], user_id)).fetchone()
+        if target is None or payload["to"] != window["link_id"]:
+            raise link.LinkError(409, "The instruction is not for the link its window is for.")
+        if db.execute("SELECT 1 FROM ade_link_events WHERE user_id = ? AND kind = 'proposal' AND client_id = ?",
+                      (user_id, payload["id"])).fetchone() or db.execute(
+                "SELECT 1 FROM ade_proposals WHERE id = ? AND user_id = ?", (payload["id"], user_id)).fetchone():
+            raise link.LinkError(409, "A proposal is signed with your passkey, never under a window.")
+        if payload["n"] != window["last_n"] + 1:
+            raise link.LinkError(409, f"The window's next instruction is {window['last_n'] + 1}.", why="delegation_n",
+                                 last_n=window["last_n"])
+        if not window["created_at"] <= payload["created_at"] <= window["expires_at"] - LIFE_MIN \
+                or payload["expires_at"] != window["expires_at"]:
+            raise link.LinkError(422, "An instruction under a window is made within it, with a minute left, and ends "
+                                      "with it.")
+        if not _page_signed(_page_key(json.loads(window["payload"])["delegate"]["key"]), delegated["sig"],
+                            DELEGATED_TAG + b"\x00" + raw):
+            raise link.LinkError(422, "The page key's signature does not verify.")
+        hour = now - 3600
+        if db.execute(f"SELECT COUNT(*) FROM ade_link_events WHERE user_id = ? AND {_COMMAND_SQL} AND "
+                      "received_at > ?", (user_id, hour)).fetchone()[0] + moves.held_since(db, user_id, hour) \
+                + _opened_since(db, user_id, hour) >= OWNER_PER_HOUR:
+            raise link.LinkError(429, f"The owner sends at most {OWNER_PER_HOUR} commands an hour.")
+        if queued(db, user_id, target["id"], now) + moves.held_open(db, user_id, target["id"], now) \
+                >= QUEUED_PER_LINK:
+            raise link.LinkError(429, f"A session holds at most {QUEUED_PER_LINK} commands it has not taken.")
+        passkeys.use_nonce(db, payload["nonce"], user_id, "instruction", payload["expires_at"], now)
+        signature = json.dumps({"delegation": {"payload": window["payload"],
+                                               "credential": json.loads(window["credential"])},
+                                "sig": delegated["sig"]}, separators=(",", ":"))
+        try:
+            seq = store_signed(db, user_id, "instruction", payload, raw.decode("utf-8"), signature,
+                               window["passkey_id"], target, now)
+        except sqlite3.IntegrityError:
+            raise link.LinkError(409, "A command with this id is stored already.") from None
+        db.execute("UPDATE ade_link_events SET delegation = ? WHERE seq = ?", (window["digest"], seq))
+        db.execute("UPDATE ade_link_delegations SET last_n = ? WHERE digest = ?", (payload["n"], window["digest"]))
+    return {"seq": seq, "expires_at": payload["expires_at"]}
+
+
+def end_delegation(user_id, digest, now=None):
+    """The owner's "End now": the window ended and what no session took under it withdrawn (end_delegations); his
+    sign-in suffices, since an end only refuses more. 404 for a window not his. {ended_at}: when it was ended, or, for
+    one past its end that nothing ended, its own end, which this writes nothing for."""
+    now = _now(now)
+    if not isinstance(digest, str) or not _HEX64.fullmatch(digest):
+        raise link.LinkError(404, "No such window.")
+    with store.connect() as db:
+        db.execute("BEGIN IMMEDIATE")
+        window = db.execute("SELECT ended_at, expires_at FROM ade_link_delegations WHERE digest = ? AND user_id = ?",
+                            (digest, user_id)).fetchone()
+        if window is None:
+            raise link.LinkError(404, "No such window.")
+        end_delegations(db, user_id, now, "end_now", "AND digest = ?", (digest,))
+    if window["ended_at"] is not None:
+        return {"ended_at": window["ended_at"]}
+    return {"ended_at": window["expires_at"] if window["expires_at"] <= now else now}
+
+
+def open_windows(db, user_id, now):
+    """The account's open windows by link, for the page: {link_id: {digest, created_at, expires_at, last_n,
+    untaken}}."""
+    out = {}
+    for r in db.execute("SELECT * FROM ade_link_delegations WHERE user_id = ? AND ended_at IS NULL AND expires_at > ? "
+                        "ORDER BY created_at", (user_id, now)):
+        untaken = db.execute("SELECT COUNT(*) FROM ade_link_events WHERE user_id = ? AND delegation = ? AND taken_at "
+                             "IS NULL AND withdrawn_at IS NULL AND expires_at > ?",
+                             (user_id, r["digest"], now)).fetchone()[0]
+        out[r["link_id"]] = {"digest": r["digest"], "created_at": r["created_at"], "expires_at": r["expires_at"],
+                             "last_n": r["last_n"], "untaken": untaken}
+    return out
+
+
 def withdraw(user_id, seq, now=None):
     """Withdraw a command or a move no session has taken yet: {withdrawn_at}; a move's row is failed, saying the owner
     withdrew it (ade/moves.py). 409 with its state otherwise."""
@@ -773,6 +1046,9 @@ def stop_in(db, user_id, link_id, now):
                      (link_id, user_id)).fetchone()
     if row is None:
         raise link.LinkError(404, "No such link.")
+    # a stop ends the link's signing windows too, as End now does: a session resumed after it takes nothing queued
+    # under them, and the page opens a window again with a passkey
+    end_delegations(db, user_id, now, "stopped", "AND link_id = ?", (link_id,))
     if row["stopped_at"] is not None:
         return {"stopped_at": row["stopped_at"]}
     db.execute("UPDATE ade_links SET stopped_at = ?, stop_acked_at = NULL, resume_payload = NULL, "
@@ -946,25 +1222,68 @@ def claim_prompt(link_row, seq, data, now=None):
                          deadline_at=prompt["deadline_at"])
 
 
-def state(link_row, now=None):
+# a delegation ended before its end is listed in the link's state for its longest life and twice the session's skew
+# (900 + 2 * 60 seconds), after which no session takes under it by its own clock either; a client says what it takes on
+# each read of its state, in at most FEATURES_MOST words of FEATURE
+DELEGATION_ENDED_SHOWN = 900 + 2 * 60
+FEATURES_MOST = 8
+FEATURE = re.compile(r"[a-z0-9-]{1,32}")            # whole-text only: fullmatch, never match
+
+
+def _features(text):
+    """The words a client's state read says it takes (`features`, comma-separated), sorted; [] for none said; None
+    for words this server does not read, which leave what it kept as it was."""
+    if text is None or text == "":
+        return []
+    words = text.split(",")
+    if len(words) > FEATURES_MOST or not all(FEATURE.fullmatch(w) for w in words):
+        return None
+    return sorted(set(words))
+
+
+def state(link_row, now=None, features=None):
     """What a session's hook and watcher read: whether it is stopped, the stored resume to verify, the account's
     newest statement of its encryption keys ({seq, key_id}, the key_id null once encryption is off; or null), and the
     link's kind and interval (a client paired before pair recorded the kind asks it here once, which moves nothing a
-    watcher's heartbeat does)."""
+    watcher's heartbeat does). And for a signing window: the account's high security, the digests of this link's
+    delegations ended before their end lately, and, for each of this link's windows, its instructions stored and not
+    taken, withdrawn or expired, as [n, seq] pairs; the words the client said it takes (`features`) are kept on the
+    link, which the page reads to offer a signing window or not."""
     from . import e2e_keys
     now = _now(now)
+    said = _features(features)
     with store.connect() as db:
+        if said is not None:
+            kept = json.dumps(said)
+            db.execute("UPDATE ade_links SET features = ?, features_at = ? WHERE id = ? AND features IS NOT ?",
+                       (kept, now, link_row["id"], kept))
         row = db.execute("SELECT stopped_at, resume_payload, resume_signature, resume_passkey_id, resumed_at FROM "
                          "ade_links WHERE id = ?", (link_row["id"],)).fetchone()
         head = link._head(db, link_row["user_id"])
         stated = e2e_keys.said(e2e_keys.newest(db, link_row["user_id"]))
+        high = passkeys._high_security(db, link_row["user_id"])
+        ended = [r[0] for r in db.execute(
+            "SELECT digest FROM ade_link_delegations WHERE user_id = ? AND link_id = ? AND ended_at IS NOT NULL "
+            "AND ended_at >= ? ORDER BY ended_at", (link_row["user_id"], link_row["id"], now - DELEGATION_ENDED_SHOWN))]
+        opened = {}
+        for r in db.execute("SELECT seq, payload, delegation FROM ade_link_events WHERE user_id = ? AND to_id = ? "
+                            "AND link_id = 'owner' AND kind = 'instruction' AND delegation IS NOT NULL AND taken_at IS "
+                            "NULL AND withdrawn_at IS NULL AND expires_at > ? ORDER BY seq",
+                            (link_row["user_id"], link_row["id"], now)):
+            try:
+                n = json.loads(r["payload"]).get("n")
+            except (TypeError, ValueError, AttributeError):
+                continue
+            if isinstance(n, int) and not isinstance(n, bool) and n > 0:
+                opened.setdefault(r["delegation"], []).append([n, r["seq"]])
     resume_held = None
     if row["resume_payload"]:
         resume_held = {"payload": row["resume_payload"], "signature": json.loads(row["resume_signature"]),
                        "passkey_id": row["resume_passkey_id"], "resumed_at": row["resumed_at"]}
     return {"link_id": link_row["id"], "name": link_row["name"], "stopped": row["stopped_at"] is not None,
             "stopped_at": row["stopped_at"], "resume": resume_held, "roster_version": None, "head": head,
-            "server_time": now, "e2e": stated, "kind": link_row["kind"], "interval_min": link_row["interval_min"]}
+            "server_time": now, "e2e": stated, "kind": link_row["kind"], "interval_min": link_row["interval_min"],
+            "high_security": bool(high), "delegations_ended": ended, "delegations_open": opened}
 
 
 def event(link_row, seq):

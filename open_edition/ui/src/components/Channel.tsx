@@ -26,6 +26,8 @@ import { KEEP } from "./StorageChoice";
 import { OutLink } from "./OutLink";
 import { EncryptedBar, eventShown, eventSlotOf, InClear, KeptClear, rowSealed, SealWords, ShownText, talkRefOf, talkShown, talkSlotOf, Unlock, useAccount, useOpened, useShownRows, type Seal, type Shown } from "./Sealed";
 import { PromptCard, ProposalCard } from "./LinkInbox";
+import { SigningWindow } from "./SigningWindow";
+import { LAST_MINUTE_WORDS, sendInWindow, sendRefusal, windowOf, WindowSendError } from "../signWindow";
 import { clock, dayTime, full } from "../when";
 
 export { visible };
@@ -1244,6 +1246,11 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
   const [text, setText] = useState(fixed ?? start ?? (draft ? draftText(draft.key) : ""));
   const [hours, setHours] = useState(1);
   const [prepared, setPrepared] = useState<Prepared | null>(null);
+  // a signing window open in this tab for this session: the owner's own instruction goes under it, signed
+  // by this tab with no passkey; a proposal never does, and nothing does in the window's last minute
+  const underWindow = purpose === "instruction" && !proposal && !head ? windowOf(to) : null;
+  const [windowed, setWindowed] = useState<string | null>(null);     // the words reviewed to send under the window
+  const [lastMinute, setLastMinute] = useState(false);
   const reviewedAt = useRef(0);           // this browser's clock when the review was made: the server's may differ
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -1268,6 +1275,9 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
   const words = useRef<HTMLTextAreaElement>(null);
   const reviewButton = useRef<HTMLButtonElement>(null);
   const backToWords = useRef(false);
+  useEffect(() => {
+    if (windowed !== null) signButton.current?.focus();
+  }, [windowed]);
   useEffect(() => {
     if (prepared) signButton.current?.focus();
     else if (backToWords.current) { backToWords.current = false; words.current?.focus(); }
@@ -1300,6 +1310,23 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
     const problem = purpose === "resume" ? null
       : commandProblem(text) ?? (head ? commandProblem(whole) : null) ?? check?.(text.normalize("NFC")) ?? null;
     if (problem) { setError(problem); return; }
+    setLastMinute(false);
+    if (underWindow) {
+      const refusal = sendRefusal(to);
+      if (refusal === null) {
+        // which passkeys the session refuses, as a passkey's review says: what a window one of them opened sends, it
+        // refuses
+        setBusy(true); setError("");
+        const w = await pinCheck(to);
+        setBusy(false);
+        setWarning(w);
+        setWindowed(whole.normalize("NFC"));
+        setSaid(`Review it: it goes to ${toName ?? "the session"} in your signing window, and no passkey is asked.`
+                + (w ? ` ${windowPinWords(w, toName ?? "The session")}` : ""));
+        return;
+      }
+      setLastMinute(refusal === LAST_MINUTE_WORDS);       // its last minute: this one takes the passkey, said so
+    }
     setBusy(true); setError("");
     try {
       const prepare = async () => prepareSigned(purpose, to, { text: whole.normalize("NFC"), life: hours * 3600, after, id: proposal?.id, ...(extra ? await extra() : {}) });
@@ -1346,6 +1373,28 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
       await send(signed, prepared.words);
     } catch (e) { setPrepared(null); setError(await failedWords(e)); } finally { setBusy(false); pressed.current = false; }
   };
+  // the reviewed words under the window: signed here with its key, no passkey; the window's place moves only on the
+  // server's 2xx, and an answer that did not come is settled from the links list (signWindow.ts)
+  const sendWindowed = async () => {
+    if (windowed === null || signing.off || busy) return;
+    setBusy(true); setError("");
+    try {
+      await sendInWindow(to, windowed, async () => {
+        const link = (await Api.linkSessions()).links.find((x) => x.id === to);
+        const open = link?.delegation;
+        const ids = (link?.commands ?? []).map((c) => c.client_id).filter((id): id is string => typeof id === "string");
+        return open ? { digest: open.digest, last_n: open.last_n, ids } : null;
+      });
+      backToWords.current = true;
+      setWindowed(null); setText(fixed ?? "");
+      setSaid(`Sent in your signing window: your instruction went to ${toName ?? "the session"}.`);
+      if (draft) dropDraft(draft.key);
+      await onDone();
+    } catch (e) {
+      setWindowed(null);
+      setError(e instanceof WindowSendError && e.ended ? `${e.message} Review it again to sign it with your passkey.` : message(e));
+    } finally { setBusy(false); }
+  };
   const signedOnMac = async (signed: Signed) => {
     if (!prepared || pressed.current) return;
     pressed.current = true;
@@ -1353,7 +1402,7 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
   };
   return (
     <div className="mt-2 rounded-md border border-line p-2">
-      {!prepared && purpose !== "resume" && (
+      {!prepared && windowed === null && purpose !== "resume" && (
         <>
           {head && (
             // the line the owner does not change, shown as it is signed, above their words
@@ -1369,14 +1418,16 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
           )}
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {purpose === "instruction" && fixed === undefined && slash.button}
-            {purpose === "instruction" && (
-              // cut to a short width at a phone's, its full words on its menu, so the row holds the slash button too
-              <select aria-label="Expires after"
-                className="input h-7 w-auto min-w-0 max-w-[104px] text-[12px] sm:max-w-none"
-                value={hours} onChange={(e) => setHours(Number(e.target.value))}>
-                {[1, 4, 8, 24].map((h) => <option key={h} value={h}>expires in {h} {h === 1 ? "hour" : "hours"}</option>)}
-              </select>
-            )}
+            {purpose === "instruction" && (underWindow
+              ? <span className="text-[12px] text-fg-dim">Lives until the window ends ({clock(underWindow.expires)})</span>
+              : (
+                // cut to a short width at a phone's, its full words on its menu, so the row holds the slash button too
+                <select aria-label="Expires after"
+                  className="input h-7 w-auto min-w-0 max-w-[104px] text-[12px] sm:max-w-none"
+                  value={hours} onChange={(e) => setHours(Number(e.target.value))}>
+                  {[1, 4, 8, 24].map((h) => <option key={h} value={h}>expires in {h} {h === 1 ? "hour" : "hours"}</option>)}
+                </select>
+              ))}
             <button ref={reviewButton} className={`btn btn-sm btn-primary ${UNAVAILABLE}`} disabled={busy} {...signing.attrs} onClick={() => void review()}>
               {busy ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} {submit}
             </button>
@@ -1398,8 +1449,22 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
           {signing.note}
         </>
       )}
+      {windowed !== null && (
+        <div>
+          <div className="overflow-hidden text-[11.5px] text-fg-dim">You are sending this instruction to {toName ?? "the session"} in your signing window:</div>
+          <pre className="mt-1 whitespace-pre-wrap break-words rounded bg-bg px-2 py-1.5 font-mono text-[12px] text-fg">{windowed}</pre>
+          <div className="mt-1 text-[11px] text-faint">This tab signs it with the window's key: no passkey is asked. It lives until the window ends.</div>
+          {warning && <PinNotice w={warning} name={toName ?? "The session"} underWindow />}
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <button ref={signButton} className={`btn btn-sm btn-primary ${UNAVAILABLE}`} disabled={busy} {...signing.attrs} onClick={() => void sendWindowed()}><Send size={12} /> Send (signing window)</button>
+            <button className="btn btn-sm" disabled={busy} onClick={() => { backToWords.current = true; setWindowed(null); }}>Edit</button>
+          </div>
+          {signing.note}
+        </div>
+      )}
       {prepared && (
         <div>
+          {lastMinute && <div role="status" className="mb-1 text-[11.5px] text-wait">{LAST_MINUTE_WORDS}</div>}
           {/* clipped to its own lines, so nothing in an app's name is drawn over the words below it */}
           <div className="overflow-hidden text-[11.5px] text-fg-dim">{signingWhat(prepared, toName, after, proposal?.by, answers)}</div>
           {purpose !== "resume" && <pre className="mt-1 whitespace-pre-wrap break-words rounded bg-bg px-2 py-1.5 font-mono text-[12px] text-fg">{prepared.words}</pre>}
@@ -1491,13 +1556,27 @@ export function pinWords(w: PinWarning, name: string): string {
       + (w.all ? "it refuses this." : `it refuses what ${one ? "that key signs" : "they sign"}.`);
 }
 
+/** A PinWarning for a signing window, the session named: a window is taken as the passkey that opened it is, so what a
+ *  window an unpinned passkey opened sends is refused, each instruction of it. */
+export function windowPinWords(w: PinWarning, name: string): string {
+  const them = nameList(w.refused.map((k) => k.name), "and");
+  const one = w.refused.length === 1;
+  const theirs = `what a window ${one ? "that key opens" : "they open"} sends`;
+  return w.known
+    ? w.all
+      ? `${name} will refuse what a signing window sends: it has not pinned ${them}, ${one ? "the only passkey" : "the passkeys"} that can open one.`
+      : `${name} takes what a signing window sends only if ${nameList(w.pinned, "or")} opened it: it has not pinned ${them}, and refuses ${theirs}.`
+    : `${them} ${one ? "was" : "were"} added after ${name} was linked: unless you gave ${name} ${one ? "its pin line" : "their pin lines"}, `
+      + (w.all ? "it refuses what a signing window sends." : `it refuses ${theirs}.`);
+}
+
 /** What a review says before the touch when the session will refuse what some passkey signs, plainly, with the pin
- *  line that makes it take them, to run in that session's own window. */
-export function PinNotice({ w, name }: { w: PinWarning; name: string }) {
+ *  line that makes it take them, to run in that session's own window; `underWindow`, said of a signing window. */
+export function PinNotice({ w, name, underWindow = false }: { w: PinWarning; name: string; underWindow?: boolean }) {
   const [copied, setCopied] = useState(false);
   const them = nameList(w.refused.map((k) => k.name), "and");
   const line = pinLine(name, w.refused.map((k) => k.fingerprint));
-  const said = pinWords(w, name);
+  const said = underWindow ? windowPinWords(w, name) : pinWords(w, name);
   return (
     <div role="note" aria-label="Before you sign" className="mt-1.5 rounded-md border border-wait/50 bg-wait/[0.06] p-2 text-[12px]">
       <div className="text-wait">{said}</div>
@@ -1583,11 +1662,33 @@ export function Commands({ l }: { l: LinkView }) {
             )}
           </div>
           {withdrawn && <TakenLine said={withdrawn} sure={acts.sure(key)} />}
-          <SignedBy facts={c as SignedFacts} keys={keys} />
+          {c.delegation ? <SentInWindow c={c} /> : <SignedBy facts={c as SignedFacts} keys={keys} />}
           <CameBack why={acts.failed(key)} />
         </div>
         );
       })}
+    </div>
+  );
+}
+
+/** Why a window ended before its end, in the owner's words (link_commands.end_delegations' reasons). */
+const WINDOW_ENDED: Record<string, string> = {
+  end_now: "you ended the window", new_window: "you opened another window for it", link_ended: "the link ended",
+  re_paired: "it was paired again", passkey_removed: "the passkey that opened it was removed",
+  high_security: "high security was turned on", signed_out: "you signed out everywhere",
+  stopped: "you stopped the session",
+};
+
+/** What one of the owner's commands sent in a signing window says of it: that window, opened when, by the first
+ *  8 characters of its digest (as the session's take prints it), and why it was dropped when it was. */
+function SentInWindow({ c }: { c: LinkEvent }) {
+  const d = c.delegation!;
+  const why = d.ended_reason ? WINDOW_ENDED[d.ended_reason] ?? "the window ended" : "the window ended";
+  const dropped = c.state === "withdrawn" && d.ended_at ? (d.ended_reason === "end_now" ? "withdrawn: you ended the window" : `withdrawn: ${why}`)
+    : c.state === "expired" ? "not taken: the window ended" : null;
+  return (
+    <div className="ml-1 text-[11px] text-muted">
+      You sent an instruction in a signing window ({d.created_at ? `opened ${clock(d.created_at)}, ` : ""}id {d.digest.slice(0, 8)}){dropped ? ` · ${dropped}` : ""}
     </div>
   );
 }
@@ -1702,6 +1803,7 @@ export function LinkCard({ l, questions, waitings, onTicket, onTalk, sessionsBel
       {(waitings ?? []).map((w) => <Waiting key={w.seq} w={w} linkId={l.id} />)}
       {sending && <SendingLine words={sending.words} what={sending.what} />}
       <Commands l={l} />
+      <SigningWindow l={l} signs={signsHere()} />
       {commanding && (
         <SignBox key={commanding} purpose="instruction" to={l.id} toName={l.name} placeholder={`What ${l.name} should do`} focus
           draft={commanding === "free" ? { key: instructionDraft(l.id), name: l.name } : undefined}

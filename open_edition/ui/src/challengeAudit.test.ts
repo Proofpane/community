@@ -357,6 +357,8 @@ describe("what the page hands the authenticator", { timeout: 120000 }, () => {
       // the Manager's holder and each goal to a linked Manager, signed over their step challenges
       "components/ControllerPanel.tsx sign -> signPrepared: step",
       "components/ControllerPanel.tsx signAndSend -> signPrepared: step",
+      // a signing window's delegation, signed over its step challenge as a command is
+      "signWindow.ts openWindow -> signPrepared: step",
       "e2eKeys.ts CancelChange.withPasskey -> assertionWith: derived",
       "e2eKeys.ts Enrol.firstTouch -> prfTouch: page",
       "e2eKeys.ts Enrol.secondTouch -> prfTouch: derived",       // the passkey added, its own confirmation

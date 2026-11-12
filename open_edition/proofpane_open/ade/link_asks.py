@@ -526,8 +526,12 @@ def _paired(db, row, now):
                        (row["public_key"],)).fetchone()
     if other is not None and other["id"] != moved["id"]:
         raise link.LinkError(409, "This key is already on another live link.")
-    db.execute("UPDATE ade_links SET public_key = ?, key_id = ?, session_ref = ? WHERE id = ?",
-               (row["public_key"], row["key_id"], row["session_ref"], moved["id"]))
+    # A signing window was for the old key; the session on the new one refuses it anyway
+    from . import link_commands
+    link_commands.end_delegations(db, row["user_id"], now, "re_paired", "AND link_id = ?", (moved["id"],))
+    # and what the old key's client said it takes is not the new one's: nothing is offered until that one says
+    db.execute("UPDATE ade_links SET public_key = ?, key_id = ?, session_ref = ?, features = NULL, features_at = NULL "
+               "WHERE id = ?", (row["public_key"], row["key_id"], row["session_ref"], moved["id"]))
     return moved["id"]
 
 
