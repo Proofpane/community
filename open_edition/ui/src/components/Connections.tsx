@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type ReactNode
 import { create } from "zustand";
 import { ArrowDown, ArrowUp, Bot, Check, ChevronDown, ChevronRight, Circle, CircleDot, Copy, ExternalLink, FolderGit2, GripVertical, Hourglass, KeyRound, ListTodo, Loader2, LogOut, Plus, ShieldCheck, SquareTerminal, Trash2 } from "lucide-react";
 import { Api, ApiError, GITHUB_DEVICE_PAGE, claudeSignInLink, type AccountKind, type AccountOwnerView, type AccountRecordView, type AccountRow, type ClaudeStatus, type CodexStatus, type HoldRef, type IdentityReport, type LinearStatus, type ModelProviderView, type ProofpaneStatus, type SessionRecord, type Window } from "../api";
+import { auditAddress, auditWords, siteTaken, takeSite } from "../proofpaneAudit";
 import { windowsWords } from "../agents";
 import { confirmWays, type ConfirmWays } from "../passkey";
 import { useStore } from "../store";
@@ -1146,6 +1147,10 @@ function ProofpaneCard() {
   const [holds, setHolds] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [, retake] = useState(0);              // drawn again once a site is taken in this browser
+  // the address the form was filled in with from the record: a pairing there, left as it was, takes no site, since a
+  // program in a session can write the record's address
+  const [filled, setFilled] = useState("");
   useEffect(() => {
     if (!running) return;
     Api.proofpane().then(setSt, () => setSt(null));
@@ -1157,6 +1162,8 @@ function ProofpaneCard() {
   const lines = (text: string) => text.split("\n").map((l) => l.trim()).filter(Boolean);
   const nameOf = (id: string) => accounts?.claude.accounts.find((a) => a.id === id)?.name || (id === "default" ? "Default" : "another account");
   const status = !running ? "Start the workspace to change this" : !st ? "Checking…" : !st.paired ? "Not paired" : `Paired${st.device_name ? ` as ${st.device_name}` : ""}`;
+  const audit = auditAddress(st);
+  const siteHost = (() => { try { return st?.site_url ? new URL(st.site_url).host : ""; } catch { return ""; } })();
   return (
     <Card icon={<span className="flex h-7 w-7 items-center justify-center rounded-md bg-raised"><ShieldCheck size={15} /></span>}
       title="Proofpane" status={status}>
@@ -1191,6 +1198,37 @@ function ProofpaneCard() {
       {st?.paired && (
         <div className="mt-2 space-y-1 text-[12px]">
           <div>Paired with {st.cloud_url}{st.paired_at ? `, ${dayTime(st.paired_at)}` : ""}.</div>
+          {audit ? (
+            <div><a className="btn btn-sm" href={audit} target="_blank" rel="noopener noreferrer"><ExternalLink size={12} /> {auditWords(audit)}</a></div>
+          ) : st.site_url && siteHost && !siteTaken(st) ? (
+            <div className="space-y-1">
+              <div className="text-muted">
+                The workspace&apos;s record names {siteHost} as Proofpane One&apos;s site, beside {st.cloud_url}. This
+                browser has not taken it, so nothing here opens it: take it only if {siteHost} is where your
+                organisation&apos;s Proofpane One is, since a program in a session can write that record.
+              </div>
+              <button className="btn btn-sm" onClick={() => {
+                if (takeSite(st)) { setError(""); retake((n) => n + 1); }
+                else setError("This browser keeps nothing, so it cannot take the site, and the audit is not opened "
+                  + "from here.");
+              }}>
+                <ExternalLink size={12} /> Take {siteHost} as Proofpane One&apos;s site in this browser
+              </button>
+            </div>
+          ) : st.site_url === undefined ? (
+            <div className="text-muted">
+              This workspace&apos;s agent is from before Proofpane One gave its site at pairing, so its audit is not
+              opened from here; once the workspace starts again on this release, this card says whether the pairing
+              keeps one.
+            </div>
+          ) : !st.site_url && (
+            <div className="text-muted">
+              This pairing keeps no address for Proofpane One&apos;s site, so its audit is not opened from here. A
+              pairing made with a new code, a new device beside this one, keeps it if Proofpane One gives it at pairing
+              and it stands beside the address above: on its host, or in its domain unless the workspace knows that
+              domain as one others hold names in, or on this machine for a Proofpane run here.
+            </div>
+          )}
           <div className="text-muted">{mcpWords(st)}</div>
           <div className="text-muted">
             {st.holds && st.holds.length ? `Held for your approval: commands matching ${st.holds.join(", ")}.` : "No command is held for your approval."}
@@ -1205,7 +1243,12 @@ function ProofpaneCard() {
         </div>
       ))}
       {pairing ? (
-        <form className="mt-2 space-y-2" onSubmit={(e) => { e.preventDefault(); if (code.trim()) void act(() => Api.pairProofpane(code.trim(), address.trim() || null, lines(holds))); }}>
+        <form className="mt-2 space-y-2" onSubmit={(e) => { e.preventDefault(); if (code.trim()) void act(async () => {
+          const s = await Api.pairProofpane(code.trim(), address.trim() || null, lines(holds));
+          // the site this pairing wrote, for its device, where the address was the owner's own and not the record's
+          if (s.pairing && !(filled && address.trim() === filled.trim())) takeSite({ ...s, ...s.pairing });
+          return s;
+        }); }}>
           <input className="input h-8 w-full font-mono text-[12px]" autoComplete="off" spellCheck={false}
             aria-label="The pairing code Proofpane shows" placeholder="ABC-DEF-GHJ" value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
           <input className="input h-8 w-full text-[12px]" autoComplete="off" spellCheck={false}
@@ -1228,7 +1271,7 @@ function ProofpaneCard() {
         </form>
       ) : (
         <div className="mt-2 flex gap-2">
-          <button className="btn btn-sm" disabled={!running || busy || !st} onClick={() => { setPairing(true); setCode(""); setAddress(st?.paired && st.cloud_url !== "https://api.proofpane.com" ? st.cloud_url || "" : ""); setHolds((st?.holds || []).join("\n")); }}>
+          <button className="btn btn-sm" disabled={!running || busy || !st} onClick={() => { setPairing(true); setCode(""); const from = st?.paired && st.cloud_url !== "https://api.proofpane.com" ? st.cloud_url || "" : ""; setAddress(from); setFilled(from); setHolds((st?.holds || []).join("\n")); }}>
             {st?.paired ? "Pair again" : "Pair with Proofpane"}
           </button>
           {st?.paired && (

@@ -14,7 +14,7 @@ from websockets.exceptions import ConnectionClosed, InvalidStatus
 from websockets.sync.client import connect
 
 from conftest import ADMIN, signed_up
-from proofpane_stand_in import CODE, TOKEN, proofpane  # noqa: F401  a fixture
+from proofpane_stand_in import CODE, DEVICE, TOKEN, proofpane  # noqa: F401  a fixture
 from workspace_fixtures import git, make_repo, next_control, read_until
 
 OTHER_ADMIN = "second-admin@example.com"
@@ -159,6 +159,9 @@ def test_the_workspace_s_pairing_with_proofpane_goes_through_and_its_token_never
                    json={"code": CODE, "cloud_url": proofpane, "holds": ["^deploy"]})
     assert r.status_code == 200 and r.json()["paired"] is True and r.json()["holds"] == ["^deploy"], r.text
     assert TOKEN not in r.text and TOKEN not in client.get("/api/ade/workspace/proofpane", headers=h).text
+    # the answer names what this pairing wrote, its device and its site (none here), which the page takes; a read of the
+    # record after it is what the rest of the answer shows
+    assert r.json()["pairing"] == {"device_id": DEVICE, "site_url": None}, r.text
     kept = json.loads((env / "home" / ".proofpane" / "proofpane-core" / "config.json").read_text())
     assert kept["token"] == TOKEN
     r = client.put("/api/ade/workspace/proofpane/holds", headers=h, json={"holds": []})

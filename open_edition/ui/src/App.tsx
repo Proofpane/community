@@ -1,7 +1,7 @@
 import { Fragment, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Group, Panel, Separator } from "react-resizable-panels";
-import { AppWindow, ArrowRightLeft, Bell, Bot, CalendarDays, CheckCheck, Circle, CopyPlus, Download, Eye, EyeOff, FileCheck2, GitMerge, GitPullRequest, Keyboard, KeyRound, Laptop, Loader2, Network, PanelLeftClose, PanelLeftOpen, PanelRightOpen, Pencil, Play, Plug, Plus, Power, Radio, Scale, Search, Square, SquareKanban, Trash2, UserPlus, WifiOff, X } from "lucide-react";
-import { APP, Api, mayOfferSignOut, channelAlerts, chatStream, connectIdOf, DESKTOP, deviceCodeOf, linkWaiting, proposalAlerts, sendToTerminal, signInTakenBy, terminalLink, uploadFiles, whenSignedOut, type HistorySession, type SessionRecord, type WorkspaceState } from "./api";
+import { AppWindow, ArrowRightLeft, Bell, Bot, CalendarDays, CheckCheck, Circle, CopyPlus, Download, Eye, EyeOff, FileCheck2, GitMerge, GitPullRequest, Keyboard, KeyRound, Laptop, Loader2, Network, PanelLeftClose, PanelLeftOpen, PanelRightOpen, Pencil, Play, Plug, Plus, Power, Radio, Scale, ScrollText, Search, Square, SquareKanban, Trash2, UserPlus, WifiOff, X } from "lucide-react";
+import { APP, Api, mayOfferSignOut, channelAlerts, chatStream, connectIdOf, DESKTOP, deviceCodeOf, linkWaiting, proposalAlerts, sendToTerminal, signInTakenBy, terminalLink, uploadFiles, whenSignedOut, type HistorySession, type ProofpaneStatus, type SessionRecord, type WorkspaceState } from "./api";
 import { activeId, place, savePlace } from "./places";
 import { menuBarSummary, useMenuBar } from "./menuBar";
 import { shortRef, useOffline, useStore, toSession, workspaceRuns } from "./store";
@@ -21,6 +21,7 @@ import { endedHow } from "./ended";
 import { isUnread, useSeen } from "./seen";
 import { keepDrafts } from "./drafts";
 import { OPEN_BOARD } from "./board";
+import { auditAddress, sessionAudit, sessionAuditWords } from "./proofpaneAudit";
 // The terminal (xterm), the chat (Markdown) and the diff viewer load when first opened, not with the shell; so do the
 // sign-in screen, which a signed-in page never shows, and a session's pull request buttons.
 const TerminalPane = lazy(() => import("./components/TerminalPane").then((m) => ({ default: m.TerminalPane })));
@@ -231,6 +232,16 @@ function Shell() {
     if (p && p.email !== email) savePlace({ ...p, email });
   }, [email]);
   const running = workspaceRuns(st.ws);
+  // the links to the audit in Proofpane One (proofpaneAudit.ts), the title bar's and each session's whose rows name
+  // it: the workspace's pairing, read as it runs and again each time Connections closes, where it may have been
+  // paired, paired again or unpaired
+  const [pairing, setPairing] = useState<ProofpaneStatus | null>(null);
+  useEffect(() => {
+    if (!signedIn || !running || connections) return;
+    let live = true;
+    Api.proofpane().then((p) => { if (live) setPairing(p); }, () => { if (live) setPairing(null); });
+    return () => { live = false; };
+  }, [signedIn, running, connections]);
 
   // once the page has settled, fetch the code of what is opened first (AHEAD), so the first use is instant
   useEffect(() => {
@@ -615,6 +626,7 @@ function Shell() {
         channelAlerts={channelWaiting}
         onChannel={openChannel}
         agentsWaiting={st.agentsWaiting}
+        audit={running ? auditAddress(pairing) : null}
         onAgents={offered ? () => openAgents() : undefined}
         onBoard={offered ? () => setBoardOpen(true) : undefined}
         onTimes={offered ? () => setTimesOpen(true) : undefined}
@@ -719,6 +731,7 @@ function Shell() {
                           renaming={renaming === id}
                           onRenamed={() => setRenaming(null)}
                           actions={<SessionActions rec={rec} grouped={!!rec.group && st.records.filter((r) => r.group === rec.group).length > 1} onShip={() => setShipping(rec.id)}
+                            audit={running ? sessionAudit(pairing, rec) : null}
                             onAgain={triable(rec) ? () => setAgain(againOf(rec)) : undefined}
                             onContinue={continuable(rec) ? () => setContinuing(rec.id) : undefined}
                             onKeep={rec.program === "chat" && rec.repo ? () => openAgents({ keep: rec.id }) : undefined} />}
@@ -1024,7 +1037,7 @@ function focusList() {
     || document.querySelector<HTMLElement>('button[aria-label="Show the list of sessions"]'))?.focus(), 0);
 }
 
-export function SessionActions({ rec, grouped, onShip, onAgain, onKeep, onContinue }: { rec: SessionRecord; grouped: boolean; onShip: () => void; onAgain?: () => void; onKeep?: () => void; onContinue?: () => void }) {
+export function SessionActions({ rec, grouped, onShip, onAgain, onKeep, onContinue, audit }: { rec: SessionRecord; grouped: boolean; onShip: () => void; onAgain?: () => void; onKeep?: () => void; onContinue?: () => void; audit?: string | null }) {
   const setError = useStore((s) => s.setError);
   const say = useStore((s) => s.say);
   const refresh = useStore((s) => s.refresh);
@@ -1063,6 +1076,11 @@ export function SessionActions({ rec, grouped, onShip, onAgain, onKeep, onContin
       </Suspense>
       {rec.repo && DESKTOP && <Suspense fallback={null}><PreviewButton rec={rec} /></Suspense>}
       {rec.repo && worktreeHere() && <OpenIn session={rec.id} />}
+      {audit && (
+        <a className="btn btn-sm" href={audit} target="_blank" rel="noopener noreferrer" title={sessionAuditWords(audit)} aria-label={sessionAuditWords(audit)}>
+          <ScrollText size={13} /><span className="btn-label"> Audit</span>
+        </a>
+      )}
       {onKeep && (
         <button className="btn btn-sm" onClick={onKeep} title="Keep this chat as an agent: a name, its task as its brief, and runs of its own, each a fresh chat in a worktree that lasts">
           <Bot size={13} /><span className="btn-label"> Keep as an agent</span>

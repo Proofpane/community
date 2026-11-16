@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
-import { AppWindow, Bell, Bot, Check, ChevronDown, Clock, Cloud, FileCheck2, KeyRound, Laptop, LockKeyhole, LogOut, Menu, Plus, Radio, Scale, Search, ShieldCheck, Smartphone, SquareKanban, UserPlus } from "lucide-react";
+import { AppWindow, Bell, Bot, Check, ChevronDown, Clock, Cloud, FileCheck2, KeyRound, Laptop, LockKeyhole, LogOut, Menu, Plus, Radio, Scale, ScrollText, Search, ShieldCheck, Smartphone, SquareKanban, UserPlus } from "lucide-react";
 import { useTheme, type ThemePref } from "../theme";
 import { workspaceWord, type WorkspaceStatus } from "../types";
 import { DESKTOP, type AccountKind, type AccountsView, type Quotas, type Window } from "../api";
@@ -7,6 +7,7 @@ import { activeId, addHosted, dropUnsigned, LOCAL, places, setActive, type Place
 import { Kbd, usd, useMenu } from "./bits";
 import { clock, weekdayTime } from "../when";
 import type { AccountTab } from "./AccountDialog";
+import { auditWords } from "../proofpaneAudit";
 
 /** A pane of the account's window, as the title bar's account menu opens it. */
 export type AccountPane = AccountTab;
@@ -60,6 +61,9 @@ export function TitleBar(props: {
   onBoard?: () => void;
   onTimes?: () => void;
   agentsWaiting?: number;
+  /** where the audit in Proofpane One opens, once the workspace is paired with an address One gave and this browser
+   *  took it (proofpaneAudit.ts) */
+  audit?: string | null;
   /** a phone's list of sessions, a drawer: opening it, and whether it is open */
   onMenu?: () => void;
   menuOpen?: boolean;
@@ -124,6 +128,12 @@ export function TitleBar(props: {
             <Bot size={16} />
             <Badge n={props.agentsWaiting} />
           </button>
+        )}
+        {props.audit && (
+          <a className="icon-btn touch-target flex-none" href={props.audit} target="_blank" rel="noopener noreferrer"
+            title={auditWords(props.audit)} aria-label={auditWords(props.audit)}>
+            <ScrollText size={16} />
+          </a>
         )}
         <button className="icon-btn touch-target relative flex-none" onClick={props.onApprovals} title="Approvals"
           aria-label={counted("Approvals", pendingApprovals, "waiting", "waiting")}>

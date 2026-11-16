@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useStore } from "../store";
 import { Connections, mcpWords } from "./Connections";
 import type { AccountsView, ProofpaneStatus, SessionRecord } from "../api";
+import { takeSite } from "../proofpaneAudit";
 
 beforeEach(() => {
   // nothing answers: each card stays at "Checking…", which is all this layout needs
@@ -176,7 +177,8 @@ describe("the Codex card", () => {
 describe("the Proofpane card", () => {
   const unpaired: ProofpaneStatus = { paired: false, plugin: true, name: "proofpane-core",
     skills: ["ai-governance-intake", "ai-risk-assessment"], mcp: { given: false, why: "machine" }, accounts: [] };
-  const paired: ProofpaneStatus = { ...unpaired, paired: true, cloud_url: "https://pp.example.org", device_id: "d1",
+  const paired: ProofpaneStatus = { ...unpaired, paired: true, cloud_url: "https://pp.example.org",
+    device_id: "0f8f6c2e-9d3b-4c1a-8e2f-5b6a7c8d9e01",
     device_name: "Proofpane Community workspace on box", paired_at: "2026-10-18T01:02:03Z", holds: ["^deploy"] };
 
   function serve(answers: ProofpaneStatus[]) {
@@ -255,6 +257,117 @@ describe("the Proofpane card", () => {
     fireEvent.click(screen.getByRole("button", { name: /Unpair/ }));
     expect(await screen.findByText("Not paired")).toBeTruthy();
     expect(calls.some((c) => c.method === "DELETE" && c.url.endsWith("/proofpane/pair"))).toBe(true);
+  });
+
+  it("opens the audit in Proofpane One once paired, at the address One gave at pairing, for this device", async () => {
+    takeSite({ ...paired, site_url: "https://app.example.test" });
+    serve([{ ...paired, site_url: "https://app.example.test" }]);
+    open();
+    const link = await screen.findByRole("link", { name: "Open the audit in Proofpane One at app.example.test" });
+    expect(link.getAttribute("href")).toBe("https://app.example.test/audit?device=0f8f6c2e-9d3b-4c1a-8e2f-5b6a7c8d9e01");
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+  });
+
+  it("says that a pairing that keeps no site opens no audit from here, and what a new pairing keeps, if One gives it", async () => {
+    serve([{ ...paired, site_url: null }]);
+    open();
+    expect(await screen.findByText(/This pairing keeps no address for Proofpane One's site/)).toBeTruthy();
+    expect(screen.getByText(/keeps it if Proofpane One gives it at pairing/)).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Open the audit in Proofpane One/ })).toBeNull();
+  });
+
+  it("says that an agent from before the site says nothing of it, and asks for no new pairing", async () => {
+    serve([paired]);                    // a status with no site_url at all: the workspace's agent is older than this page
+    open();
+    expect(await screen.findByText(/This workspace's agent is from before Proofpane One gave its site at pairing/)).toBeTruthy();
+    expect(screen.queryByText(/keeps no address for Proofpane One's site/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /Open the audit in Proofpane One/ })).toBeNull();
+  });
+
+  it("shows neither the link nor those words for a site the page will not open, its own", async () => {
+    takeSite({ ...paired, site_url: location.origin });
+    serve([{ ...paired, site_url: location.origin }]);
+    open();
+    await screen.findByText("Paired as Proofpane Community workspace on box");
+    expect(screen.queryByRole("link", { name: /Open the audit in Proofpane One/ })).toBeNull();
+    expect(screen.queryByText(/keeps no address for Proofpane One's site/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /in this browser/ })).toBeNull();
+  });
+
+  it("takes the site One gave when this browser pairs, and links to it", async () => {
+    serve([unpaired, { ...paired, site_url: "https://app.example.test",
+      pairing: { device_id: "0f8f6c2e-9d3b-4c1a-8e2f-5b6a7c8d9e01", site_url: "https://app.example.test" } }]);
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "Pair with Proofpane" }));
+    fireEvent.change(screen.getByLabelText("The pairing code Proofpane shows"), { target: { value: "ABC-DEF-GHJ" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Pair$/ }));
+    const link = await screen.findByRole("link", { name: "Open the audit in Proofpane One at app.example.test" });
+    expect(link.getAttribute("href")).toBe("https://app.example.test/audit?device=0f8f6c2e-9d3b-4c1a-8e2f-5b6a7c8d9e01");
+  });
+
+  it("takes the site its own pairing wrote, not one the record names after it, which it asks for instead", async () => {
+    serve([unpaired, { ...paired, site_url: "https://app.example-signin.test",
+      pairing: { device_id: "0f8f6c2e-9d3b-4c1a-8e2f-5b6a7c8d9e01", site_url: "https://app.example.test" } }]);
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "Pair with Proofpane" }));
+    fireEvent.change(screen.getByLabelText("The pairing code Proofpane shows"), { target: { value: "ABC-DEF-GHJ" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Pair$/ }));
+    expect(await screen.findByRole("button", { name: "Take app.example-signin.test as Proofpane One's site in this browser" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Open the audit in Proofpane One/ })).toBeNull();
+  });
+
+  it("takes nothing from a pairing at an address filled in from the record and left as it was", async () => {
+    const elsewhere = { ...paired, cloud_url: "https://api.example-signin.test", site_url: "https://app.example-signin.test" };
+    serve([elsewhere, { ...elsewhere, pairing: { device_id: "0f8f6c2e-9d3b-4c1a-8e2f-5b6a7c8d9e01", site_url: "https://app.example-signin.test" } }]);
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "Pair again" }));
+    expect((screen.getByLabelText("Proofpane's address") as HTMLInputElement).value).toBe("https://api.example-signin.test");
+    fireEvent.change(screen.getByLabelText("The pairing code Proofpane shows"), { target: { value: "ABC-DEF-GHJ" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Pair$/ }));
+    expect(await screen.findByRole("button", { name: "Take app.example-signin.test as Proofpane One's site in this browser" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Open the audit in Proofpane One/ })).toBeNull();
+  });
+
+  it("takes nothing from a record-filled address with blanks about it, left as it was", async () => {
+    const elsewhere = { ...paired, cloud_url: "https://api.example-signin.test\n", site_url: "https://app.example-signin.test" };
+    serve([elsewhere, { ...elsewhere, pairing: { device_id: "0f8f6c2e-9d3b-4c1a-8e2f-5b6a7c8d9e01", site_url: "https://app.example-signin.test" } }]);
+    open();
+    fireEvent.click(await screen.findByRole("button", { name: "Pair again" }));
+    fireEvent.change(screen.getByLabelText("The pairing code Proofpane shows"), { target: { value: "ABC-DEF-GHJ" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Pair$/ }));
+    expect(await screen.findByRole("button", { name: "Take app.example-signin.test as Proofpane One's site in this browser" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Open the audit in Proofpane One/ })).toBeNull();
+  });
+
+  it("asks for a site this browser did not take as the record's word, not Proofpane's, and links once it is taken", async () => {
+    serve([{ ...paired, site_url: "https://app.example.test" }]);
+    open();
+    expect(await screen.findByText(/The workspace's record names app\.example\.test as Proofpane One's site, beside https:\/\/pp\.example\.org/)).toBeTruthy();
+    expect(screen.getByText(/take it only if app\.example\.test is where your organisation's Proofpane One is/)).toBeTruthy();
+    expect(screen.queryByText(/Proofpane gave this pairing/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /Open the audit in Proofpane One/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Take app.example.test as Proofpane One's site in this browser" }));
+    expect(await screen.findByRole("link", { name: "Open the audit in Proofpane One at app.example.test" })).toBeTruthy();
+  });
+
+  it("says so where this browser keeps nothing, and shows no link", async () => {
+    serve([{ ...paired, site_url: "https://app.example.test" }]);
+    open();
+    const kept = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("no storage"); });
+    fireEvent.click(await screen.findByRole("button", { name: "Take app.example.test as Proofpane One's site in this browser" }));
+    expect(await screen.findByText(/This browser keeps nothing, so it cannot take the site/)).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Open the audit in Proofpane One/ })).toBeNull();
+    kept.mockRestore();
+  });
+
+  it("shows no link to the audit and no words about it unpaired", async () => {
+    serve([unpaired]);
+    open();
+    await screen.findByText("Not paired");
+    expect(screen.queryByRole("link", { name: /Open the audit in Proofpane One/ })).toBeNull();
+    expect(screen.queryByText(/keeps no address for Proofpane One's site/)).toBeNull();
+    expect(screen.queryByText(/agent is from before Proofpane One gave its site/)).toBeNull();
   });
 
   it("says why Proofpane's MCP server is or is not given", () => {

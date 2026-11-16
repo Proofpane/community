@@ -1021,10 +1021,12 @@ def make_app(workspace, secret):
         home = os.path.expanduser("~")
         if request.method == "DELETE":
             await asyncio.to_thread(core.unpair, home)
-        else:
-            body = await _body(request)
-            await asyncio.to_thread(core.pair, home, body.get("code"), body.get("cloud_url"), body.get("holds"))
-        return JSONResponse(await asyncio.to_thread(workspace.core_status))
+            return JSONResponse(await asyncio.to_thread(workspace.core_status))
+        body = await _body(request)
+        wrote = await asyncio.to_thread(core.pair, home, body.get("code"), body.get("cloud_url"), body.get("holds"))
+        # what this pairing wrote, its device and its site, which the page takes; the status after is a read of the
+        # record, which a program in a session could have written between the two
+        return JSONResponse(dict(await asyncio.to_thread(workspace.core_status), pairing=wrote))
 
     async def proofpane_holds(request):
         body = await _body(request)

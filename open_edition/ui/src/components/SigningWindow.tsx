@@ -122,7 +122,8 @@ function Opener({ l, onDone, onCancel }: { l: LinkView; onDone: (w: WindowState)
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const asked = useRef(0);
-  // `note`: what is said while it is made again (a stale preparation's), kept until the next press
+  // `note`: what is said while it is made again (a stale preparation's, or the last try's failure); the next press or
+  // another length clears it, and a preparation that fails or finds high security on says its own words instead
   const prepare = async (length: WindowLife, note = "") => {
     const mineAsk = ++asked.current;
     setPrepared(null); setError(note);
@@ -150,13 +151,14 @@ function Opener({ l, onDone, onCancel }: { l: LinkView; onDone: (w: WindowState)
       try { localStorage.setItem(LIFE_KEY, String(life)); } catch { /* this device only */ }
       await onDone(w);
     } catch (e) {
-      setError((e as Error).message);
-      void prepare(life);                                    // a nonce is spent or refused: a fresh one for the next try
+      // a nonce is spent or refused: a fresh one for the next try, the failure's words said while it is made and after
+      void prepare(life, (e as Error).message);
     } finally { setBusy(false); }
   };
   return (
     <div role="group" aria-label={`Opening a signing window for ${l.name}`} className="mt-2 rounded-md border border-line p-2 text-[12px]">
-      <select aria-label="Window length" className="input h-7 w-auto text-[12px]" value={life}
+      <select aria-label="Window length" className="input h-7 w-auto text-[12px] disabled:opacity-50" value={life}
+        disabled={busy}
         onChange={(e) => setLife(Number(e.target.value) as WindowLife)}>
         {WINDOW_LIVES.map((s) => <option key={s} value={s}>{s / 60} minutes</option>)}
       </select>

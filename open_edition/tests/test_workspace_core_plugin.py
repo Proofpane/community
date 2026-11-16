@@ -870,7 +870,8 @@ def test_pairing_keeps_the_device_in_the_record_and_the_status_never_holds_its_t
     path = tmp_path / ".proofpane" / "proofpane-core" / "config.json"
     kept = json.loads(path.read_text())
     assert kept == {"cloud_url": proofpane, "device_id": DEVICE, "token": TOKEN, "name": core.device_name(),
-                    "paired_at": "2026-10-18T01:02:03.456789Z", "holds": ["^deploy", r"\bgit\s+push\b"]}
+                    "paired_at": "2026-10-18T01:02:03.456789Z", "holds": ["^deploy", r"\bgit\s+push\b"],
+                    "site_url": None}                    # the stand-in answers as Proofpane did before 4.311
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
     assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700 == stat.S_IMODE(path.parent.parent.stat().st_mode)
     st = core.status(home, False, {"default": str(tmp_path / ".claude")})
@@ -889,6 +890,91 @@ def test_pairing_keeps_the_device_in_the_record_and_the_status_never_holds_its_t
     core.unpair(home)                                   # unpairing twice is no error
     with pytest.raises(core.CoreError, match="Pair the workspace with Proofpane first"):
         core.set_holds(home, ["x"])
+
+
+def test_pairing_keeps_the_site_proofpane_gives_and_the_status_shows_it(tmp_path, proofpane):
+    """AUDIT-BUTTON (the work queue's section 4.311): Proofpane One's answer names the address its people sign in at,
+    where the page opens the audit, since the kept cloud_url is One's API. The record keeps it beside the cloud it came
+    with, its trailing slash taken off (the stand-in runs on this machine, so the site is this machine's too); the
+    status shows it beside the device and never the token; changing the holds keeps it, and a record written before
+    it is read with none."""
+    home = str(tmp_path)
+    Proofpane.site = "http://localhost:3000/"
+    wrote = core.pair(home, CODE, proofpane)
+    # what the pairing wrote, its device and its site, for the page to take from this pairing and not from a read of
+    # the record after it, which a program in a session could have written in between; never the token
+    assert wrote == {"device_id": DEVICE, "site_url": "http://localhost:3000"}
+    path = tmp_path / ".proofpane" / "proofpane-core" / "config.json"
+    assert core.read(home)["site_url"] == "http://localhost:3000" == json.loads(path.read_text())["site_url"]
+    st = core.status(home, False, {})
+    assert (st["site_url"], st["device_id"]) == ("http://localhost:3000", DEVICE) and TOKEN not in json.dumps(st)
+    core.set_holds(home, ["^deploy"])
+    assert core.read(home)["site_url"] == "http://localhost:3000"
+    older = {k: v for k, v in json.loads(path.read_text()).items() if k != "site_url"}
+    path.write_text(json.dumps(older))
+    assert core.read(home)["site_url"] is None and core.status(home, False, {})["site_url"] is None
+
+
+@pytest.mark.parametrize("site", [(), None, 42, "", " ", "javascript:alert(1)", "https://app.example.test",
+                                  "https://user:pw@localhost:3000", "http://localhost:3000/audit",
+                                  "http://localhost:3000/?next=x", "http://localhost:3000#x", "http://localhost:99999"])
+def test_a_site_not_kept_leaves_the_pairing_as_it_was(tmp_path, proofpane, site):
+    """An answer without a site (Proofpane One before section 4.311), or with one the record does not keep (here, beside
+    a cloud on this machine: a site elsewhere, or not in the cloud address's form), pairs as before, and neither the
+    record's file, nor what it reads as, nor the status holds a site: the page shows no link."""
+    home = str(tmp_path)
+    Proofpane.site = site
+    core.pair(home, CODE, proofpane)
+    path = tmp_path / ".proofpane" / "proofpane-core" / "config.json"
+    assert json.loads(path.read_text())["site_url"] is None
+    assert core.read(home)["device_id"] == DEVICE and core.read(home)["site_url"] is None
+    assert core.status(home, False, {})["site_url"] is None
+
+
+@pytest.mark.parametrize("cloud, site, kept", [
+    ("https://api.example.test", "https://app.example.test", "https://app.example.test"),
+    ("https://api.example.test", "https://example.test/", "https://example.test"),
+    ("https://example.test", "https://app.example.test", "https://app.example.test"),
+    ("https://one.example.test:8443", "https://one.example.test", "https://one.example.test"),
+    ("https://api.one.corp.example", "https://app.one.corp.example", "https://app.one.corp.example"),
+    ("http://127.0.0.1:8000", "http://localhost:3000", "http://localhost:3000"),
+    ("https://api.example.test", "https://proofpane-one-signin.example", None),
+    ("https://api.example.test", "https://app.example.test.evil.example", None),
+    ("https://api.example.test", "https://evilexample.test", None),
+    ("https://api.one.corp.example", "https://app.corp.example", None),
+    ("https://api.example.test", "http://localhost:3000", None),
+    ("http://127.0.0.1:8000", "https://app.example.test", None),
+    ("https://api.example.test", "https://app.example.test/\n", None),
+    ("https://api.example.test", "https://app.example.test:99999", None),
+    ("https://api.example.test", "HTTPS://app.example.test", None),
+    ("https://api.example.test", "https://app.example.test/audit", None),
+    ("https://api.example.test", "https://user:pw@app.example.test", None),
+    ("https://api.example.test", "javascript:alert(1)", None),
+    ("https://api.example.test", "https://" + "a" * 300, None),
+    ("https://proofpane.com", "https://attacker.com", None),
+    ("https://example-cloud.fly.dev", "https://evil-signin.fly.dev", None),
+    ("https://example-cloud.fly.dev", "https://example-cloud.fly.dev", "https://example-cloud.fly.dev"),
+    ("https://proofpane.co.nz", "https://phish.co.nz", None),
+    ("https://api.proofpane.co.nz", "https://app.proofpane.co.nz", "https://app.proofpane.co.nz"),
+    ("https://abc.execute-api.us-east-1.amazonaws.com", "https://evil.execute-api.us-east-1.amazonaws.com", None),
+    ("https://203.0.113.5", "https://198.0.113.5", None),
+    ("https://203.0.113.5:8443", "https://203.0.113.5", "https://203.0.113.5"),
+])
+def test_the_record_keeps_a_site_only_beside_its_cloud(tmp_path, cloud, site, kept):
+    """The record is the workspace user's file, and a program a session runs can write it (the gate is no sandbox), so
+    a site in it is read only where it stands beside the cloud it was kept with: the same host, a host in the cloud
+    host's own domain (the cloud host less its first label where it has three or more, else the host itself; the
+    same host alone for a cloud at an address or on a shared hosting or country domain), or this machine beside a
+    cloud on this machine; in the
+    cloud address's form, a port within range, the whole value and not a line of it. A site written there that is
+    none of these, such as a sign-in page of the program's choosing, is read as none, and the page links to nothing."""
+    home = str(tmp_path)
+    folder = tmp_path / ".proofpane" / "proofpane-core"
+    folder.mkdir(parents=True)
+    (folder / "config.json").write_text(json.dumps({"cloud_url": cloud, "device_id": DEVICE, "token": TOKEN,
+                                                    "name": "box", "paired_at": None, "holds": [], "site_url": site}))
+    assert core.read(home)["site_url"] == kept
+    assert core.status(home, False, {})["site_url"] == kept
 
 
 @pytest.mark.parametrize("code, address, holds, words", [
@@ -1387,3 +1473,15 @@ def test_an_agent_s_run_is_given_nothing_of_the_plugin(tmp_path, proofpane, monk
     c = chats.Chat("0123456789ab", str(tmp_path / "s"), str(tmp_path), {"CLAUDE_CONFIG_DIR": str(added)},
                    ws._chat_wrapper)
     assert ws._chat_start(c) is None and c.plugins == []
+
+
+def test_a_record_whose_cloud_ends_in_a_line_break_is_no_pairing(tmp_path):
+    """From the fifth cold read: the record's cloud is matched whole, as its site is, so a value a program wrote with a
+    line break after it, which the card's address would carry, reads as no pairing at all."""
+    home = str(tmp_path)
+    folder = tmp_path / ".proofpane" / "proofpane-core"
+    folder.mkdir(parents=True)
+    (folder / "config.json").write_text(json.dumps({"cloud_url": "https://api.example-signin.test\n", "device_id": DEVICE,
+                                                    "token": TOKEN, "name": "box", "paired_at": None, "holds": [],
+                                                    "site_url": None}))
+    assert core.read(home) is None and core.status(home, False, {})["paired"] is False

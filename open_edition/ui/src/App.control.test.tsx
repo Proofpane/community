@@ -1,7 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SessionRecord } from "./api";
+import type { ProofpaneStatus, SessionRecord } from "./api";
 import { App } from "./App";
+import { takeSite } from "./proofpaneAudit";
 import { fixtureMap, IDS } from "./sessionMapFixture";
 import { browser, shellServer } from "./shellTestkit";
 import { useStore } from "./store";
@@ -298,5 +299,28 @@ describe("the control view", () => {
     await pass(2000);
     expect(within(main()).queryByRole("region", { name: "The control view" })).toBeNull();
     expect(within(list()!).queryByRole("button", { name: "Control view" })).toBeNull();
+  });
+});
+
+describe("a session's audit in Proofpane One", () => {
+  const paired = { paired: true, plugin: true, name: "proofpane-core", skills: [], cloud_url: "https://api.example.test",
+    device_id: "0f8f6c2e-9d3b-4c1a-8e2f-5b6a7c8d9e01", device_name: "box", paired_at: null, holds: [], site_url: "https://app.example.test",
+    mcp: { given: false, why: "machine" }, accounts: [] } as ProofpaneStatus;
+
+  it("is a link in a Claude Code or Codex session's header once paired with a site this browser took, in no shell's", async () => {
+    browser();
+    takeSite(paired);
+    const codex = { ...rec, id: IDS.codex, program: "codex", task: "Ask about the gate", branch: `pp/${IDS.codex}` } as SessionRecord;
+    const shell = { ...rec, id: IDS.shell, program: "shell", task: "A shell", branch: `pp/${IDS.shell}` } as SessionRecord;
+    shellServer({ ws: RUNNING, repos: [{ name: "demo" }], sessions: [rec, codex, shell], map: fixtureMap(), proofpane: paired });
+    render(<App />);
+    await pass(2000);
+    act(() => { useStore.setState({ panes: [IDS.mine, IDS.codex, IDS.shell], selected: IDS.mine }); });
+    await pass();
+    const links = within(main()).getAllByRole("link", { name: "This session in Proofpane One's audit at app.example.test" });
+    expect(links.map((l) => l.getAttribute("href")).sort()).toEqual([
+      `https://app.example.test/audit?session=${IDS.mine}`,
+      `https://app.example.test/audit?session=${IDS.codex}`,
+    ].sort());
   });
 });

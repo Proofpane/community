@@ -59,6 +59,20 @@ describe("the title bar's quota meter", () => {
   });
 });
 
+describe("the audit in Proofpane One", () => {
+  it("is a link in the title bar where it is given one, naming its site, and none where it is given none", () => {
+    render(<TitleBar {...base} audit="https://app.example.test/audit?device=d1" />);
+    const link = screen.getByRole("link", { name: "Open the audit in Proofpane One at app.example.test" });
+    expect(link.getAttribute("href")).toBe("https://app.example.test/audit?device=d1");
+    expect(link.getAttribute("title")).toBe("Open the audit in Proofpane One at app.example.test");
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    cleanup();
+    render(<TitleBar {...base} audit={null} />);
+    expect(screen.queryByRole("link", { name: /Open the audit in Proofpane One/ })).toBeNull();
+  });
+});
+
 describe("the desktop app's workspace menu", () => {
   it("says whether the workspace it shows runs", () => {
     render(<PlaceMenu workspace={{ provider: "local", running: false }} />);

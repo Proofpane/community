@@ -1,7 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
-import type { LinkSessions } from "./api";
+import type { LinkSessions, ProofpaneStatus } from "./api";
+import { takeSite } from "./proofpaneAudit";
 import { useStore } from "./store";
 import { browser, link, machineSession, shellServer } from "./shellTestkit";
 import { clock } from "./when";
@@ -690,5 +691,64 @@ describe("a closed session", () => {
     await pass(2000);
     expect(document.activeElement).not.toBe(document.body);
     expect(list().contains(document.activeElement)).toBe(true);
+  });
+});
+
+describe("the audit in Proofpane One", () => {
+  const unpaired: ProofpaneStatus = { paired: false, plugin: true, name: "proofpane-core", skills: [],
+    mcp: { given: false, why: "machine" }, accounts: [] };
+  const paired: ProofpaneStatus = { ...unpaired, paired: true, cloud_url: "https://api.example.test", device_id: "0f8f6c2e-9d3b-4c1a-8e2f-5b6a7c8d9e01",
+    device_name: "box", paired_at: null, holds: [], site_url: "https://app.example.test" };
+  const auditLink = () => screen.queryByRole("link", { name: /^Open the audit in Proofpane One/ });
+
+  it("is a link in the title bar once the workspace is paired with an address One gave, the pairing read again as Connections closes", async () => {
+    browser();
+    const server = shellServer({ ws: { enabled: true, allowed: true, provider: "fly", running: true, made: true }, proofpane: unpaired });
+    render(<App />);
+    await pass(2000);
+    expect(auditLink()).toBeNull();
+    server.state.proofpane = paired;                    // paired from Connections' card, which takes its site
+    takeSite(paired);
+    act(() => { useStore.getState().setConnectionsOpen(true); });
+    await pass(1000);
+    act(() => { useStore.getState().setConnectionsOpen(false); });
+    await pass(1000);
+    expect(auditLink()?.getAttribute("href")).toBe("https://app.example.test/audit?device=0f8f6c2e-9d3b-4c1a-8e2f-5b6a7c8d9e01");
+    server.state.proofpane = { ...paired, site_url: null };       // paired again with a Proofpane that gives no address
+    act(() => { useStore.getState().setConnectionsOpen(true); });
+    await pass(1000);
+    act(() => { useStore.getState().setConnectionsOpen(false); });
+    await pass(1000);
+    expect(auditLink()).toBeNull();
+  });
+});
+
+describe("the audit in Proofpane One, as the workspace stops", () => {
+  it("is not in the title bar once the workspace stops, whose pairing the page no longer reads", async () => {
+    browser();
+    const paired = { paired: true, plugin: true, name: "proofpane-core", skills: [], cloud_url: "https://api.example.test",
+      device_id: "0f8f6c2e-9d3b-4c1a-8e2f-5b6a7c8d9e01", device_name: "box", paired_at: null, holds: [], site_url: "https://app.example.test",
+      mcp: { given: false, why: "machine" }, accounts: [] } as ProofpaneStatus;
+    takeSite(paired);
+    const server = shellServer({ ws: { enabled: true, allowed: true, provider: "fly", running: true, made: true }, proofpane: paired });
+    render(<App />);
+    await pass(2000);
+    expect(screen.queryByRole("link", { name: "Open the audit in Proofpane One at app.example.test" })).toBeTruthy();
+    server.state.ws = { ...server.state.ws, running: false };
+    await pass(6000);
+    expect(screen.queryByRole("link", { name: /^Open the audit in Proofpane One/ })).toBeNull();
+  });
+});
+
+describe("the audit in Proofpane One, at a site this browser did not take", () => {
+  it("is not in the title bar: a site written into the workspace's record opens nothing until the card takes it", async () => {
+    browser();
+    const paired = { paired: true, plugin: true, name: "proofpane-core", skills: [], cloud_url: "https://api.example-signin.test",
+      device_id: "0f8f6c2e-9d3b-4c1a-8e2f-5b6a7c8d9e01", device_name: "box", paired_at: null, holds: [], site_url: "https://app.example-signin.test",
+      mcp: { given: false, why: "machine" }, accounts: [] } as ProofpaneStatus;
+    shellServer({ ws: { enabled: true, allowed: true, provider: "fly", running: true, made: true }, proofpane: paired });
+    render(<App />);
+    await pass(2000);
+    expect(screen.queryByRole("link", { name: /^Open the audit in Proofpane One/ })).toBeNull();
   });
 });

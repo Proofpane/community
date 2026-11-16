@@ -29,8 +29,8 @@
 app = "<app>"
 primary_region = "<region>"
 
-[build]
-  dockerfile = "Dockerfile"
+# No [build] dockerfile: every deploy command passes --dockerfile open_edition/Dockerfile, which flyctl reads only
+# where the config names none, so that a copy of this config kept outside the tree finds the same Dockerfile.
 
 [env]
   OPEN_EDITION_DATA = "/data"

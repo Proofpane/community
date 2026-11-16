@@ -4,7 +4,7 @@
 // a server from before the summary; with `down` it cannot be reached.
 import { vi } from "vitest";
 import { channelAlerts, proposalAlerts, type HistorySession, type HookRequest, type LinkSessions, type LinkView, type Proposal,
-  type RepoView, type SessionAsk, type SessionRecord, type WorkspaceState } from "./api";
+  type ProofpaneStatus, type RepoView, type SessionAsk, type SessionRecord, type WorkspaceState } from "./api";
 import type { SessionCalls, WorkspaceMap } from "./sessionMap";
 
 export interface ShellState {
@@ -25,6 +25,8 @@ export interface ShellState {
   /** the control view's map (sessionMap.ts), as the workspace gives it while it runs, and each session's calls */
   map: WorkspaceMap;
   sessionMaps: Record<string, SessionCalls>;
+  /** the workspace's pairing with Proofpane One, as its route gives it while the workspace runs; null: no answer */
+  proofpane: ProofpaneStatus | null;
 }
 
 export const OWNER = { id: "u1", email: "owner@example.test", admin: true, can_sign_in_again: true };
@@ -47,7 +49,7 @@ export function shellServer(over: Partial<ShellState> = {}) {
     repos: [], sessions: [], approvals: [], proposals: [], asks: [],
     links: { links: [], questions: [], public_url: "https://pp.example", asks: [] },
     history: [], agentsWaiting: 0, summary: true, down: false, gateway: null, map: { at: 1_790_000_000, sessions: [] },
-    sessionMaps: {}, ...over,
+    sessionMaps: {}, proofpane: null, ...over,
   };
   const calls: string[] = [];
   const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
@@ -79,6 +81,7 @@ export function shellServer(over: Partial<ShellState> = {}) {
     "GET /api/ade/workspace/sessions": () => (runs() ? json({ sessions: state.sessions }) : json({ detail: "not running" }, 409)),
     "GET /api/ade/workspace/asks": () => (runs() ? json({ on: false, asks: state.asks }) : json({ detail: "not running" }, 409)),
     "GET /api/ade/workspace/claude": () => json({ installed: true, signed_in: true }),
+    "GET /api/ade/workspace/proofpane": () => (runs() && state.proofpane ? json(state.proofpane) : json({ detail: "Not Found" }, 404)),
     "GET /api/ade/workspace/programs": () => json({ programs: { claude: true } }),
     "GET /api/ade/workspace/capabilities": () => json({}),
     "GET /api/ade/workspace/github": () => json({ installed: true, user: null, repos: [], capped: false }),

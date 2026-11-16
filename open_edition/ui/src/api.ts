@@ -443,12 +443,16 @@ export interface LinearIssue {
 export interface LinearStatus { set: boolean; user?: { name: string | null; email: string | null } | null; error?: string }
 
 /** The workspace's pairing with the owner's Proofpane organisation (the agent's core_plugin.py), never the device's
- *  token; what each claude start there is given of Proofpane's core (the proofpane-core plugin: its skills and hooks,
+ *  token, and the address its people sign in at where Proofpane gave one at pairing (`site_url`, where the audit is
+ *  opened); what each claude start there is given of Proofpane's core (the proofpane-core plugin: its skills and hooks,
  *  and Proofpane's MCP server where the daemon is installed); and, for each Claude Code account whose organisation's
  *  managed settings leave something out, what (`refused`: no plugin at all; `hooks_off`: its hooks do not run). */
 export interface ProofpaneStatus {
   paired: boolean; plugin: boolean; name: string; skills: string[];
   cloud_url?: string; device_id?: string; device_name?: string | null; paired_at?: string | null; holds?: string[];
+  site_url?: string | null;
+  /** in the pair route's answer alone: what this pairing wrote, its device and its site, which the page takes */
+  pairing?: { device_id: string; site_url: string | null };
   mcp: { given: boolean; why: "machine" | "no daemon" | "not paired" | null };
   accounts: { account: string; refused: string[]; hooks_off: string[] }[];
 }

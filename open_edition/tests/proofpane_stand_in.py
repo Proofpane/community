@@ -34,6 +34,8 @@ class Proofpane(BaseHTTPRequestHandler):
     revoked = False             # True: the device's token refused, 401, as Proofpane refuses a revoked or paused one;
                                 # "poll": refused only when the answer is asked for, as when it is revoked during a wait
     budget = None               # the budget check's answer: None, every kind allowed; a dict, that answer; "down", 503
+    site = ()                   # the pairing answer's site_url: () leaves it out, as Proofpane One's answer did before
+                                # the work queue's section 4.311; any other value is sent as given
 
     def log_message(self, *a):
         pass
@@ -63,8 +65,9 @@ class Proofpane(BaseHTTPRequestHandler):
         if path == "/api/v1/devices/pair":
             if body.get("code") in DEVICES:
                 device, token = DEVICES[body["code"]]
-                return self._answer(200, {"device_id": device, "token": token, "name": body.get("name"),
-                                          "paired_at": "2026-10-18T01:02:03.456789Z"})
+                answer = {"device_id": device, "token": token, "name": body.get("name"),
+                          "paired_at": "2026-10-18T01:02:03.456789Z"}
+                return self._answer(200, answer if Proofpane.site == () else {**answer, "site_url": Proofpane.site})
             if body.get("code") == "USE-DAG-AIN":
                 return self._answer(400, {"detail": "Pairing code already used"})
             return self._answer(404, {"detail": "Invalid pairing code"})
@@ -131,7 +134,7 @@ def proofpane():
     threading.Thread(target=server.serve_forever, daemon=True).start()
     Proofpane.asked, Proofpane.hold, Proofpane.already, Proofpane.redirect, Proofpane.garbled = \
         [], "approved", None, None, ()
-    Proofpane.deep, Proofpane.revoked, Proofpane.slow, Proofpane.budget = (), False, (), None
+    Proofpane.deep, Proofpane.revoked, Proofpane.slow, Proofpane.budget, Proofpane.site = (), False, (), None, ()
     yield f"http://127.0.0.1:{server.server_address[1]}"
     server.shutdown()
 

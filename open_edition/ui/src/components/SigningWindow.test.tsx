@@ -3,7 +3,7 @@
 // says how long the instruction lives; a proposal and the last minute still take the passkey; End now says how many it
 // drops; each command's line names its window.
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LinkEvent, LinkView } from "../api";
 import { canonicalJson } from "../passkey";
 import { clock } from "../when";
@@ -68,6 +68,9 @@ const link = (over: Partial<LinkView> = {}): LinkView => ({
   events: 0, last_event: null, commands: [], stopped_at: null, fingerprint: FP, ...over,
 });
 const posted = (path: string) => calls.filter((c) => c.method === "POST" && c.path === path);
+
+// each case starts with no length kept on this device: an earlier case's window would choose a later case's length
+beforeEach(() => { localStorage.clear(); });
 
 afterEach(() => {
   cleanup();
@@ -139,6 +142,166 @@ describe("the signing window on a link's card", () => {
     expect(credentials.get).not.toHaveBeenCalled();
     expect(await screen.findByText(/made again so that the window lasts its whole length/)).toBeTruthy();
     await vi.waitFor(() => expect(posted("/api/ade/link/nonce").length).toBe(asked + 1));
+  });
+
+  it("says why when the passkey's prompt fails, and keeps saying it while the window is made again and after", async () => {
+    // the opener set the failure's words and then, making the next try, set them at once to the empty note: a prompt
+    // the browser refused left the form as it was, with nothing on it (the later list's entry 442)
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    let nonces = 0;
+    serve(routes({
+      "POST /api/ade/link/nonce": async (b) => {
+        nonces += 1;
+        if (nonces === 2) await held;          // the fresh preparation's nonce answers only when the case lets it
+        return [200, { nonce: `n-${String(b?.purpose)}-${nonces}`, rp_id: "pp.example", deployment: "pp.example",
+          account: "u", server_time: now(), credentials: [] }];
+      },
+    }));
+    const { LinkCard } = await fresh();
+    credentials.get.mockImplementationOnce(async () => { throw new DOMException("denied", "NotAllowedError"); });
+    render(<LinkCard l={link({ features: ["delegation-1"] })} questions={[]} onTicket={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Open a signing window/ }));
+    const button = () => screen.getByRole("button", { name: /Open the window with your passkey/ }) as HTMLButtonElement;
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    await act(async () => { fireEvent.click(button()); });
+    expect(credentials.get).toHaveBeenCalledTimes(1);
+    expect(posted("/api/ade/link/delegations")).toHaveLength(0);
+    const words = "The passkey request was cancelled or timed out.";
+    await vi.waitFor(() => expect(nonces).toBe(2));
+    await vi.waitFor(() => expect(screen.queryByText(words)).not.toBeNull());     // while the fresh nonce is asked
+    expect(button().disabled).toBe(true);
+    await act(async () => { release(); });
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    expect(screen.queryByText(words)).not.toBeNull();                              // and once it has answered
+  });
+
+  it("clears the failure's words when the window is tried again, and opens it", async () => {
+    serve(routes());
+    const { LinkCard } = await fresh();
+    credentials.get.mockImplementationOnce(async () => { throw new DOMException("denied", "NotAllowedError"); });
+    render(<LinkCard l={link({ features: ["delegation-1"] })} questions={[]} onTicket={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Open a signing window/ }));
+    const button = () => screen.getByRole("button", { name: /Open the window with your passkey/ }) as HTMLButtonElement;
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    await act(async () => { fireEvent.click(button()); });
+    const words = "The passkey request was cancelled or timed out.";
+    await vi.waitFor(() => expect(screen.queryByText(words)).not.toBeNull());     // the failure said first
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    await act(async () => { fireEvent.click(button()); });
+    expect(credentials.get).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText(words)).toBeNull();
+    expect(await screen.findByText(/A signing window is open for mac/)).toBeTruthy();
+  });
+
+  it("clears the failure's words when another length is chosen, as choosing a length always has", async () => {
+    // an opener that kept the old catch, and had prepare leave the words alone when its note is empty, passes the cases
+    // above: it would keep a failure's words under a length chosen after it
+    serve(routes());
+    const { LinkCard } = await fresh();
+    credentials.get.mockImplementationOnce(async () => { throw new DOMException("denied", "NotAllowedError"); });
+    render(<LinkCard l={link({ features: ["delegation-1"] })} questions={[]} onTicket={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Open a signing window/ }));
+    const button = () => screen.getByRole("button", { name: /Open the window with your passkey/ }) as HTMLButtonElement;
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    await act(async () => { fireEvent.click(button()); });
+    const words = "The passkey request was cancelled or timed out.";
+    await vi.waitFor(() => expect(screen.queryByText(words)).not.toBeNull());
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    const length = screen.getByLabelText("Window length") as HTMLSelectElement;
+    fireEvent.change(length, { target: { value: length.value === "300" ? "900" : "300" } });
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    expect(screen.queryByText(words)).toBeNull();
+  });
+
+  it("says why when the server refuses the window after the touch, and keeps saying it once it is made again", async () => {
+    // the catch holds every failure after the click, not only the prompt's
+    const refusal = "The link's key is not the one this window names: it was paired again.";
+    serve(routes({ "POST /api/ade/link/delegations": () => [409, { detail: refusal }] }));
+    const { LinkCard } = await fresh();
+    render(<LinkCard l={link({ features: ["delegation-1"] })} questions={[]} onTicket={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Open a signing window/ }));
+    const button = () => screen.getByRole("button", { name: /Open the window with your passkey/ }) as HTMLButtonElement;
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    const asked = posted("/api/ade/link/nonce").length;
+    await act(async () => { fireEvent.click(button()); });
+    expect(credentials.get).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(posted("/api/ade/link/delegations")).toHaveLength(1));
+    await vi.waitFor(() => expect(posted("/api/ade/link/nonce").length).toBe(asked + 1));
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    expect(screen.queryByText(refusal)).not.toBeNull();
+  });
+
+  it("keeps the length while the window's opening is under way, and frees it as soon as the opening is refused", async () => {
+    // a length chosen while the delegation was posted was shown, and the old one prepared, once the opening failed;
+    // held past the refusal, the length could not be chosen while the window is made again, nor after that fails
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    let answer: () => void = () => {};
+    const asked = new Promise<void>((resolve) => { answer = resolve; });
+    let nonces = 0;
+    const refusal = "The link's key is not the one this window names: it was paired again.";
+    serve(routes({
+      "POST /api/ade/link/nonce": async (b) => {
+        nonces += 1;
+        if (nonces === 2) await asked;         // the fresh preparation's nonce, after the refusal
+        return [200, { nonce: `n-${String(b?.purpose)}-${nonces}`, rp_id: "pp.example", deployment: "pp.example",
+          account: "u", server_time: now(), credentials: [] }];
+      },
+      "POST /api/ade/link/delegations": async () => { await held; return [409, { detail: refusal }]; },
+    }));
+    const { LinkCard } = await fresh();
+    render(<LinkCard l={link({ features: ["delegation-1"] })} questions={[]} onTicket={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Open a signing window/ }));
+    const button = () => screen.getByRole("button", { name: /Open the window with your passkey/ }) as HTMLButtonElement;
+    const length = () => screen.getByLabelText("Window length") as HTMLSelectElement;
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    expect(length().disabled).toBe(false);
+    await act(async () => { fireEvent.click(button()); });
+    await vi.waitFor(() => expect(posted("/api/ade/link/delegations")).toHaveLength(1));
+    expect(length().disabled).toBe(true);                                         // while the delegation is posted
+    await act(async () => { release(); });
+    await vi.waitFor(() => expect(nonces).toBe(2));
+    expect(length().disabled).toBe(false);                                        // free while it is made again
+    await act(async () => { answer(); });
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    expect(screen.queryByText(refusal)).not.toBeNull();
+    expect(length().disabled).toBe(false);
+  });
+
+  it("after a refused opening, the form's length is the one the next touch signs", async () => {
+    let release: () => void = () => {};
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    const refusal = "The link's key is not the one this window names: it was paired again.";
+    let delegations = 0;
+    serve(routes({
+      "POST /api/ade/link/delegations": async (b) => {
+        delegations += 1;
+        if (delegations === 1) { await held; return [409, { detail: refusal }]; }
+        return [200, { digest: hex(await sha256(`proofpane-delegation/1\0${canonicalJson(b?.payload)}`)),
+          expires_at: (b?.payload as { expires_at: number }).expires_at }];
+      },
+    }));
+    const { LinkCard } = await fresh();
+    render(<LinkCard l={link({ features: ["delegation-1"] })} questions={[]} onTicket={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Open a signing window/ }));
+    const button = () => screen.getByRole("button", { name: /Open the window with your passkey/ }) as HTMLButtonElement;
+    const length = () => screen.getByLabelText("Window length") as HTMLSelectElement;
+    fireEvent.change(length(), { target: { value: "900" } });
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    await act(async () => { fireEvent.click(button()); });
+    await vi.waitFor(() => expect(delegations).toBe(1));
+    // a person cannot choose in a disabled select, and fireEvent would: the case chooses only where a person could
+    if (!length().disabled) fireEvent.change(length(), { target: { value: "300" } });
+    await act(async () => { release(); });
+    await vi.waitFor(() => expect(button().disabled).toBe(false));
+    const shown = Number(length().value);
+    expect(screen.queryByText(new RegExp(`For the next ${shown / 60} minutes`))).not.toBeNull();
+    await act(async () => { fireEvent.click(button()); });
+    await vi.waitFor(() => expect(posted("/api/ade/link/delegations")).toHaveLength(2));
+    const p = posted("/api/ade/link/delegations")[1].body?.payload as { expires_at: number; created_at: number };
+    expect(p.expires_at - p.created_at).toBe(shown);                              // the form says what is signed
+    expect(await screen.findByText(/A signing window is open for mac/)).toBeTruthy(); // its opening ends in this case
   });
 
   it("says before the touch which passkey the session has not pinned: a window that key opens sends nothing it takes", async () => {

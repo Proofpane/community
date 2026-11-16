@@ -29,7 +29,8 @@ organisation and gives it here with Proofpane's address (https, or http to this 
 workspace exchanges it at `<address>/api/v1/devices/pair` for a device and its token, and keeps them in its own record,
 `~/.proofpane/proofpane-core/config.json` in the workspace user's home (0600, its folder 0700), in the daemon's own
 form, with the owner's holds beside them. Never in a session's folder or in claude's environment, never given back to
-the page, which learns the device's name and id, the address, when it was paired and the holds. That is not the least
+the page, which learns the device's name and id, the address, when it was paired, the holds, and the site Proofpane
+One gave beside its address, where the page opens its audit (section 4.311 of the work queue). That is not the least
 exposure the workspace could give the token. A relay in the agent, holding it in the agent's memory alone, as the
 workspace holds its secret for signing a run's record and the asks switch, would let a session post rows and approval
 requests through it, and not take the token itself to Proofpane's other device routes, to another machine, or past the
@@ -89,6 +90,7 @@ Standard library only; the app runs the agent as a process and never imports thi
 """
 
 import http.client
+import ipaddress
 import json
 import os
 import platform
@@ -98,6 +100,7 @@ import re
 import socket
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -167,8 +170,9 @@ def config_path(home):
 
 
 def read(home):
-    """The pairing kept, as written (cloud_url, device_id, token, name, paired_at, holds), or None: no file, one that
-    cannot be read, or one whose fields are not what pair writes."""
+    """The pairing kept, as written (cloud_url, device_id, token, name, paired_at, holds, site_url), or None: no file,
+    one that cannot be read, or one whose fields are not what pair writes. A record written before Proofpane gave its
+    site (section 4.311 of the work queue) is read with none."""
     try:
         with open(config_path(home), "rb") as fh:
             got = json.loads(fh.read(MAX_READ).decode("utf-8"))
@@ -176,7 +180,7 @@ def read(home):
         return None
     if not isinstance(got, dict):
         return None
-    if not (isinstance(got.get("cloud_url"), str) and _CLOUD.match(got["cloud_url"])
+    if not (isinstance(got.get("cloud_url"), str) and _CLOUD.fullmatch(got["cloud_url"])
             and isinstance(got.get("device_id"), str) and _DEVICE.match(got["device_id"])
             and isinstance(got.get("token"), str) and _TOKEN.match(got["token"])):
         return None
@@ -185,7 +189,8 @@ def read(home):
             "name": got["name"][:120] if isinstance(got.get("name"), str) else None,
             "paired_at": got["paired_at"] if isinstance(got.get("paired_at"), str) and _WHEN.match(got["paired_at"])
             else None,
-            "holds": [h for h in holds if isinstance(h, str)][:MAX_HOLDS]}
+            "holds": [h for h in holds if isinstance(h, str)][:MAX_HOLDS],
+            "site_url": _site(got.get("site_url"), got["cloud_url"])}
 
 
 def _write(home, value):
@@ -212,6 +217,58 @@ def check_cloud(address):
         raise CoreError("Proofpane's address is https://, a host and a port at most (https://api.proofpane.com), or "
                         "http:// to this machine for a Proofpane run here.")
     return address.rstrip("/")
+
+
+_LOOPBACK = ("127.0.0.1", "localhost", "::1")
+# domains under which others hold names: a cloud there keeps a site on its own host alone. Hosting providers'
+# (each name under them is another tenant's) and countries' two-label suffixes; a short list, not the public suffix
+# list, so a cloud under one it leaves out keeps a site in that domain, which the page opens only once its browser
+# took it (the page's proofpaneAudit.ts)
+_HOSTED = ("fly.dev", "herokuapp.com", "vercel.app", "netlify.app", "github.io", "pages.dev", "workers.dev",
+           "onrender.com", "azurewebsites.net", "cloudfront.net", "amazonaws.com", "appspot.com", "run.app",
+           "web.app", "firebaseapp.com")
+_COUNTRY = ("co.nz", "org.nz", "net.nz", "ac.nz", "govt.nz", "co.uk", "org.uk", "ac.uk", "com.au", "net.au",
+            "org.au", "co.jp", "co.in", "com.br")
+
+
+def _host(address):
+    """An address's host, lower case, or None where it has none or its port is out of range."""
+    try:
+        parts = urllib.parse.urlsplit(address)
+        parts.port                                          # raises ValueError for a port out of range
+    except ValueError:
+        return None
+    return parts.hostname
+
+
+def _site(address, cloud):
+    """The address Proofpane One's people sign in at, as its pairing answer gives it, kept and read only in the form
+    Proofpane's address is kept in (https with no path, or http to this machine), the whole value, and only beside the
+    cloud it came with: on the cloud's host; in the cloud host's own domain, that host less its first label where it
+    has three or more and the host itself where it has two; on the cloud's host alone for a cloud at an address or
+    under a domain where others hold names (_HOSTED, _COUNTRY); or on this machine beside a cloud on this machine. Its
+    trailing slash taken off; None for any other, and the page then links to no audit. This narrows what a program a
+    session runs, which can write the record (the gate is no sandbox), can put there without moving the cloud; one that
+    moves the cloud with it moves where the hooks send each call too. The page opens a site only once its browser
+    took it, the one its own pairing gave or one the owner took on the card."""
+    if not (isinstance(address, str) and _CLOUD.fullmatch(address) and isinstance(cloud, str)):
+        return None
+    site, home = _host(address), _host(cloud)
+    if not site or not home:
+        return None
+    if site in _LOOPBACK or home in _LOOPBACK:
+        return address.rstrip("/") if site in _LOOPBACK and home in _LOOPBACK else None
+    try:
+        ipaddress.ip_address(home)
+        return address.rstrip("/") if site == home else None    # an address has no domain
+    except ValueError:
+        pass
+    domain = home.split(".", 1)[1] if home.count(".") >= 2 else home
+    if domain in _COUNTRY or any(domain == s or domain.endswith("." + s) for s in _HOSTED):
+        beside = site == home
+    else:
+        beside = site == home or site == domain or site.endswith("." + domain)
+    return address.rstrip("/") if beside else None
 
 
 def check_holds(holds):
@@ -349,8 +406,10 @@ def _ask(url, body):
 
 
 def pair(home, code, cloud_url=None, holds=None):
-    """Pair the workspace: the code exchanged for a device and its token, kept in the record (replacing one kept);
-    the page is given the status, never the token."""
+    """Pair the workspace: the code exchanged for a device and its token, kept in the record (replacing one kept) with
+    the address Proofpane One's people sign in at where its answer gives one; the page is given the status, never the
+    token. Returns what it wrote of the device and the site, for the page to take from this pairing and not from a
+    read of the record after it, which a program in a session could have written in between."""
     code = code.strip().upper() if isinstance(code, str) else code
     if not isinstance(code, str) or not _CODE.match(code):
         raise CoreError("A pairing code is the one Proofpane shows (Devices, Pair a device), such as ABC-DEF-GHJ.")
@@ -363,8 +422,10 @@ def pair(home, code, cloud_url=None, holds=None):
     name = got.get("name") if isinstance(got.get("name"), str) else device_name()
     when = got.get("paired_at") if isinstance(got.get("paired_at"), str) and _WHEN.match(got["paired_at"]) else \
         time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    site = _site(got.get("site_url"), cloud)
     _write(home, {"cloud_url": cloud, "device_id": device, "token": token, "name": name[:120], "paired_at": when,
-                  "holds": holds})
+                  "holds": holds, "site_url": site})
+    return {"device_id": device, "site_url": site}
 
 
 def set_holds(home, holds):
@@ -527,13 +588,14 @@ def skills():
 
 
 def status(home, local, accounts):
-    """What the page shows: whether the workspace is paired and as which device, never the token; what each start is
-    given; and, for each Claude Code account (`accounts`, {id: its folder}), what the managed settings leave out."""
+    """What the page shows: whether the workspace is paired, as which device and with which site, never the token;
+    what each start is given; and, for each Claude Code account (`accounts`, {id: its folder}), what the managed
+    settings leave out."""
     kept = read(home)
     out = {"paired": kept is not None, "plugin": present(), "name": NAME, "skills": skills()}
     if kept is not None:
         out.update(cloud_url=kept["cloud_url"], device_id=kept["device_id"], device_name=kept["name"],
-                   paired_at=kept["paired_at"], holds=kept["holds"])
+                   paired_at=kept["paired_at"], holds=kept["holds"], site_url=kept["site_url"])
     if not local:
         out["mcp"] = {"given": False, "why": "machine"}         # a workspace machine has no Proofpane daemon
     elif find_daemon(home) is None:

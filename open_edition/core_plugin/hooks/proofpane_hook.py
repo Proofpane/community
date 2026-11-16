@@ -86,8 +86,9 @@ the organisation's egress gateway, is never asked for: a task's attempt is given
 
 The pairing it reads is the workspace's record, `~/.proofpane/proofpane-core/config.json` in the workspace user's home,
 written by the workspace agent (proofpane_workspace/core_plugin.py) in the daemon's own form (cloud_url, device_id,
-token), with the owner's holds beside them. Read at each event, held only while this process runs, never written. No
-record, or one that does not read as one, and the hook does nothing at all: it answers nothing and sends nothing.
+token), with the owner's holds beside them, and the site the page links to, which the hook does not read. Read at each
+event, held only while this process runs, never written. No record, or one that does not read as one, and the hook
+does nothing at all: it answers nothing and sends nothing.
 
 What it is not: a wall against the session. The session's own programs run as the same user, can read the record by a
 path the workspace's gate does not recognise, and can post to Proofpane in the device's name; a repository's own
