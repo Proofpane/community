@@ -139,7 +139,9 @@ export function Agents({ onClose, keep, onCalendar }: { onClose: () => void; kee
       <aside ref={panel} tabIndex={-1} aria-label="Agents"
         className="absolute inset-1 flex flex-col overflow-hidden rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60 outline-none sm:inset-4"
         onMouseDown={(e) => e.stopPropagation()}>
-        <div className="flex h-12 flex-none items-center gap-2 border-b border-line px-4">
+        {/* at least as tall as it was; where its buttons do not fit beside the counts (a phone), they take a row of
+            their own rather than squeezing the counts into a column of single words (tests/test_phone_fit_layout.py) */}
+        <div className="flex min-h-12 flex-none flex-wrap items-center gap-2 border-b border-line px-4 py-2">
           <Bot size={16} className="text-accent" />
           <span className="text-[13.5px] font-semibold">Agents</span>
           <span className="text-[12px] text-muted">{total} {total === 1 ? "agent" : "agents"}{waiting ? ` · ${waiting} waiting for you` : ""}</span>

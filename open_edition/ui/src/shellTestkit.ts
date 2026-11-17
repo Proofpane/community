@@ -3,8 +3,9 @@
 // (ade/summary.py): the badges' counts, and a stamp for each list, here the list's own JSON. With `summary` false it is
 // a server from before the summary; with `down` it cannot be reached.
 import { vi } from "vitest";
-import { channelAlerts, proposalAlerts, type HistorySession, type HookRequest, type LinkSessions, type LinkView, type Proposal,
-  type ProofpaneStatus, type RepoView, type SessionAsk, type SessionRecord, type WorkspaceState } from "./api";
+import { channelAlerts, proposalAlerts, type AccountsView, type HistorySession, type HookRequest, type LinkSessions,
+  type LinkView, type Proposal, type ProofpaneStatus, type RepoView, type SessionAsk, type SessionRecord,
+  type WorkspaceState } from "./api";
 import type { SessionCalls, WorkspaceMap } from "./sessionMap";
 
 export interface ShellState {
@@ -27,6 +28,10 @@ export interface ShellState {
   sessionMaps: Record<string, SessionCalls>;
   /** the workspace's pairing with Proofpane One, as its route gives it while the workspace runs; null: no answer */
   proofpane: ProofpaneStatus | null;
+  /** whether Claude Code is installed and signed in in the workspace, as its route gives it */
+  claude: { installed: boolean; signed_in: boolean | null };
+  /** Claude Code's and Codex's accounts in the workspace, as its route gives them; null: no answer (no route) */
+  accounts: AccountsView | null;
 }
 
 export const OWNER = { id: "u1", email: "owner@example.test", admin: true, can_sign_in_again: true };
@@ -49,7 +54,7 @@ export function shellServer(over: Partial<ShellState> = {}) {
     repos: [], sessions: [], approvals: [], proposals: [], asks: [],
     links: { links: [], questions: [], public_url: "https://pp.example", asks: [] },
     history: [], agentsWaiting: 0, summary: true, down: false, gateway: null, map: { at: 1_790_000_000, sessions: [] },
-    sessionMaps: {}, proofpane: null, ...over,
+    sessionMaps: {}, proofpane: null, claude: { installed: true, signed_in: true }, accounts: null, ...over,
   };
   const calls: string[] = [];
   const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
@@ -80,7 +85,8 @@ export function shellServer(over: Partial<ShellState> = {}) {
     "GET /api/ade/workspace/repos": () => (runs() ? json({ repos: state.repos }) : json({ detail: "not running" }, 409)),
     "GET /api/ade/workspace/sessions": () => (runs() ? json({ sessions: state.sessions }) : json({ detail: "not running" }, 409)),
     "GET /api/ade/workspace/asks": () => (runs() ? json({ on: false, asks: state.asks }) : json({ detail: "not running" }, 409)),
-    "GET /api/ade/workspace/claude": () => json({ installed: true, signed_in: true }),
+    "GET /api/ade/workspace/claude": () => json(state.claude),
+    "GET /api/ade/workspace/accounts": () => (state.accounts ? json(state.accounts) : json({ detail: "Not Found" }, 404)),
     "GET /api/ade/workspace/proofpane": () => (runs() && state.proofpane ? json(state.proofpane) : json({ detail: "Not Found" }, 404)),
     "GET /api/ade/workspace/programs": () => json({ programs: { claude: true } }),
     "GET /api/ade/workspace/capabilities": () => json({}),

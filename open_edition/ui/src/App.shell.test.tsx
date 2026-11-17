@@ -752,3 +752,47 @@ describe("the audit in Proofpane One, at a site this browser did not take", () =
     expect(screen.queryByRole("link", { name: /^Open the audit in Proofpane One/ })).toBeNull();
   });
 });
+
+describe("the strip that says Claude Code is not signed in in the workspace", () => {
+  // a class that fixes a height or caps it: h-9, h-[36px], size-8, max-h-9, with any variant before it (min-h- does not)
+  const FIXED = /^(?:[^\s:]+:)*!?(?:(?:max-)?h-(?:\d+(?:\.\d+)?|px|\[[^\]]+\])|size-\S+)$/;
+  it("sits in the page's column with nothing of a fixed height around it, so it grows with its words, and its button opens Connections", async () => {
+    browser();
+    shellServer({ ws: { enabled: true, allowed: true, provider: "fly", running: true, made: true },
+      claude: { installed: true, signed_in: false } });
+    render(<App />);
+    await pass(2000);
+    const button = await vi.waitFor(() => screen.getByRole("button", { name: "Sign in to Claude" }), { timeout: 15000 });
+    expect(button.parentElement!.textContent).toMatch(/Claude Code is not signed in in this workspace/);
+    // nor anything that keeps its words on one line or cuts them: a class, or a height set in a style
+    const ONE_LINE = /^(?:[^\s:]+:)*(?:truncate|whitespace-nowrap|whitespace-pre|text-nowrap|line-clamp-\S+)$/;
+    for (let el: HTMLElement | null = button.parentElement; el && el !== document.body; el = el.parentElement) {
+      expect([...el.classList].filter((c) => FIXED.test(c) || ONE_LINE.test(c))).toEqual([]);
+      expect([el.style.height, el.style.maxHeight, el.style.whiteSpace].filter(Boolean)).toEqual([]);
+    }
+    fireEvent.click(button);
+    expect(useStore.getState().connectionsOpen).toBe(true);
+  });
+
+  it("names the account new sessions start on where one other than the default is chosen", async () => {
+    browser();
+    const row = { id: "a2", name: "Work", created_at: null, sessions: 0, status: null, usage: null };
+    shellServer({ ws: { enabled: true, allowed: true, provider: "fly", running: true, made: true },
+      claude: { installed: true, signed_in: false },
+      accounts: { claude: { active: "a2", accounts: [row] }, codex: { active: "default", accounts: [] } } });
+    render(<App />);
+    await pass(2000);
+    const button = await vi.waitFor(() => screen.getByRole("button", { name: "Sign in to Claude" }), { timeout: 15000 });
+    await vi.waitFor(() => expect(button.parentElement!.textContent)
+      .toMatch(/The Claude account new sessions start on, Work, is not signed in, so they cannot start on it\./),
+      { timeout: 15000 });
+  });
+
+  it("is not there while Claude Code is signed in", async () => {
+    browser();
+    shellServer({ ws: { enabled: true, allowed: true, provider: "fly", running: true, made: true } });
+    render(<App />);
+    await pass(2000);
+    expect(screen.queryByRole("button", { name: "Sign in to Claude" })).toBeNull();
+  });
+});

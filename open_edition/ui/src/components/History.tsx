@@ -79,7 +79,9 @@ export function SessionRow({ s, onRead, moved }: { s: ShownRow; onRead?: (s: His
   const readable = !!(s.talk_at || s.notes) && !!onRead;
   return (
     <li className="rounded-lg border border-line">
-      <button className="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-hover" aria-expanded={open}
+      {/* where its three columns do not fit (a phone), the right one goes below, so that the middle keeps room for its
+          title and its pill (tests/test_phone_fit_layout.py) */}
+      <button className="flex w-full flex-wrap items-start gap-2 px-3 py-2 text-left hover:bg-hover" aria-expanded={open}
         onClick={() => setOpen(!open)}>
         <span className="mt-0.5 flex flex-none flex-col items-start gap-1">
           <span className={`pill ${cloud ? "text-accent" : "text-fg-dim"}`} title={cloud ? "In the cloud" : `On ${s.link}'s machine`}>
@@ -87,7 +89,7 @@ export function SessionRow({ s, onRead, moved }: { s: ShownRow; onRead?: (s: His
           </span>
           {ran && <span className="pill text-muted" title="Where it ran">{ran}</span>}
         </span>
-        <span className="min-w-0 flex-1">
+        <span className="min-w-40 flex-1">
           {s.seal
             ? <span className="block truncate text-[12.5px]"><SealWords seal={s.seal} unlock={false} /></span>
             : s.withheld || s.title === null
@@ -97,7 +99,7 @@ export function SessionRow({ s, onRead, moved }: { s: ShownRow; onRead?: (s: His
           {others.length > 0 && <span className="block truncate text-[11px] text-muted" title="The other repositories it worked in">also in {others.join(", ")}</span>}
           {s.inClear && <span className="mt-0.5 block"><InClear /></span>}
         </span>
-        <span className="flex flex-none flex-col items-end gap-1 text-[11px] text-muted">
+        <span className="ml-auto flex flex-none flex-col items-end gap-1 text-[11px] text-muted">
           <span title={s.last_at ? full(s.last_at) : ""}>{s.last_at ? dayTime(s.last_at) : ""}</span>
           {running && (
             <span className={`flex items-center gap-1 ${running === "working" ? "text-run" : "text-fg-dim"}`}

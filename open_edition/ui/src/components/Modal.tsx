@@ -94,8 +94,10 @@ export function Modal(props: { title: string; onClose: () => void; children: Rea
         style={{ maxWidth: props.width ?? 560 }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex h-11 flex-none items-center justify-between border-b border-line px-4">
-          <span className="text-[13.5px] font-semibold">{props.title}</span>
+        {/* at least as tall as it was, with no padding so that a title of two lines fits it as before; a longer one,
+            an agent's long name at a phone's width, grows it (tests/test_phone_fit_layout.py) */}
+        <div className="flex min-h-11 flex-none items-center justify-between gap-2 border-b border-line px-4">
+          <span className="min-w-0 break-words text-[13.5px] font-semibold">{props.title}</span>
           <button className="icon-btn" onClick={props.onClose} title="Close (Esc)" aria-label="Close" data-modal-close><X size={15} /></button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{props.children}</div>

@@ -362,7 +362,9 @@ export function NewSession(props: {
         </div>
 
         <div>
-          <div className="mb-1.5 flex items-center gap-2">
+          {/* wraps where its pill and its buttons do not fit on one line (a phone): its buttons go below, the pill keeps
+              its words on one line (tests/test_phone_fit_layout.py) */}
+          <div className="mb-1.5 flex flex-wrap items-center gap-2">
             <label className="label">Task</label>
             {issue && (
               <span className="pill text-[11px]">
@@ -506,7 +508,9 @@ export function NewSession(props: {
           )}
         </div>
 
-        <div className="flex items-end gap-3">
+        {/* below sm (a phone) it wraps, so that its button goes below the field; at a desktop's width it is one row as
+            it was, the note between them wrapping inside its own box (tests/test_phone_fit_layout.py) */}
+        <div className="flex items-end gap-3 max-sm:flex-wrap">
           <div className="w-[200px] flex-none">
             <label className="label mb-1.5 block">From</label>
             {cloud !== null ? (

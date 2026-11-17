@@ -201,7 +201,9 @@
 
 /* cmdk */
 .palette-group [cmdk-group-heading] { padding: 8px 10px 4px; font-size: 10.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--color-faint); }
-.palette-item { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 10px; border-radius: 6px; font-size: 13px; color: var(--color-fg-dim); cursor: pointer; }
+/* at least 36 px, no padding added: a row of one line keeps its height, and an action's long label wraps inside its
+   row at a phone's width (tests/test_phone_fit_layout.py) */
+.palette-item { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px; border-radius: 6px; font-size: 13px; color: var(--color-fg-dim); cursor: pointer; }
 .palette-item[data-selected="true"] { background: var(--color-active); color: var(--color-fg); box-shadow: inset 2px 0 0 var(--color-accent); }
 
 /* Claude's replies */

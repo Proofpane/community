@@ -14,6 +14,7 @@ import { MODEL_PROVIDERS, type AgentKind, type Tab } from "./types";
 import { agentsOffered } from "./agentsOffered";
 import { continuable } from "./handover";
 import { TitleBar } from "./components/TitleBar";
+import { ClaudeSignInBanner } from "./components/ClaudeSignInBanner";
 import { Sidebar } from "./components/Sidebar";
 import { SessionView } from "./components/SessionView";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -648,16 +649,10 @@ function Shell() {
       />
       <Offline />
       {running && st.claude?.installed && st.claude.signed_in === false && (
-        <div className="flex h-9 flex-none items-center gap-3 border-b border-wait/30 bg-wait/[0.07] px-4 text-[12.5px]">
-          <span className="dot" style={{ background: "var(--color-wait)" }} />
-          <span className="text-fg-dim">{(() => {
-            const v = st.accounts?.claude;
-            const on = v && v.active !== "default" ? v.accounts.find((a) => a.id === v.active)?.name : undefined;
-            return on ? `The Claude account new sessions start on, ${on}, is not signed in, so they cannot start on it.`
-              : "Claude Code is not signed in in this workspace, so Claude sessions and chats cannot start.";
-          })()}</span>
-          <button className="btn btn-sm ml-auto" onClick={() => setConnections(true)}>Sign in to Claude</button>
-        </div>
+        <ClaudeSignInBanner account={(() => {
+          const v = st.accounts?.claude;
+          return v && v.active !== "default" ? v.accounts.find((a) => a.id === v.active)?.name : undefined;
+        })()} onSignIn={() => setConnections(true)} />
       )}
       <div className="flex min-h-0 flex-1">
       {/* the list hidden on a computer: a narrow edge with the button that shows it again */}
