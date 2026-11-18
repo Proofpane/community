@@ -23,6 +23,7 @@ import { isUnread, useSeen } from "./seen";
 import { keepDrafts } from "./drafts";
 import { OPEN_BOARD } from "./board";
 import { auditAddress, sessionAudit, sessionAuditWords } from "./proofpaneAudit";
+import { terminalStateOf } from "./terminalAgent";
 // The terminal (xterm), the chat (Markdown) and the diff viewer load when first opened, not with the shell; so do the
 // sign-in screen, which a signed-in page never shows, and a session's pull request buttons.
 const TerminalPane = lazy(() => import("./components/TerminalPane").then((m) => ({ default: m.TerminalPane })));
@@ -680,6 +681,7 @@ function Shell() {
                 <ControlView
                   onOpenSession={(id) => st.select(id)}
                   onApprovals={() => setApprovalsOpen(true)}
+                  onLink={linkMac}
                   onNew={() => setNewFor(null)}
                   empty={(
                     <Empty
@@ -950,7 +952,8 @@ function SessionBody({ rec, tab }: { rec: SessionRecord; tab: Tab }) {
   if (tab === "shell") return rec.repo ? <ShellPane rec={rec} /> : <Note text="A session without a repository has no worktree to open a shell in." />;
   if (rec.program === "chat") return <ChatPane record={rec} />;
   if (!rec.running) return <Stopped rec={rec} />;
-  const terminal = <TerminalPane key={rec.id} link={link} session={rec.id} onFiles={rec.repo ? (files) => uploadFiles(rec.id, files) : undefined} />;
+  const terminal = <TerminalPane key={rec.id} link={link} session={rec.id} onFiles={rec.repo ? (files) => uploadFiles(rec.id, files) : undefined}
+    agent={terminalStateOf(rec)} />;
   if (!(rec.program in UNPROMPTED) && !(rec.program === "custom" && rec.custom?.task === "typed")) return terminal;
   return (
     <div className="flex h-full flex-col">

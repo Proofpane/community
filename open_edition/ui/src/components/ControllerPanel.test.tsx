@@ -133,9 +133,9 @@ const asked = (method: string, path: string) => srv.calls.filter((c) => c.method
 const drawn = () => document.body.textContent ?? "";
 const region = () => screen.getByRole("region", { name: "The Manager" });
 
-async function mount(setup?: () => void) {
+async function mount(setup?: () => void, props: Parameters<typeof ControllerPanel>[0] = {}) {
   if (setup) setup();
-  render(<ControllerPanel />);
+  render(<ControllerPanel {...props} />);
   await pass();
 }
 
@@ -1301,6 +1301,36 @@ describe("a linked session as the Manager", () => {
     expect(asked("GET", "/api/ade/controller/holders")).toBe(0);
     await chooser();
     expect(asked("GET", "/api/ade/controller/holders")).toBe(1);
+  });
+
+  // The second finding on the phone app's TestFlight build: a session running in a cloud was wanted as the Manager,
+  // and there was no list of the sessions, nor a word of how one comes to be on this one (PHONE-TEST)
+  it("says only linked sessions are listed and how a session links itself, a cloud's too, and offers Link a session",
+    async () => {
+    const onLink = vi.fn();
+    await mount(() => {
+      srv.controller = CONTROLLER();
+      srv.more["GET /api/ade/controller/holders"] = () => [200, OFFER()];
+    }, { onLink });
+    await chooser();
+    const words = linked().textContent;
+    expect(words).toContain("Only sessions linked to the ADE are listed here.");
+    expect(words).toContain("A session links itself with a one-time ticket from Linked sessions");
+    expect(words).toContain("a session in a cloud does it the same way, from an environment that can reach this site");
+    expect(words).toContain("silent: not offered");                    // a silent link stays shown and not offered
+    fireEvent.click(within(linked()).getByRole("button", { name: "Link a session" }));
+    expect(onLink).toHaveBeenCalledTimes(1);
+  });
+
+  it("with no session linked yet, before the Manager is set up, says how one links itself and offers Link a session",
+    async () => {
+    const onLink = vi.fn();
+    await mount(() => { srv.controller = null; }, { onLink });
+    await chooser();
+    expect(linked().textContent).toContain("No session is linked to the ADE yet.");
+    expect(linked().textContent).toContain("Only sessions linked to the ADE are listed here.");
+    fireEvent.click(within(linked()).getByRole("button", { name: "Link a session" }));
+    expect(onLink).toHaveBeenCalledTimes(1);
   });
 
   it("an ended hold says it holds nothing now and what the owner may do", async () => {

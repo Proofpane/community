@@ -155,6 +155,17 @@
   .panel { background: var(--color-panel); border: 1px solid var(--color-line); border-radius: var(--radius-lg); }
 }
 
+/* on a touch screen every field that takes text is 16 pixels or more: iOS zooms a page in when a smaller one takes
+   focus, and keeps the zoom after the page changes (tests/test_phone_fit_layout.py). Outside a layer, so that it holds
+   over a field's own text-[...] class; the page's viewport leaves pinch-zoom on (tests/test_page_zoom.py). The code
+   editor's text and its search panel, sized by its own theme, read --editor-font (CodeEditor.tsx), 12px elsewhere */
+@media (pointer: coarse) {
+  :root { --editor-font: 16px; }
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"], [type="button"],
+    [type="submit"], [type="reset"], [type="image"], [type="hidden"]),
+  textarea, select { font-size: 16px; }
+}
+
 /* xterm sits on the app's own background, edge to edge. */
 .xterm { padding: 6px 0 0 10px; height: 100%; }
 .xterm .xterm-viewport { background: transparent !important; }

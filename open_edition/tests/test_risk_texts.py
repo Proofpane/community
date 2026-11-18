@@ -33,8 +33,8 @@ from proofpane_open.ade import risk_texts, task_shapes, tasks
 from proofpane_core.canonical import canonicalize
 
 OPERATOR = "OPEN_EDITION_OPERATOR"
-READ = "2026-11-18"                     # when the quoted documents were fetched: sixteen quotations, six pages
-RELEASE = "2026-11-19"                  # a release after that reading
+READ = "2026-11-19"                     # when the quoted documents were fetched: sixteen quotations, six pages
+RELEASE = "2026-11-20"                  # a release after that reading
 
 CONSUMER_TERMS = "https://www.anthropic.com/legal/consumer-terms"
 COMMERCIAL_TERMS = "https://www.anthropic.com/legal/commercial-terms"

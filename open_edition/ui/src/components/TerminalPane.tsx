@@ -4,13 +4,16 @@ import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon, type ISearchOptions } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { ChevronDown, ChevronUp, Paperclip, Search, X } from "lucide-react";
+import type { SessionRecord } from "../api";
+import { stateWords } from "../terminalAgent";
 import { CONTROL, droppedPath, hasPath } from "../drag";
 import { useTheme } from "../theme";
 
-/** The bytes a terminal pane is attached to: a stream out, a way in, and the size it should be. */
+/** The bytes a terminal pane is attached to: a stream out, a way in, and the size it should be. `send` says false when
+ *  it sent nothing (api.ts's link, while its connection is not open). */
 export interface TerminalLink {
   attach(io: { write: (data: string | Uint8Array) => void; status: (text: string) => void }): {
-    send: (data: string) => void;
+    send: (data: string) => boolean | void;
     resize: (cols: number, rows: number) => void;
     close: () => void;
   };
@@ -43,10 +46,40 @@ const FIND: ISearchOptions = {
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 const isFind = (e: KeyboardEvent) => e.type === "keydown" && e.key.toLowerCase() === "f" && (isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey && e.shiftKey);
 
-// keys a phone's keyboard does not have, as the bytes a terminal sends for them, and each key's name for a screen reader
-const KEYS: [string, string, string][] = [["Esc", "\x1b", "Escape"], ["Tab", "\t", "Tab"], ["^C", "\x03", "Control C"],
-  ["↑", "\x1b[A", "Up arrow"], ["↓", "\x1b[B", "Down arrow"], ["←", "\x1b[D", "Left arrow"], ["→", "\x1b[C", "Right arrow"],
+// keys a phone's keyboard does not have, as the bytes a terminal sends for them (an arrow by its last letter, its bytes
+// taken at the press from the program's cursor-key mode), and each key's name for a screen reader
+type Key = [label: string, bytes: string, name: string, arrow?: string];
+const KEYS: Key[] = [["Esc", "\x1b", "Escape"], ["Tab", "\t", "Tab"], ["^C", "\x03", "Control C"],
+  ["↑", "", "Up arrow", "A"], ["↓", "", "Down arrow", "B"], ["←", "", "Left arrow", "D"], ["→", "", "Right arrow", "C"],
   ["⏎", "\r", "Return"]];
+// on a desktop's row only: what xterm.js sends for Shift+Tab, which moves Claude Code to its next permission mode and,
+// like the keyboard's, answers a dialog that is open (it allows a file's edits for the session, or approves a plan)
+const SHIFT_TAB: Key = ["⇧Tab", "\x1b[Z", "Shift Tab"];
+
+/** An arrow's bytes, as xterm.js sends the keyboard's: ESC [ and its letter, or ESC O and it while the program has set
+ *  the cursor keys to application mode (DECCKM). */
+export function arrowBytes(letter: string, application: boolean): string {
+  return `\x1b${application ? "O" : "["}${letter}`;
+}
+
+const bytesOf = (k: Key, appCursor?: () => boolean) => (k[3] ? arrowBytes(k[3], !!appCursor?.()) : k[1]);
+
+// what a Claude Code session is doing and which panes are told it, kept apart from xterm.js so that the app can ask
+// without loading the terminal
+export { stateWords, terminalStateOf } from "../terminalAgent";
+
+// how long Stop is not offered after an Esc from the row, its own or the Esc key's: two in a row clear the prompt's
+// draft, or open the rewind menu when it is empty
+const STOP_HOLD = 2000;
+// how long, at most, the line says that Stop's Esc was not sent, after which it says again what it said before that
+// press (the session's state, or "Esc sent" for an earlier Esc that went out with nothing written since), which
+// nothing changed; an activity written after the press ends it sooner
+const NOT_SENT_SHOWN = 5000;
+// each session's last Stop whose Esc went out, and its last Esc from the row, Stop's or the Esc key's, by its id, kept
+// for the page's life: switching tabs draws the terminal again, and the line still says "Esc sent" until an activity
+// written after the press reaches the page, and Stop is still held for the rest of its 2 s
+const STOPS = new Map<string, { at: number; sent: true }>();
+const ESCS = new Map<string, number>();
 
 /** A session's terminal; `readOnly` shows what an ended program printed, taking no input. */
 /** Whether a terminal draws with WebGL: yes, but under automation (navigator.webdriver, where headless Chrome drew a
@@ -73,13 +106,16 @@ export function shellWord(path: string): string {
   return /^[\w./@%+=:,-]+$/.test(word) ? word : `'${word.replace(/'/g, `'\\''`)}'`;
 }
 
-export function TerminalPane({ link, focus, readOnly, onFiles, session }: {
+export function TerminalPane({ link, focus, readOnly, onFiles, session, agent }: {
   link: TerminalLink; focus?: boolean; readOnly?: boolean;
   /** Files dropped, pasted or attached: put in the worktree, their paths given back to be typed for the program. */
   onFiles?: (files: File[]) => Promise<string[]>;
   /** The session whose worktree the program works in: a file or folder of it dragged here from the page has its path
    *  typed (drag.ts). */
   session?: string;
+  /** A running Claude Code session's activity and name (terminalStateOf): on a desktop, Stop and the state line under
+   *  its terminal. */
+  agent?: { id?: string; activity?: SessionRecord["activity"] | null; who?: string };
 }) {
   const host = useRef<HTMLDivElement>(null);
   const [dropping, setDropping] = useState<"" | "files" | "path">("");
@@ -99,7 +135,7 @@ export function TerminalPane({ link, focus, readOnly, onFiles, session }: {
       setTimeout(() => setSending(""), 6000);
     });
   };
-  const sendRef = useRef<((d: string) => void) | null>(null);
+  const sendRef = useRef<((d: string) => boolean | void) | null>(null);
   const searchRef = useRef<SearchAddon | null>(null);
   const termRef = useRef<Terminal | null>(null);
   const theme = useTheme((t) => t.theme);
@@ -265,7 +301,7 @@ export function TerminalPane({ link, focus, readOnly, onFiles, session }: {
     </>
   );
 
-  if (!touch || readOnly) {
+  if (readOnly) {
     return (
       <div className="relative h-full w-full" {...dropTarget}>
         <div ref={host} className="h-full w-full overflow-hidden" />
@@ -273,13 +309,19 @@ export function TerminalPane({ link, focus, readOnly, onFiles, session }: {
       </div>
     );
   }
+  const onKey = (bytes: string) => sendRef.current?.(bytes);
+  const onAttach = files ? () => picker.current?.click() : undefined;
+  // the cursor-key mode the program has set, read at each press, so that an arrow sends what the keyboard's would
+  const appCursor = () => !!termRef.current?.modes.applicationCursorKeysMode;
   return (
-    <div className="flex h-full flex-col">
-      <div className="relative min-h-0 w-full flex-1" {...dropTarget}>
+    // dropped anywhere in the pane, its keys' row among it, so that the browser never opens the file itself
+    <div className="flex h-full flex-col" {...dropTarget}>
+      <div className="relative min-h-0 w-full flex-1">
         <div ref={host} className="h-full w-full overflow-hidden" />
         {overlays}
       </div>
-      <KeyBar onKey={(bytes) => sendRef.current?.(bytes)} onAttach={files ? () => picker.current?.click() : undefined} />
+      {touch ? <KeyBar onKey={onKey} onAttach={onAttach} appCursor={appCursor} />
+        : <DeskKeys onKey={onKey} onAttach={onAttach} appCursor={appCursor} agent={agent} />}
       {files && <input ref={picker} type="file" multiple hidden onChange={(e) => { take.current(Array.from(e.target.files || [])); e.target.value = ""; }} />}
     </div>
   );
@@ -288,18 +330,113 @@ export function TerminalPane({ link, focus, readOnly, onFiles, session }: {
 /** Under a terminal on a touch screen: the keys a phone's keyboard does not have, and attaching a file. They share the
  *  one row, each as wide as the screen leaves it (about 38 pixels on a 390-pixel phone) and 44 tall, so none runs off
  *  the screen to be scrolled to. A tap on one keeps the phone's keyboard where it is (the focus stays in the terminal). */
-export function KeyBar({ onKey, onAttach }: { onKey: (bytes: string) => void; onAttach?: () => void }) {
+export function KeyBar({ onKey, onAttach, appCursor }: {
+  onKey: (bytes: string) => boolean | void; onAttach?: () => void; appCursor?: () => boolean;
+}) {
   const key = "btn btn-sm h-11 min-w-0 flex-1 justify-center px-0 text-[14px]";
   return (
     <div role="toolbar" aria-label="Keys" className="flex flex-none gap-1 border-t border-line bg-panel px-2 py-1.5" style={{ paddingBottom: "max(6px, env(safe-area-inset-bottom, 0px))" }}>
-      {KEYS.map(([label, bytes, name]) => (
-        <button key={label} className={`${key} font-mono`} aria-label={name} onMouseDown={(e) => e.preventDefault()} onClick={() => onKey(bytes)}>{label}</button>
+      {KEYS.map((k) => (
+        <button key={k[0]} className={`${key} font-mono`} aria-label={k[2]} onMouseDown={(e) => e.preventDefault()} onClick={() => onKey(bytesOf(k, appCursor))}>{k[0]}</button>
       ))}
       {onAttach && (
         <button className={key} title="Attach a file: it goes to the worktree and its path is typed" aria-label="Attach a file"
           onMouseDown={(e) => e.preventDefault()} onClick={onAttach}>
           <Paperclip size={14} />
         </button>
+      )}
+    </div>
+  );
+}
+
+/** Under a terminal on a desktop: the phone's keys with Shift+Tab, and attaching a file; and for a running Claude Code
+ *  session, a line saying what it is doing and Stop at the row's end. Every key is the keyboard's bytes, typed into the
+ *  terminal as the keyboard's are: a key answers a dialog that is open as the keyboard's does, and the row adds no
+ *  guard to it and takes none away. Stop is one Esc, never ^C, since two ^C with nothing running end Claude Code; it
+ *  is not offered for 2 s after an Esc the row sent, its own or the Esc key's. After it the line says "Esc sent", not
+ *  stopped, until an activity written after the press reaches the page, since a queued message goes to Claude at once,
+ *  no hook reports an interrupt, and the page's copy of the activity can be 5 s behind; kept, with the 2 s, for each
+ *  session for the page's life, so that switching tabs and back does not lose them. Or, for up to 5 s, that nothing
+ *  was sent, where the terminal's connection was not open, and then what it said before that press. */
+export function DeskKeys({ onKey, onAttach, appCursor, agent }: {
+  onKey: (bytes: string) => boolean | void; onAttach?: () => void; appCursor?: () => boolean;
+  agent?: { id?: string; activity?: SessionRecord["activity"] | null; who?: string };
+}) {
+  // the rest of the 2 s from an Esc the row sent for this session in an earlier drawing of its terminal
+  const left = () => (agent?.id && ESCS.has(agent.id) ? STOP_HOLD - (Date.now() - ESCS.get(agent.id)!) : 0);
+  const [held, setHeld] = useState(() => left() > 0);
+  // the press kept for this session from an earlier drawing of its terminal
+  const kept = () => (agent?.id && STOPS.get(agent.id)) || null;
+  // Stop's last press: its time, and whether its Esc went out
+  const [last, setLast] = useState<{ at: number; sent: boolean } | null>(kept);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const unsent = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => { clearTimeout(timer.current); clearTimeout(unsent.current); }, []);
+  const activity = agent?.activity ?? null;
+  const who = agent?.who || "Claude";
+  const hold = (ms = STOP_HOLD) => {
+    setHeld(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setHeld(false), ms);
+  };
+  const escSent = () => {
+    if (agent?.id) ESCS.set(agent.id, Date.now());
+    hold();
+  };
+  // the rest of the 2 s read again once drawn, the clock having moved since the first drawing read it
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { const ms = left(); if (ms > 0) hold(ms); else setHeld(false); }, []);
+  // an activity's time is in whole seconds, so one written in the second of the press counts as before it
+  const pressed = last !== null && !(activity && activity.at * 1000 > last.at);
+  const key = "btn btn-sm h-7 flex-none px-2 font-mono text-[12px]";
+  const keys = [KEYS[0], KEYS[1], SHIFT_TAB, ...KEYS.slice(2)];
+  // a press anywhere on the row, its line, the gaps and a held Stop among it, keeps the focus in the terminal: a
+  // mousedown left to the browser on what cannot take the focus takes it off the terminal, and what is typed after
+  // goes nowhere
+  return (
+    <div role="toolbar" aria-label="Keys" onMouseDown={(e) => e.preventDefault()}
+      className="flex flex-none flex-wrap items-center gap-1 border-t border-line bg-panel px-2 py-1">
+      {keys.map((k) => (
+        <button key={k[0]} className={key} aria-label={k[2]} onMouseDown={(e) => e.preventDefault()}
+          onClick={() => { const sent = onKey(bytesOf(k, appCursor)); if (k[1] === "\x1b" && sent !== false) escSent(); }}>
+          {k[0]}
+        </button>
+      ))}
+      {onAttach && (
+        <button className={key} title="Attach a file: it goes to the worktree and its path is typed" aria-label="Attach a file"
+          onMouseDown={(e) => e.preventDefault()} onClick={onAttach}>
+          <Paperclip size={13} />
+        </button>
+      )}
+      {agent && (
+        <>
+          <span role="status" className="min-w-0 flex-1 truncate px-2 text-[12px] text-muted">
+            {pressed ? (last!.sent ? "Esc sent" : "Esc not sent: the terminal was not connected") : stateWords(activity, who)}
+          </span>
+          {/* held, it is marked unavailable (aria-disabled), not disabled: a disabled button's mousedown reaches no handler
+              of its own, and the browser would take the focus off the terminal */}
+          <button className="btn btn-sm h-7 flex-none px-3 text-[12px] aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+            aria-label="Stop" aria-disabled={held || undefined}
+            title={`Stop: one Esc, as the keyboard's. It stops what ${who} is doing, and declines a dialog that is open`}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              if (held) return;
+              const at = Date.now();
+              if (onKey("\x1b") !== false) {
+                escSent();
+                const press = { at, sent: true } as const;
+                if (agent?.id) STOPS.set(agent.id, press);
+                setLast(press);
+                return;
+              }
+              const press = { at, sent: false };
+              clearTimeout(unsent.current);
+              unsent.current = setTimeout(() => setLast((l) => (l === press ? kept() : l)), NOT_SENT_SHOWN);
+              setLast(press);
+            }}>
+            Stop
+          </button>
+        </>
       )}
     </div>
   );

@@ -1471,7 +1471,14 @@ export function terminalLink(session: string, onExit?: (code: number | null) => 
       };
       open();
       return {
-        send: (d) => ws?.readyState === WebSocket.OPEN && ws.send(enc.encode(d)),
+        // false when nothing went: while the connection is not open, what is typed is dropped, and a button that
+        // typed it can say so; that is between a drop and its reconnection (each try at most 8 s after the one before,
+        // for as long as the drop lasts), and for good once the program has exited or the workspace refused it
+        send: (d) => {
+          if (ws?.readyState !== WebSocket.OPEN) return false;
+          ws.send(enc.encode(d));
+          return true;
+        },
         resize: (cols, rows) => {
           size = { cols, rows };
           if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "resize", cols, rows }));

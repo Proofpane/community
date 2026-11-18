@@ -34,8 +34,10 @@ const STYLE = HighlightStyle.define([
   { tag: t.invalid, class: "text-fail" },
 ]);
 
+// the editor's text and its search panel's fields at index.css's --editor-font: 12px, and 16px on a touch screen, where
+// iOS would zoom the page in on a smaller one (tests/test_phone_fit_layout.py)
 const THEME = EditorView.theme({
-  "&": { height: "100%", backgroundColor: "var(--color-bg)", color: "var(--color-fg)", fontSize: "12px" },
+  "&": { height: "100%", backgroundColor: "var(--color-bg)", color: "var(--color-fg)", fontSize: "var(--editor-font, 12px)" },
   "&.cm-focused": { outline: "none" },
   ".cm-scroller": { fontFamily: "var(--font-mono)", lineHeight: "1.6" },
   ".cm-content": { caretColor: "var(--color-accent)", paddingBlock: "4px" },
@@ -51,7 +53,7 @@ const THEME = EditorView.theme({
   ".cm-searchMatch": { backgroundColor: "color-mix(in srgb, var(--color-wait) 30%, transparent)" },
   ".cm-searchMatch-selected": { backgroundColor: "color-mix(in srgb, var(--color-wait) 55%, transparent)" },
   ".cm-panels": { backgroundColor: "var(--color-panel)", color: "var(--color-fg)", borderColor: "var(--color-line)" },
-  ".cm-panels input, .cm-panels button": { fontSize: "12px" },
+  ".cm-panels input, .cm-panels button": { fontSize: "var(--editor-font, 12px)" },
   ".cm-textfield": { backgroundColor: "var(--color-bg)", border: "1px solid var(--color-line-strong)", color: "var(--color-fg)", borderRadius: "4px" },
   ".cm-button": { backgroundImage: "none", backgroundColor: "var(--color-raised)", border: "1px solid var(--color-line-strong)", color: "var(--color-fg)", borderRadius: "4px" },
 });

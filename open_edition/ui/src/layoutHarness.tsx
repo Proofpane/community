@@ -7,17 +7,21 @@
 // with no space in the name), the command palette with the app's longest actions (?which=palette), and the New
 // session form, whose Task row the measure gives a pull request (?which=newsession), and a Mac's session in the
 // History list, sent in the clear and moved into the workspace (?which=history, or historypanel in the Linked
-// sessions panel's 560 pixels at a desktop's width), each drawn as
+// sessions panel's 560 pixels at a desktop's width), the sign-in page (?which=signin), the Files panel's code editor
+// on a file (?which=editor, whose search panel the measure opens), Linked sessions on linking a session
+// (?which=linkform, as the Manager's Link a session opens it), and the keys under a Claude Code session's terminal on a
+// desktop (?which=deskkeys, or deskkeyspane in a pane 220 pixels wide), each drawn as
 // the app draws it but outside the Linked sessions panel (whose keyboard the page cases hold), with fixed data and no
-// server, so that a headless browser can measure their rows, strips and the slash menu's modals at a phone's width.
-// Never part of the app's build.
+// server, so that a headless browser can measure their rows, strips, fields and the slash menu's modals at a phone's
+// width. Never part of the app's build.
 import "./layoutStubs";
 import "./index.css";
 import { createRoot } from "react-dom/client";
 import { CalendarDays, Pencil, Radio } from "lucide-react";
 import type { LinkView, SessionRecord } from "./api";
 import { useStore } from "./store";
-import { Conversation, LinkCard } from "./components/Channel";
+import { Channel, Conversation, LinkCard } from "./components/Channel";
+import { CodeEditor } from "./components/CodeEditor";
 import { ChatPane } from "./components/ChatPane";
 import { ClaudeSignInBanner } from "./components/ClaudeSignInBanner";
 import { DiffView } from "./components/DiffView";
@@ -26,9 +30,13 @@ import { Modal } from "./components/Modal";
 import { CommandPalette, type PaletteAction } from "./components/CommandPalette";
 import { NewSession } from "./components/NewSession";
 import { SessionRow } from "./components/History";
+import { SignIn } from "./components/SignIn";
+import { DeskKeys } from "./components/TerminalPane";
 import type { HistorySession } from "./api";
 
 const T = Math.floor(Date.now() / 1000);
+// a tool's name as long as the hooks keep one (activity.py's NAME), 80 characters
+const TOOL80 = "mcp__the_release_notes_server__write_the_notes_for_every_repository_we_keep_now_";
 const link: LinkView = {
   id: "L1", name: "MacBook Pro", kind: "local", session_ref: null, interval_min: 15, created_at: T - 3600,
   last_seen_at: T - 60, last_heartbeat_at: T - 60, silent: false, acked_seq: 0, checkpoint_version: 0,
@@ -111,6 +119,15 @@ const drawn = which === "banner" ? <ClaudeSignInBanner onSignIn={() => {}} />
     <NewSession repos={["app"]} githubRepos={["app"]} agents={[{ kind: "claude", available: true }]}
       onStart={() => {}} onClose={() => {}} onClone={() => {}} />
   )
+  // the keys under a Claude Code session's terminal on a desktop, with the state line's longest words (a tool's name
+  // as long as the hooks keep one, 80 characters, beside the longest name the page gives a session), across the page
+  // or in a pane 220 pixels wide as a split leaves it
+  : which === "deskkeys" || which === "deskkeyspane" ? (
+    <div style={which === "deskkeyspane" ? { width: 220 } : undefined}>
+      <DeskKeys onKey={() => {}} onAttach={() => {}}
+        agent={{ who: "MiniMax M3", activity: { state: "working", tool: TOOL80, at: T - 5 } }} />
+    </div>
+  )
   : which === "modalword" ? (
     <Modal title={`${"TheNightlyReleaseCheckerForEveryRepositoryWeKeepAndTheNotesItWritesEachMorningAtSix"
       .slice(0, 80)}'s tools`}
@@ -123,6 +140,15 @@ const drawn = which === "banner" ? <ClaudeSignInBanner onSignIn={() => {}} />
       onClose={() => {}}><p>Its tools.</p></Modal>
   )
   : which === "link" ? <Conversation l={link} onBack={() => {}} onClose={() => {}} />
+  : which === "signin" ? <SignIn />
+  // a file in the Files panel's code editor, the panel's height its own
+  : which === "editor" ? (
+    <div className="min-h-0 flex-1">
+      <CodeEditor text={"const kept = 1;\nexport function now() {\n  return kept + 2;\n}\n"} path="src/now.ts"
+        onDirty={() => {}} onSave={() => {}} handle={{ current: null }} />
+    </div>
+  )
+  : which === "linkform" ? <Channel onClose={() => {}} linking />
   : which === "card" ? <LinkCard l={link} questions={[]} onTicket={() => {}} />
   : which === "chatbusy" ? <ChatPane record={busy} />
   : which === "pane" ? (

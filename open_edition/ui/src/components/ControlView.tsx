@@ -51,7 +51,7 @@ const OWN = DESKTOP ? "a window of its own" : "a tab of its own";
 // seconds and the time the answer took to come back
 const ROUNDING = 2;
 
-export function ControlView({ pop, empty, onOpenSession, onNew, onApprovals }: {
+export function ControlView({ pop, empty, onOpenSession, onNew, onApprovals, onLink }: {
   /** In a pop-out window: the one panel it draws. */
   pop?: PopOut;
   /** What the main panel shows where the map has no session (Get started, or a word to start one). */
@@ -61,6 +61,8 @@ export function ControlView({ pop, empty, onOpenSession, onNew, onApprovals }: {
   onNew?: () => void;
   /** Open Approvals, the one list, where a linked session's waiting items are read and answered (the main page's). */
   onApprovals?: () => void;
+  /** Open Linked sessions on linking a session, from the Manager's chooser (the main page's). */
+  onLink?: () => void;
 }) {
   const [read, setRead] = useState<{ map: WorkspaceMap; at: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -149,7 +151,7 @@ export function ControlView({ pop, empty, onOpenSession, onNew, onApprovals }: {
       <div className="min-h-0 flex-1 px-4 py-3">
         {/* the controller's own panel, above the map of every session: it reads the controller's routes itself, and is
             not drawn in a pop-out, which draws one panel */}
-        {!pop && <ControllerPanel onOpenSession={onOpenSession} />}
+        {!pop && <ControllerPanel onOpenSession={onOpenSession} onLink={onLink} />}
         {!pop && skills && <SkillsPanel onClose={() => setSkills(false)} />}
         {!pop && onApprovals && links && links.links.length > 0 && <LinkedSessions links={links} onApprovals={onApprovals} />}
         {error && <p role="alert" className="mb-3 text-[12.5px] text-fail">{error}</p>}

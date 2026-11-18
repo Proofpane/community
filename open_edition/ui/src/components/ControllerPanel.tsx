@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
-  Bot, ChevronDown, ChevronRight, Loader2, MessageSquare, OctagonX, Play, Power, ScrollText, Send, SlidersHorizontal,
-  Square,
+  Bot, ChevronDown, ChevronRight, Link2, Loader2, MessageSquare, OctagonX, Play, Power, ScrollText, Send,
+  SlidersHorizontal, Square,
 } from "lucide-react";
 import { Api, ApiError, OLD_SIGN_IN, type AccountOwnerView } from "../api";
 import { EFFORT_NAMES, MODEL_NAMES, type Capabilities } from "../chatSettings";
@@ -98,7 +98,11 @@ function Cleaned({ cut, removed }: { cut: boolean; removed: number }) {
   return bits.length ? <span className="text-[10.5px] text-faint"> ({bits.join(", ")})</span> : null;
 }
 
-export function ControllerPanel({ onOpenSession }: { onOpenSession?: (id: string) => void }) {
+export function ControllerPanel({ onOpenSession, onLink }: {
+  onOpenSession?: (id: string) => void;
+  /** Open Linked sessions on linking a session, as its own Link a session does (the main page's). */
+  onLink?: () => void;
+}) {
   const [view, setView] = useState<ControllerView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -159,7 +163,7 @@ export function ControllerPanel({ onOpenSession }: { onOpenSession?: (id: string
           {error && <p role="alert" className="mb-2 text-[12px] text-fail">{error}</p>}
           {!ready && !error && <div className="flex justify-center py-6 text-muted"><Loader2 size={15} className="animate-spin" aria-label="Reading the Manager" /></div>}
           {ready && view && !view.controller && (
-            <SetUp caps={caps} busy={busy} run={run} actionError={actionError} />
+            <SetUp caps={caps} busy={busy} run={run} actionError={actionError} onLink={onLink} />
           )}
           {ready && view && view.controller && (
             <LinkNames.Provider value={view.holder?.name ? { [view.holder.link]: view.holder.name } : {}}>
@@ -167,7 +171,7 @@ export function ControllerPanel({ onOpenSession }: { onOpenSession?: (id: string
               {actionError && <p role="alert" className="text-[12px] text-fail">{actionError}</p>}
               <Controls c={view.controller} busy={busy} run={run} onOpenSession={onOpenSession} />
               <Settings c={view.controller} caps={caps} busy={busy} run={run} />
-              <LinkedManager holder={view.holder} busy={busy} run={run} />
+              <LinkedManager holder={view.holder} busy={busy} run={run} onLink={onLink} />
               <Goals view={view} busy={busy} run={run} />
               <SubGoals view={view} busy={busy} run={run} />
               <OtherSessions sessions={view.other_sessions} />
@@ -195,7 +199,9 @@ function StateBadge({ state }: { state: ControllerSettings["state"] }) {
 
 /** Before the owner has set the controller up (its view's controller is null): the one thing to do is choose the account
  *  it runs on, which sets it up; the rest of the settings are then the Settings section's. */
-function SetUp({ caps, busy, run, actionError }: { caps: Capabilities; busy: boolean; run: Run; actionError: string | null }) {
+function SetUp({ caps, busy, run, actionError, onLink }: {
+  caps: Capabilities; busy: boolean; run: Run; actionError: string | null; onLink?: () => void;
+}) {
   return (
     <div className="space-y-2">
       <p className="text-[12px] text-muted">
@@ -204,7 +210,7 @@ function SetUp({ caps, busy, run, actionError }: { caps: Capabilities; busy: boo
       </p>
       {actionError && <p role="alert" className="text-[12px] text-fail">{actionError}</p>}
       <AccountPicker account={null} busy={busy} run={run} />
-      <LinkedManager holder={null} busy={busy} run={run} />
+      <LinkedManager holder={null} busy={busy} run={run} onLink={onLink} />
       <p className="text-[11px] text-faint">Once it has an account you can set how many sessions it may hold at once, the models and efforts its tasks may take, and its own chat, below.</p>
       <SettingsNote caps={caps} />
     </div>
@@ -216,6 +222,10 @@ function SetUp({ caps, busy, run, actionError }: { caps: Capabilities; busy: boo
 export const LINKED_WORDS = "A session linked to the ADE may hold the Manager's role in an account's place: no " +
   "workspace, sign-in or clone is needed. You sign the choice with a passkey; it holds the role for a week at most, " +
   "under the settings it is made with, and a change of those settings ends its hold.";
+// how a session comes to be on the chooser's list: Proofpane lists no session that has not linked itself
+export const HOW_LINKED_WORDS = "Only sessions linked to the ADE are listed here. A session links itself with a " +
+  "one-time ticket from Linked sessions; a session in a cloud does it the same way, from an environment that can " +
+  "reach this site.";
 // where its tasks run in this build
 export const OWN_MACHINE_WORDS = "A linked Manager's tasks run on its own machine, in its folder, each its own " +
   "report: the workspace starts none for it.";
@@ -291,8 +301,11 @@ function HolderChoice({ l, chosen, busy, choose }: {
 
 /** The owner's choice of a linked session as the Manager, and the holder now (the view's own, read with it). The
  *  linked sessions are read only while the owner has the chooser open; choosing one reviews what is signed, then signs
- *  it with a passkey, the prompt first, nothing awaited before it. */
-function LinkedManager({ holder, busy, run }: { holder: Holder | null; busy: boolean; run: Run }) {
+ *  it with a passkey, the prompt first, nothing awaited before it. The open chooser says how a session comes to be on
+ *  its list, and offers Link a session (`onLink`), Linked sessions' own form. */
+function LinkedManager({ holder, busy, run, onLink }: {
+  holder: Holder | null; busy: boolean; run: Run; onLink?: () => void;
+}) {
   const [choosing, setChoosing] = useState(false);
   const [offer, setOffer] = useState<HolderOffer | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
@@ -361,6 +374,16 @@ function LinkedManager({ holder, busy, run }: { holder: Holder | null; busy: boo
               chosen={holder?.live === true && holder.link === l.id} />
           ))}
         </ul>
+      )}
+      {choosing && (
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="basis-full text-[11px] text-faint">{HOW_LINKED_WORDS}</p>
+          {onLink && (
+            <button className="btn btn-sm" onClick={onLink} title="A one-time ticket a session links itself with">
+              <Link2 size={13} /> Link a session
+            </button>
+          )}
+        </div>
       )}
       {review && (
         <div className="space-y-1 rounded border border-line px-2 py-1.5" role="group"

@@ -106,6 +106,24 @@ describe("the owner's Mac sessions, whatever the workspace", () => {
     expect(screen.queryByRole("form", { name: "Link a session" })).toBeNull();
   });
 
+  it("can be linked from the Manager's chooser, whose Link a session opens Linked sessions on linking one", async () => {
+    browser();
+    shellServer({ ws: { enabled: true, allowed: true, provider: "fly", running: true, made: true } });
+    render(<App />);
+    await pass(2000);
+    // the control view, with the Manager's panel, comes in as its code is fetched
+    await vi.waitFor(() => expect(screen.getByRole("region", { name: "The Manager" })).toBeTruthy(), { timeout: 15000 });
+    const manager = screen.getByRole("region", { name: "The Manager" });
+    fireEvent.click(within(manager).getByRole("button", { name: /Choose a linked session/ }));
+    await pass(1000);
+    fireEvent.click(within(manager).getByRole("button", { name: "Link a session" }));
+    await vi.waitFor(() => expect(screen.getByRole("dialog", { name: "Linked sessions" })).toBeTruthy(), { timeout: 15000 });
+    const dialog = screen.getByRole("dialog", { name: "Linked sessions" });
+    // the same form as Linked sessions' own: its name asked first
+    const form = within(dialog).getByRole("form", { name: "Link a session" });
+    expect(document.activeElement).toBe(within(form).getByLabelText("What to call it"));
+  });
+
   it("are not said to be missing before the linked sessions are read: linking a Mac is offered only once none is known", async () => {
     browser();
     shellServer();
