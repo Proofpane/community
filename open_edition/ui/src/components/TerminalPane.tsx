@@ -335,7 +335,7 @@ export function KeyBar({ onKey, onAttach, appCursor }: {
 }) {
   const key = "btn btn-sm h-11 min-w-0 flex-1 justify-center px-0 text-[14px]";
   return (
-    <div role="toolbar" aria-label="Keys" className="flex flex-none gap-1 border-t border-line bg-panel px-2 py-1.5" style={{ paddingBottom: "max(6px, env(safe-area-inset-bottom, 0px))" }}>
+    <div role="toolbar" aria-label="Keys" className="flex flex-none gap-1 border-t border-line bg-panel px-2 py-1.5" style={{ paddingBottom: "max(6px, var(--safe-bottom))" }}>
       {KEYS.map((k) => (
         <button key={k[0]} className={`${key} font-mono`} aria-label={k[2]} onMouseDown={(e) => e.preventDefault()} onClick={() => onKey(bytesOf(k, appCursor))}>{k[0]}</button>
       ))}

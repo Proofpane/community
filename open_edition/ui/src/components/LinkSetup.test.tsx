@@ -54,8 +54,8 @@ describe("linking a session with one line", () => {
       .toBe(`${CLIENT} setup --url https://pp.example --ticket PP-ABCDEFGH --name 'mac' --kind local --mirror`);
   });
 
-  it("gives setup for a session in the cloud too, which it links and gives no hook", () => {
-    expect(pairLine(OUT, { name: "web", kind: "cloud" }))
+  it("gives setup for a session in the cloud too, which it links and gives no hook, last in the block that puts the client there first", () => {
+    expect((pairLine(OUT, { name: "web", kind: "cloud" }) ?? "").split("\n").pop())
       .toBe(`${CLIENT} setup --url https://pp.example --ticket PP-ABCDEFGH --name 'web' --kind cloud`
         + ` --ref "https://claude.ai/code/session_\${CLAUDE_CODE_REMOTE_SESSION_ID#cse_}"`);
   });
@@ -104,7 +104,7 @@ describe("where the line runs, since it puts the hooks in the folder it runs in"
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.change(await screen.findByLabelText("Your password"), { target: { value: "right one" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-    await screen.findByRole("button", { name: /Copy the line/ });
+    await screen.findByRole("button", { name: /Copy the (line|block)/ });
     return screen.getByRole("region", { name: "Linking Studio" });
   }
   const said = () => screen.getAllByRole("status").map((el) => el.textContent).join("\n");
@@ -126,7 +126,7 @@ describe("where the line runs, since it puts the hooks in the folder it runs in"
 
   it("says nothing of a folder or hooks for a session on claude.ai, which reads no local settings file", async () => {
     const card = await cardFor(/^claude\.ai/);
-    expect(card.textContent).toContain("run this line in the claude.ai session:");
+    expect(card.textContent).toContain("paste this block into the claude.ai session:");
     expect(card.textContent).not.toMatch(/folder the session runs in|settings file|--mirror/);
   });
 

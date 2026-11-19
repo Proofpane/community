@@ -132,6 +132,33 @@ started where that socket is not exported keeps the link heard and wakes nothing
 minutes, two of its 15-minute intervals, without a heartbeat. [the manual, The session channel: The client; Presence,
 the cursor and the checkpoint]
 
+## Link a session on claude.ai
+
+A Claude Code session on claude.ai runs in a container that holds no link client, so you copy nothing by hand: one
+setting, once per environment, then one paste. The session's `python3` needs `cryptography`, as the client does on any
+machine; the block checks that first. [the manual, The session channel: Linking a session on claude.ai]
+
+1. **Let the ADE's host through, once per environment.** In claude.ai, in the settings of the environment the session
+   runs in, under Network access, choose Limited and add the ADE's host (the part of its address after `https://`) to
+   Allowed domains, keeping Allow package managers ticked; a running session follows the change within about a minute.
+   The page says the same, with the host filled in, above the block of step 2. [the manual, The session channel:
+   Linking a session on claude.ai]
+2. **Paste the one block.** In Linked sessions, tap Link a session, name the session, say that it is on claude.ai, and
+   confirm as in step 3 above: the page shows one block, with Copy. Paste it into the claude.ai session whole; the
+   block's first line asks the session to run it in the background (it waits out the pairing's hold) and to tell you
+   each line it prints that begins with `ADE:`, word for word. It fetches the link client from the ADE, checks it
+   against the sha256 the page carries, puts it at `~/.proofpane-ade/ade_link.py`, and then runs `setup`, which links
+   the session and writes no hook (a cloud session reads no local settings file). Compare the fingerprint it prints
+   with the pairing's card, as in step 5 above. [the manual, The session channel: Linking a session on claude.ai;
+   Pairing waits]
+3. **What it says, when it stops.** Where the session's `python3` cannot import `cryptography`, the block says to
+   install it with pip (which Allow package managers lets through) and fetches nothing. Where the environment's network
+   refuses the ADE's host, the block says the setting of step 1, names the host, and runs nothing else; change it, wait
+   a minute, and paste the block again while its ticket lasts (or make a new one). Where the client the ADE serves is
+   not the one the page carries (an app of another release than the server's, say), the block says so and runs nothing:
+   take the block again from the page the ADE itself serves. [the manual, The session channel: Linking a session on
+   claude.ai]
+
 ## Answer the session's prompts from the ADE
 
 With the block in place, a permission prompt in the session is posted to you as well, as a link event of kind `prompt`:

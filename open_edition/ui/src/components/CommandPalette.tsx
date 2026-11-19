@@ -88,7 +88,7 @@ export function CommandPalette(props: {
     <div ref={layer} tabIndex={-1} className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-[14vh] outline-none" onMouseDown={props.onClose}>
       <Command
         label="Command palette"
-        className="w-full max-w-[600px] overflow-hidden rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60"
+        className="safe-margin w-full max-w-[600px] overflow-hidden rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60"
         onMouseDown={(e) => e.stopPropagation()}
         loop
       >

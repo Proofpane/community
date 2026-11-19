@@ -13,6 +13,9 @@ COPY open_edition/ui/ ./
 # the page's build writes Proofpane Community's own LICENSE, LICENSE-APACHE-2.0 and NOTICE beside it (ui/licenses.ts),
 # from the folder above
 COPY open_edition/LICENSE open_edition/LICENSE-APACHE-2.0 open_edition/NOTICE /src/
+# and from there it reads the link client the image serves, whose sha256 the block it gives a session on claude.ai
+# carries (ui/vite.config.ts): a build without it fails
+COPY open_edition/ade_link.py /src/
 RUN npm run build
 
 FROM python:3.12-slim

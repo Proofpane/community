@@ -137,7 +137,7 @@ export function Agents({ onClose, keep, onCalendar }: { onClose: () => void; kee
   return (
     <div className="fixed inset-0 z-40 bg-black/40" onMouseDown={onClose}>
       <aside ref={panel} tabIndex={-1} aria-label="Agents"
-        className="absolute inset-1 flex flex-col overflow-hidden rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60 outline-none sm:inset-4"
+        className="safe-margin absolute inset-1 flex flex-col overflow-hidden rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60 outline-none sm:inset-4"
         onMouseDown={(e) => e.stopPropagation()}>
         {/* at least as tall as it was; where its buttons do not fit beside the counts (a phone), they take a row of
             their own rather than squeezing the counts into a column of single words (tests/test_phone_fit_layout.py) */}

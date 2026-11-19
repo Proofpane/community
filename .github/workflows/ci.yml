@@ -51,7 +51,7 @@ jobs:
           test -s "$RUNNER_TEMP/shard-files.txt"
           # A test that runs past 90 seconds has every thread's stack written to the log, and goes on: a run
           # that stalls then names where.
-          pytest $(cat "$RUNNER_TEMP/shard-files.txt") -q --tb=short -o faulthandler_timeout=90
+          pytest $(cat "$RUNNER_TEMP/shard-files.txt") -q -rs --tb=short -o faulthandler_timeout=90
 
       - name: The open packages' suites (oss/)
         if: ${{ matrix.shard == 0 }}

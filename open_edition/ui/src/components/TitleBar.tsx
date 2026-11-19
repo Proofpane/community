@@ -82,7 +82,7 @@ export function TitleBar(props: {
   // On a touch screen each of the bar's controls is a 44-pixel target (touch-target), and the bar grows to hold them
   // below whatever the phone's own status bar covers; its name and the edition give way to them on a narrow one.
   return (
-    <header className="box-content flex h-11 flex-none items-center gap-2 border-b border-line bg-panel px-2 sm:gap-3 sm:px-3" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+    <header className="box-content flex h-11 flex-none items-center gap-2 border-b border-line bg-panel px-2 sm:gap-3 sm:px-3" style={{ paddingTop: "var(--safe-top)" }}>
       {props.onMenu && (
         <button className="icon-btn touch-target -ml-1 flex-none" onClick={props.onMenu} title="Sessions" aria-label="Sessions"
           aria-haspopup="dialog" aria-expanded={!!props.menuOpen}>

@@ -5,6 +5,7 @@ import { APP, Api, mayOfferSignOut, channelAlerts, chatStream, connectIdOf, DESK
 import { activeId, place, savePlace } from "./places";
 import { menuBarSummary, useMenuBar } from "./menuBar";
 import { shortRef, useOffline, useStore, toSession, workspaceRuns } from "./store";
+import { Toasts } from "./components/Toasts";
 import { workspaceWords } from "./workspaceWords";
 import { useShellPoll } from "./shellPoll";
 import { pageNotify } from "./pageNotices";
@@ -868,13 +869,7 @@ function Shell() {
       )}
       </Suspense>
       </ErrorBoundary>
-      {st.error && (
-        <div role="alert" className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-fail/50 bg-raised px-4 py-2.5 text-[12.5px] text-fg shadow-xl">{st.error}</div>
-      )}
-      {st.notice && !st.error && (
-        <div role="status" className={`fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg border bg-raised px-4 py-2.5 text-[12.5px] text-fg shadow-xl ${
-          st.notice.tone === "done" ? "border-done/50" : st.notice.tone === "wait" ? "border-wait/50" : "border-fail/50"}`}>{st.notice.text}</div>
-      )}
+      <Toasts />
     </div>
   );
 
@@ -1205,7 +1200,7 @@ export function Stopped({ rec }: { rec: SessionRecord }) {
       ) : (
         <Note text="Not run since the workspace last started, so there is no output to show." />
       )}
-      <div className="flex flex-none items-center gap-3 border-t border-line bg-panel px-4 py-2">
+      <div className="flex flex-none items-center gap-3 border-t border-line bg-panel px-4 py-2" style={{ paddingBottom: "max(0.5rem, var(--safe-bottom))" }}>
         <span className="text-[12.5px] text-fg-dim">
           {endedHow(rec.exit_code, "The program")}
           {ended && <>{" "}<span className="ml-1 text-faint">Its last output, above.</span></>}

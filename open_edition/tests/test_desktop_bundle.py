@@ -30,7 +30,8 @@ def test_the_app_is_laid_out_as_the_hosted_image_lays_it_out(tmp_path, monkeypat
     # the UI is built every time, for a browser and for the app's own window
     assert ran == [(["npm", "run", "build"], os.path.join(ROOT, "ui")), (["npm", "run", "build:desktop"], os.path.join(ROOT, "ui"))]
     root = os.path.join(app, "open_edition")
-    for part in ("proofpane_open/desktop.py", "proofpane_open/main.py", "proofpane_workspace/gate.py",
+    # ade_link.py: the link client, which the app's server serves as the hosted image's does (link_client.py)
+    for part in ("ade_link.py", "proofpane_open/desktop.py", "proofpane_open/main.py", "proofpane_workspace/gate.py",
                  "proofpane_workspace/model_key.py", "web", "core_plugin/.claude-plugin/plugin.json",
                  "core_plugin/hooks/hooks.json", "core_plugin/hooks/proofpane_hook.py",
                  "core_plugin/daemon/.claude-plugin/plugin.json", "core_plugin/daemon/.mcp.json"):

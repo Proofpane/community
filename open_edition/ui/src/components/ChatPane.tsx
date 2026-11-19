@@ -7,6 +7,9 @@ import { OutLink } from "./OutLink";
 // a fenced block coloured as the file viewer colours it; a link to another site opened beside the page, and any
 // other shown as text (OutLink: one into this page could open its device or app-consent pane with a code filled in)
 const CHAT_MARKDOWN = { code: MarkdownCode, a: OutLink };
+// the box at the chat's foot keeps clear of a phone's home indicator, its own background running under it (index.css's
+// safe area; tests/test_phone_fit_layout.py)
+const FOOT = { paddingBottom: "max(0.75rem, var(--safe-bottom))" };
 import { ArrowUp, Check, CircleAlert, Loader2, Mic, Paperclip, ShieldAlert, Square, Wrench, X } from "lucide-react";
 import { LANGS, NOTE, useVoice } from "../voice";
 import { ALLOW_TOOL_CALL, Api, type ChatEvent, type SessionRecord } from "../api";
@@ -234,9 +237,9 @@ export function ChatPane({ record, run }: { record: SessionRecord; run?: { live:
         </div>
       </div>
       {run && !run.live ? (
-        <div className="flex-none border-t border-line bg-panel px-4 py-3 text-center text-[12px] text-muted">This run has ended: run its agent again for another.</div>
+        <div className="flex-none border-t border-line bg-panel px-4 py-3 text-center text-[12px] text-muted" style={FOOT}>This run has ended: run its agent again for another.</div>
       ) : (
-      <div className="flex-none border-t border-line bg-panel px-4 py-3">
+      <div className="flex-none border-t border-line bg-panel px-4 py-3" style={FOOT}>
         {!run && <ChatSettingsBar record={record} held={held ?? logged} onConnectors={() => setMcpOpen(true)} />}
         {mcpOpen && <McpDialog session={record.id} onClose={() => setMcpOpen(false)} onChange={(v) => setHeld(heldCount(v))} />}
         {slash.modal}

@@ -6,8 +6,11 @@
 // classes that set a height (.btn, .btn-sm, .icon-btn, .input, .kbd, .pill, .palette-item). And on every page each
 // field that takes text, keyed "fields.<page>.<width>", with the font size it computes to; whether the screen's
 // pointer is coarse, as a phone's, keyed "pointer.<width>"; the New session form's fields as it opens, keyed
-// "fields.newsessionfrom.<width>"; and on a screen without touch at a desktop's width the fields of six pages,
-// keyed "fields.fine.<page>", with "pointer.fine". Usage, from ui/:
+// "fields.newsessionfrom.<width>"; on a screen without touch at a desktop's width the fields of six pages, keyed
+// "fields.fine.<page>", with "pointer.fine"; and on a phone upright (390 by 844, a 59-pixel status bar and a 34-pixel
+// home indicator) and on its side (844 by 390, 59 pixels at either side and a 21-pixel home indicator), on each page
+// with a full-screen layer or something at the screen's edges, its close controls, its controls and toasts, the
+// palette's box and the sheet's bands, keyed "safe.<page>" and "side.<page>". Usage, from ui/:
 //   node scripts/measure-fit.mjs <the playwright package's folder> <a Chromium executable> <OUT>
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -328,5 +331,110 @@ for (const name of ["signin", "chat", "newsession", "palette", "editor", "linkfo
   result[`fields.fine.${name}`] = await fields(fine);
 }
 result["pointer.fine"] = await fine.evaluate(() => matchMedia("(pointer: coarse)").matches);
+// a phone upright, 390 by 844, with a status bar of 59 pixels and a home indicator of 34, as an iPhone's ("safe"), and
+// the same phone on its side, 844 by 390, with 59 pixels on either side and a home indicator of 21 ("side"): the
+// DevTools protocol's safe-area override, so that env(safe-area-inset-*) reads them (no context here is a mobile one,
+// so the page's viewport-fit=cover is not what sets them: the override is). On each page that draws a full-screen
+// layer or something at the screen's edges: where its close controls stand (a button named Close..., or one that
+// closes a dialog); every control and every toast it shows, as much of each as the boxes that scroll or clip it and
+// the screen leave visible; the command palette's box; and on the sheet, whether the bands under the status bar and
+// over the home indicator show the sheet's own background; with the four insets read back, so that the override is
+// seen to hold
+const SAFE = { channel: 'button[aria-label="Close Linked sessions"]', linkform: SHOWN.linkform, agents: SHOWN.agents,
+  calendar: 'aside[aria-label="Calendar"]', board: 'aside[aria-label="Progress board"]',
+  approvals: 'aside[aria-label="Approvals"]', modal: SHOWN.modal, sheet: 'button[aria-label="Close the list"]',
+  palette: SHOWN.palette, chat: SHOWN.chat, titlebar: 'button[aria-label="Sessions"]',
+  keybar: '[role="toolbar"][aria-label="Keys"]', toast: '[role="alert"]', notice: '[role="status"]',
+  crash: '[role="alert"]', stopped: "text=Start it again", signin: SHOWN.signin,
+  // the rule's own probes, which it must find wrong (layoutHarness.tsx)
+  scrollfoot: "text=Row 1", scrollside: "text=Row 1" };
+const PHONES = {
+  safe: { width: 390, height: 844, insets: { top: 59, topMax: 59, bottom: 34, bottomMax: 34 } },
+  side: { width: 844, height: 390,
+    insets: { left: 59, leftMax: 59, right: 59, rightMax: 59, bottom: 21, bottomMax: 21 } },
+};
+for (const [held, phone] of Object.entries(PHONES)) {
+  const notched = await (await browser.newContext({ hasTouch: true })).newPage();
+  await serve(notched);
+  await notched.setViewportSize({ width: phone.width, height: phone.height });
+  await (await notched.context().newCDPSession(notched)).send("Emulation.setSafeAreaInsetsOverride",
+    { insets: phone.insets });
+  for (const [name, selector] of Object.entries(SAFE)) {
+    await notched.goto(`http://localhost/layout.html?which=${name}`);
+    await notched.waitForSelector(selector, { timeout: 15000 });
+    await notched.waitForTimeout(300);
+    result[`${held}.${name}`] = await notched.evaluate((name) => {
+      const probe = document.createElement("div");
+      probe.style.cssText = "position:fixed;top:0;left:0;padding:env(safe-area-inset-top,0px) "
+        + "env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)";
+      document.body.appendChild(probe);
+      const cs = getComputedStyle(probe);
+      const inset = { top: parseFloat(cs.paddingTop), right: parseFloat(cs.paddingRight),
+        bottom: parseFloat(cs.paddingBottom), left: parseFloat(cs.paddingLeft) };
+      probe.remove();
+      const round = (n) => Math.round(n * 10) / 10;
+      const named = (b) => (b.getAttribute("aria-label") || b.getAttribute("title") || b.textContent || "").trim();
+      // as much of an element as shows: its box within each box above it that clips it, then within the screen; and,
+      // where the nearest box above it that scrolls (its content longer, or wider, than itself) carries it, where it
+      // stands with that box scrolled to its start (its top, or its left) and to its end (its foot, or its right): a
+      // control passes under a bar as its box scrolls, as a list's rows do, but must clear the top at the scroll's
+      // start and the foot at its end, and a box that scrolls one way moves nothing the other way
+      // A box that scrolls does not hide what it carries on its scrolling axis, which scrolling brings into view, nor
+      // does a box above it on that axis, where the content passes as it scrolls: the row that rests in the home
+      // indicator at the scroll's end may lie out of view now
+      const shown = (el) => {
+        const own = el.getBoundingClientRect();
+        let { top, bottom, left, right } = own;
+        let down = null, across = null;
+        for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+          const s = getComputedStyle(a);
+          const r = a.getBoundingClientRect();
+          const scrollsDown = /auto|scroll/.test(s.overflowY) && a.scrollHeight > a.clientHeight + 1;
+          const scrollsAcross = /auto|scroll/.test(s.overflowX) && a.scrollWidth > a.clientWidth + 1;
+          if (!down && scrollsDown) down = a;
+          else if (!down && s.overflowY !== "visible") {
+            top = Math.max(top, r.top); bottom = Math.min(bottom, r.bottom);
+          }
+          if (!across && scrollsAcross) across = a;
+          else if (!across && s.overflowX !== "visible") {
+            left = Math.max(left, r.left); right = Math.min(right, r.right);
+          }
+        }
+        if (!down) { top = Math.max(top, 0); bottom = Math.min(bottom, innerHeight); }
+        if (!across) { left = Math.max(left, 0); right = Math.min(right, innerWidth); }
+        if (bottom - top < 2 || right - left < 2) return null;
+        return { top: round(top), bottom: round(bottom), left: round(left), right: round(right),
+          start: down ? round(own.top + down.scrollTop) : null,
+          end: down ? round(own.bottom - (down.scrollHeight - down.clientHeight - down.scrollTop)) : null,
+          startX: across ? round(own.left + across.scrollLeft) : null,
+          endX: across ? round(own.right - (across.scrollWidth - across.clientWidth - across.scrollLeft)) : null };
+      };
+      const controls = [...document.querySelectorAll('button, a[href], input:not([type="hidden"]), textarea, select, '
+        + '[role="button"], [role="alert"], [role="status"]')]
+        .filter((el) => { const s = getComputedStyle(el); return s.display !== "none" && s.visibility !== "hidden"; })
+        .map((el) => ({ what: (named(el) || el.tagName).slice(0, 40), at: shown(el) })).filter((c) => c.at);
+      const closes = [...document.querySelectorAll("button")]
+        .filter((b) => b.hasAttribute("data-modal-close") || /^Close\b/.test(named(b)))
+        .map((b) => ({ b, r: b.getBoundingClientRect() })).filter(({ r }) => r.height > 0)
+        .map(({ b, r }) => ({ what: named(b).slice(0, 40), top: round(r.top), bottom: round(r.bottom) }));
+      const box = document.querySelector("[cmdk-root]")?.getBoundingClientRect();
+      // on the sheet, the first background found from a point in a band up to the sheet's own box: the sheet's own,
+      // or none of it (the dimmed page shows through)
+      const sheet = name === "sheet" ? document.querySelector(".safe-pad") : null;
+      const band = (y) => {
+        const x = sheet.getBoundingClientRect().left + 20;
+        for (let el = document.elementFromPoint(x, y); el; el = el.parentElement) {
+          const bg = getComputedStyle(el).backgroundColor;
+          if (bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") return sheet.contains(el);
+          if (el === sheet) return false;
+        }
+        return false;
+      };
+      return { inset, screen: { width: innerWidth, height: innerHeight }, closes, controls,
+        box: box ? { top: box.top, bottom: box.bottom } : null,
+        bands: sheet ? { top: band(2), bottom: band(innerHeight - 2) } : null };
+    }, name);
+  }
+}
 await browser.close();
 console.log(JSON.stringify(result));

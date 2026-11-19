@@ -32,7 +32,7 @@ export function DesktopStart({ children }: { children: ReactNode }) {
     return (
       <>
         {failed && !dismissed && (
-          <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-2 border-b border-fail/40 bg-fail/10 px-4 py-1.5 text-[12px] text-fail">
+          <div className="safe-margin fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-2 border-b border-fail/40 bg-fail/10 px-4 py-1.5 text-[12px] text-fail">
             <TriangleAlert size={13} /> This Mac's workspace is not running: {failed}
             <button className="icon-btn !h-5 !w-5" title="Hide" onClick={() => setDismissed(true)}><X size={12} /></button>
           </div>

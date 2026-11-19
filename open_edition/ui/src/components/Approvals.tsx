@@ -162,7 +162,7 @@ export function Approvals(props: { records: SessionRecord[]; requests: HookReque
 
   return (
     <div className="fixed inset-0 z-40" onMouseDown={props.onClose}>
-      <aside ref={panel} tabIndex={-1} aria-label="Approvals" className="absolute right-2 top-12 flex max-h-[80vh] w-[min(440px,calc(100vw-1rem))] outline-none flex-col overflow-hidden rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60" onMouseDown={(e) => e.stopPropagation()}>
+      <aside ref={panel} tabIndex={-1} aria-label="Approvals" className="safe-margin absolute right-2 top-12 flex max-h-[80vh] w-[min(440px,calc(100vw-1rem))] outline-none flex-col overflow-hidden rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60" onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex h-11 flex-none items-center justify-between border-b border-line px-4">
           <span className="flex items-center gap-2 text-[13px] font-semibold">
             {none ? <ShieldCheck size={15} className="text-done" /> : <ShieldAlert size={15} className="text-wait" />}

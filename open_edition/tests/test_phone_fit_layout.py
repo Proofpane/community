@@ -20,7 +20,12 @@ And on a screen that takes taps, every field that takes text on those pages, on 
 code editor with its search panel open (its text, an area edited in place, counted as a field), in the New session
 form as it opens and in Linked sessions' form for linking a session computes to 16 pixels or more: iOS zooms a page in
 when a smaller one takes focus, and keeps the zoom after the page changes, as found on the phone app's first
-TestFlight build (PHONE-TEST); on a screen without touch, a desktop's, the fields keep their own sizes.
+TestFlight build (PHONE-TEST); on a screen without touch, a desktop's, the fields keep their own sizes. And on a
+phone upright, with a 59-pixel status bar and a 34-pixel home indicator, each full-screen layer's close controls stand
+clear of them, so that a layer can be closed (tests/test_safe_area.py); upright and on its side (59 pixels at either
+side and a 21-pixel home indicator), no control and no toast on a full-screen layer or at the screen's edges (the
+chat's box, the title bar, a terminal's keys, the toasts, a failed part's line, a program's Start it again, the
+sign-in page) lies in a bar or at a side; and the phone's sheet shows its own background under both bars.
 
 Skipped where no browser is named: OPEN_EDITION_PLAYWRIGHT, the playwright package's folder, and OPEN_EDITION_CHROMIUM,
 a Chromium executable to drive."""
@@ -196,3 +201,77 @@ def test_on_a_screen_without_touch_the_fields_keep_their_own_sizes(strips, which
     got = strips[f"fields.fine.{which}"]
     assert len(got) >= FIELDS[which], got
     assert [f for f in got if f["size"] >= 16] == [], got     # the touch screen's mend reaches none of them
+
+
+# each full-screen layer the harness draws, on a phone of 390 by 844 with a status bar of 59 pixels and a home indicator
+# of 34 (the safe-area override): Linked sessions on its list and on linking a session, the Agents panel, the Calendar,
+# the Progress board, Approvals, a dialog and the phone's list of sessions in its sheet; Linked sessions' Close was
+# found under the status bar on the phone app's TestFlight build, out of reach (tests/test_safe_area.py)
+LAYERS = ["channel", "linkform", "agents", "calendar", "board", "approvals", "modal", "sheet"]
+# and what stands at the screen's edges outside them: the chat's box, the title bar, a terminal's keys at the foot, the
+# app's two toasts, a failed part's inline line, a program's Start it again, and the sign-in page
+EDGES = ["chat", "titlebar", "keybar", "toast", "notice", "crash", "stopped", "signin"]
+SAFE = LAYERS + ["palette"] + EDGES
+# the phone upright, and on its side: the four insets each draws under
+HELD = {"safe": {"top": 59, "right": 0, "bottom": 34, "left": 0},
+        "side": {"top": 0, "right": 59, "bottom": 21, "left": 59}}
+
+
+def test_the_measure_draws_under_a_phones_bars_upright_and_on_its_side(strips):
+    for held, inset in HELD.items():
+        for which in SAFE:
+            assert strips[f"{held}.{which}"]["inset"] == inset, (held, which)
+
+
+@pytest.mark.parametrize("which", LAYERS)
+def test_each_full_screen_layers_close_controls_stand_clear_of_the_status_bar_and_home_indicator(strips, which):
+    got = strips[f"safe.{which}"]
+    assert got["closes"], got                           # the layer's Close was found
+    top, bottom = got["inset"]["top"], got["screen"]["height"] - got["inset"]["bottom"]
+    under = [c for c in got["closes"] if c["top"] < top - 0.5 or c["bottom"] > bottom + 0.5]
+    assert under == [], got
+
+
+# a control in a box that scrolls passes under a bar as the box scrolls, as a list's rows do, but must clear the top
+# with the box scrolled to its start and the foot with it scrolled to its end; a box that scrolls up and down moves
+# nothing out of a side, nor one that scrolls sideways out of a bar (the sign-in page on a phone's side scrolls, its
+# last control passing under the home indicator, and resting 32 pixels above the foot once scrolled there)
+def _out(got):
+    """The controls and toasts of a page that lie in a bar or at a side: as they show, or, on an axis a box above them
+    scrolls, where they stand with it scrolled to its start (for the top, or the left) and its end (the foot, the
+    right)."""
+    inset, width, height = got["inset"], got["screen"]["width"], got["screen"]["height"]
+
+    def at(c, edge, scrolled):
+        return c["at"][edge] if c["at"][scrolled] is None else c["at"][scrolled]
+    return [c for c in got["controls"] if at(c, "top", "start") < inset["top"] - 0.5
+            or at(c, "bottom", "end") > height - inset["bottom"] + 0.5 or at(c, "left", "startX") < inset["left"] - 0.5
+            or at(c, "right", "endX") > width - inset["right"] + 0.5]
+
+
+@pytest.mark.parametrize("held", HELD)
+@pytest.mark.parametrize("which", SAFE)
+def test_no_control_or_toast_lies_in_a_bar_or_at_a_side_upright_or_on_its_side(strips, which, held):
+    got = strips[f"{held}.{which}"]
+    assert got["controls"], got                         # the page's controls were found
+    assert _out(got) == [], (held, which, got["inset"], _out(got))
+
+
+# the rule's own probes (layoutHarness.tsx), boxes over the whole screen that scroll with forty rows of buttons: one
+# with no padding at its foot, whose last row rests in the home indicator with the box scrolled to its end; and one
+# whose rows reach the screen's sides, in the sides a phone on its side leaves, however the box scrolls
+def test_the_rule_finds_a_box_that_scrolls_with_no_padding_at_its_foot(strips):
+    assert _out(strips["safe.scrollfoot"]) and _out(strips["side.scrollfoot"]), strips["safe.scrollfoot"]
+
+
+def test_the_rule_finds_a_control_at_a_side_in_a_box_that_scrolls(strips):
+    assert _out(strips["side.scrollside"]), strips["side.scrollside"]
+
+
+def test_the_sheet_shows_its_own_background_under_the_status_bar_and_over_the_home_indicator(strips):
+    assert strips["safe.sheet"]["bands"] == {"top": True, "bottom": True}
+
+
+def test_the_command_palette_stands_clear_of_the_status_bar(strips):
+    got = strips["safe.palette"]
+    assert got["box"] and got["box"]["top"] >= got["inset"]["top"] - 0.5, got

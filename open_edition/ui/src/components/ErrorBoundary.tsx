@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; what?: strin
     );
     if (this.props.inline) {
       return (
-        <div role="alert" className="fixed bottom-4 left-1/2 z-50 flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-lg border border-fail/50 bg-raised px-4 py-2.5 text-[12.5px] text-fg shadow-xl">
+        <div role="alert" className="fixed bottom-[calc(1rem_+_var(--safe-bottom))] left-1/2 z-50 flex max-w-[92vw] -translate-x-1/2 items-center gap-3 rounded-lg border border-fail/50 bg-raised px-4 py-2.5 text-[12.5px] text-fg shadow-xl">
           <span className="min-w-0">{said}</span>
           {actions}
         </div>

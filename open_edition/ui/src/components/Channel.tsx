@@ -13,6 +13,7 @@ import { useOffline, useStore } from "../store";
 import { useMedia } from "../useMedia";
 import { codePoint, DRAWN_OVER, HIDDEN, SECRET_SHAPES, visible } from "../textRules";
 import { ADE_URL, ASK_ADDRESS, CLIENT, FINGERPRINT, inForm, LINK_NAME, TICKET } from "../shellForms";
+import { cloudBlock, hostOf, hostRefused, onThisMachine } from "../cloudLink";
 import { answerDraft, composerShown, composing, draftText, draftsToGone, dropDraft, instructionDraft, keepDraft, useLinkDrafts, type LinkDraft } from "../linkDrafts";
 import { ConfirmIt, type Change } from "./AccountDialog";
 import { Confirm, holdsText, timeAgo, useMenu } from "./bits";
@@ -153,14 +154,17 @@ const pinnable = (keys?: string[]) => (keys ?? []).filter((k) => inForm(FINGERPR
  *  verifies what the owner signs from the start (while high security is on, the account's hardware keys alone); the
  *  account's newest statement of its encryption keys (--e2e), when the ticket's answer says it; and the session's
  *  name and kind as the owner gave them; on this Mac, --mirror, so its conversation comes to this page (the card says
- *  so, and that leaving it out links without it). A claude.ai session's line names its page from its own shell. Null
- *  when the answer's address or ticket is not in the form the server writes it (shellForms): no line is given then. */
+ *  so, and that leaving it out links without it). A claude.ai session's line names its page from its own shell, and
+ *  goes last in the one block that first puts the client there from the ADE, checked against this page's sha256
+ *  (cloudLink.ts): a claude.ai container holds no client. Null when the answer's address or ticket is not in the form
+ *  the server writes it (shellForms), or, for claude.ai, the build gave no sha256: no line is given then. */
 export function pairLine(out: TicketOut, to: { name: string; kind: Where }): string | null {
   if (!inForm(ADE_URL, out.url) || !inForm(TICKET, out.ticket)) return null;
   const keys = pinnable(out.keys);
   const e2e = e2eFlag(out.e2e);
-  return `${CLIENT} setup --url ${out.url} --ticket ${out.ticket}${keys.length ? ` --keys ${keys.join(",")}` : ""}${e2e ? ` --e2e ${e2e}` : ""}`
+  const setup = `${CLIENT} setup --url ${out.url} --ticket ${out.ticket}${keys.length ? ` --keys ${keys.join(",")}` : ""}${e2e ? ` --e2e ${e2e}` : ""}`
     + ` --name ${shellQuote(to.name)} --kind ${to.kind}${to.kind === "cloud" ? ` --ref ${CLOUD_REF}` : " --mirror"}`;
+  return to.kind === "cloud" ? cloudBlock(out.url, setup) : setup;
 }
 
 /** The line that pins passkeys in a linked session, run in that session's own window: its link's directory named by
@@ -385,10 +389,11 @@ export function Channel({ onClose, reading: first = null, linking = false }: { o
   const groups = useMemo(() => machines(links?.links ?? [], listed ?? []), [links, listed]);
 
   // on a phone the panel is the whole screen, its header held at the top: Close first, where a thumb finds it, and the
-  // panel's two actions on a row of their own; elsewhere it is a panel at the top right, over the page
+  // panel's two actions on a row of their own; elsewhere it is a panel at the top right, over the page, clear of a
+  // phone's sides and home indicator where it is on its side
   const frame = narrow
-    ? "fixed inset-0 h-[100dvh] w-full"
-    : `absolute right-2 top-12 max-h-[85vh] rounded-xl border border-line-strong ${talk || reading ? "h-[85vh] w-[min(760px,calc(100vw-1rem))]" : "w-[min(560px,calc(100vw-1rem))]"}`;
+    ? "fixed inset-0 h-[100dvh] w-full safe-pad"
+    : `safe-margin absolute right-2 top-12 max-h-[calc(85vh_-_var(--safe-top)_-_var(--safe-bottom))] rounded-xl border border-line-strong ${talk || reading ? "h-[calc(85vh_-_var(--safe-top)_-_var(--safe-bottom))] w-[min(760px,calc(100vw_-_1rem_-_var(--safe-left)_-_var(--safe-right)))]" : "w-[min(560px,calc(100vw_-_1rem_-_var(--safe-left)_-_var(--safe-right)))]"}`;
   const linkButton = (
     <button className={narrow ? "btn h-11 flex-1 justify-center" : "btn btn-sm"} onClick={() => ticket()}
       title="A one-time ticket a coding session links itself with"><Link2 size={13} /> Link a session</button>
@@ -480,7 +485,7 @@ export function Channel({ onClose, reading: first = null, linking = false }: { o
             <div className="px-2 py-8 text-center text-[12.5px] text-muted">
               <div>
                 No session is linked yet. Link one: you name it, say whether it is on this Mac or on claude.ai, and get one
-                line to run there. A linked session shows here what it is doing and what it asks you, and takes what you sign.
+                line to run there, or for claude.ai one block to paste. A linked session shows here what it is doing and what it asks you, and takes what you sign.
               </div>
               <button className="btn btn-sm btn-primary mt-3" onClick={() => ticket()}><Link2 size={13} /> Link your first session</button>
             </div>
@@ -588,7 +593,8 @@ function PairStart({ live, onGo, onCancel }: { live: LinkView[]; onGo: (name: st
   );
 }
 
-/** The last step of linking a session: the one line to run where it runs, Copy, how long its ticket works (and a new
+/** The last step of linking a session: the one line to run where it runs (for claude.ai, the one block to paste and,
+ *  above it, the setting its environment needs: cloudLink.ts), Copy, how long its ticket works (and a new
  *  one once it has expired), and what it pins as it links. A new link's card goes once the link is there. `hold`: how
  *  long a pairing waits now, as the latest read of the links says it (high security, turned on since the ticket was
  *  made, lengthens it); the ticket's own word until there is one. */
@@ -600,7 +606,10 @@ function PairLine({ p, hold, onPut, onAgain }: { p: Extract<Pairing, { step: "li
   const what = p.out.high_security ? "hardware key" : "passkey";
   // setup puts the hooks in the settings of the folder it runs in, so a local line says where to run it;
   // inside a Claude Code session it outlives the Bash tool's limit while it waits out the hold, so in the background
-  const where = p.kind === "cloud" ? "in the claude.ai session" : "on this Mac, in a terminal in the folder the session runs in (in the Claude Code session itself, in the background: it waits out the hold)";
+  const where = "on this Mac, in a terminal in the folder the session runs in (in the Claude Code session itself, in the background: it waits out the hold)";
+  // a claude.ai session is given the one block that puts the client there first (cloudLink.ts), pasted whole
+  const cloud = p.kind === "cloud";
+  const run = cloud ? "paste this block into the claude.ai session" : `run this line ${where}`;
   // the ticket made: the keyboard goes to Copy, the step's own button
   const copyButton = useRef<HTMLButtonElement>(null);
   useEffect(() => { copyButton.current?.focus(); }, []);
@@ -620,13 +629,14 @@ function PairLine({ p, hold, onPut, onAgain }: { p: Extract<Pairing, { step: "li
     <section aria-label={`Linking ${p.name}`} className="rounded-lg border border-accent/40 bg-accent/[0.05] p-3 text-[12.5px]">
       <div className="flex items-start justify-between gap-2">
         <div className="font-medium">
-          {p.link ? <>To link <Name name={p.name} /> again, run this line {where}:</> : <>To link &ldquo;<Name name={p.name} />&rdquo;, run this line {where}:</>}
+          {p.link ? <>To link <Name name={p.name} /> again, {run}:</> : <>To link &ldquo;<Name name={p.name} />&rdquo;, {run}:</>}
         </div>
         <button className="icon-btn !h-6 !w-6 flex-none" title="Put away" aria-label="Put away" onClick={onPut}><X size={13} /></button>
       </div>
-      <pre aria-label="The line to run" className="mt-1.5 overflow-x-auto whitespace-pre-wrap break-all rounded bg-bg px-2.5 py-2 font-mono text-[11.5px] text-fg">{line}</pre>
+      {cloud && !onThisMachine(p.out.url) && <div className="mt-1 text-[11.5px] text-muted">{hostRefused(hostOf(p.out.url))}</div>}
+      <pre aria-label={cloud ? "The block to paste" : "The line to run"} className="mt-1.5 overflow-x-auto whitespace-pre-wrap break-all rounded bg-bg px-2.5 py-2 font-mono text-[11.5px] text-fg">{line}</pre>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
-        <button ref={copyButton} className="btn btn-sm btn-primary" onClick={copy}>{copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : "Copy the line"}</button>
+        <button ref={copyButton} className="btn btn-sm btn-primary" onClick={copy}>{copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : cloud ? "Copy the block" : "Copy the line"}</button>
         {left > 0
           ? <span className="text-[12px] text-fg-dim" title={full(p.out.expires_at)}>Waiting for the session to pair: the ticket works once, until {clock(p.out.expires_at)}: {span(left)} left.</span>
           : <>
@@ -642,12 +652,12 @@ function PairLine({ p, hold, onPut, onAgain }: { p: Extract<Pairing, { step: "li
           : ` This card becomes the pairing's as it pairs, and goes once ${p.name} is linked.`}
       </div>
       {p.kind === "cloud" && (
-        <div className="mt-1 text-[11.5px] text-muted">The line runs the link client at ~/.proofpane-ade/ade_link.py: in a claude.ai session, put it there first. A session on claude.ai runs no hook of the ADE's: the link client keeps its link heard with a heartbeat at the link's interval while the session runs, which ends when the session ends; after its container restarts, the session's next post through the client starts it again.</div>
+        <div className="mt-1 text-[11.5px] text-muted">The block fetches the link client from the ADE, checks it against the one this page carries, puts it at ~/.proofpane-ade/ade_link.py and links the session. A session on claude.ai runs no hook of the ADE's: the link client keeps its link heard with a heartbeat at the link's interval while the session runs, which ends when the session ends; after its container restarts, the session's next post through the client starts it again.</div>
       )}
       {p.kind === "local" && (
         <div className="mt-1 text-[11.5px] text-muted">It also puts the session&apos;s hooks in the settings file Claude Code reads for that folder (at the repository&apos;s root, or the main checkout&apos;s for a worktree), and says which file and what it changed. --mirror adds the mirror too: each turn&apos;s words and each tool call&apos;s line come to this page, sealed once Encryption is on; take it out of the line to link without them.</div>
       )}
-      <Said text={`The ticket is made. Copy the line and run it ${where}; the ticket works once, until ${clock(p.out.expires_at)}.`} />
+      <Said text={`The ticket is made. ${cloud ? "Copy the block and paste it into the claude.ai session" : `Copy the line and run it ${where}`}; the ticket works once, until ${clock(p.out.expires_at)}.`} />
     </section>
   );
 }

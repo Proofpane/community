@@ -228,7 +228,7 @@ export function Calendar({ onClose, onAgents, zone = deviceZone(), today }: {
   return (
     <div className="fixed inset-0 z-40 bg-black/40" onMouseDown={onClose}>
       <aside ref={panel} tabIndex={-1} aria-label="Calendar"
-        className="absolute inset-1 flex flex-col overflow-hidden rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60 outline-none sm:inset-4"
+        className="safe-margin absolute inset-1 flex flex-col overflow-hidden rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60 outline-none sm:inset-4"
         onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex h-12 flex-none items-center gap-2 border-b border-line px-4">
           <CalendarDays size={16} className="text-accent" />

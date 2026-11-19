@@ -1,10 +1,13 @@
 """The session channel's HTTP surface, under /api/ade/link (ade/link.py says what the channel is). The owner's routes
 take the page's sign-in and nothing else; a session's routes take its signature and nothing else, so neither can use
-the other's. Every answer is JSON and carries Cache-Control: no-store, refusals included (main.py adds it to
-everything under this prefix). Another account's link is not found (404).
+the other's. Every answer is JSON but the link client's own, and carries Cache-Control: no-store, refusals included
+(main.py adds it to everything under this prefix). Another account's link is not found (404).
 
     POST   /api/ade/link/tickets                    owner: {link_id?, confirmation?} -> {ticket, expires_at, ticket_id,
                                                     url, keys, high_security, e2e, pair_hold}, once
+    GET    /api/ade/link/client                     anyone, no sign-in: the link client, the exact bytes of this
+                                                    release's ade_link.py (link_client.py), as text/x-python: what the
+                                                    page's block for a session on claude.ai fetches and checks
     POST   /api/ade/link/pair                       signed by the new key: {ticket, name, kind, public_key, session_ref,
                                                     waits: true} -> where the pairing stands, as GET /ask answers it:
                                                     approved, the link made (or moved to the new key) when its hold
@@ -132,12 +135,12 @@ import time
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, StrictBool
 
 from .. import config, passkeys
 from ..deps import current_user
-from . import e2e_keys, holds, link, link_asks, link_commands, link_usage, moves, task_grants
+from . import e2e_keys, holds, link, link_asks, link_client, link_commands, link_usage, moves, task_grants
 
 router = APIRouter(prefix="/api/ade/link")
 NO_STORE = {"Cache-Control": "no-store"}
@@ -216,6 +219,13 @@ def new_ticket(body: TicketIn, user=Depends(current_user)):
     return answer({"ticket": ticket, "expires_at": expires_at, "ticket_id": ticket_id, "url": config.public_url(),
                    "keys": keys, "high_security": passkeys.high_security(user["id"]), "e2e": e2e_keys.told(user["id"]),
                    "pair_hold": link_asks.pair_hold(user["id"])})
+
+
+@router.get("/client")
+def client():
+    # the link client itself, the bytes of this release's ade_link.py (link_client.py), to anyone: a session on claude.ai
+    # fetches it before it can sign anything, and the block that fetches it checks it against the page's sha256
+    return Response(link_client.client_bytes(), media_type="text/x-python; charset=utf-8", headers=NO_STORE)
 
 
 @router.post("/pair")

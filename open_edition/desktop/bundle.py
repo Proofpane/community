@@ -15,7 +15,8 @@ desktop/build/resources/ for the Tauri bundle to copy into the app:
 - Every Mach-O file it carries is checked before anything is signed: none may link a library outside the system's
   own (/usr/lib, /System), or need a macOS newer than the app's 11.0.
 - app/open_edition/ and app/oss/: the server, the workspace agent and the built ADE (web/app, which the server serves
-  to a browser), and the open packages the server signs and checks with, laid out as the hosted image lays them out
+  to a browser), the link client the server serves (ade_link.py), and the open packages the server signs and checks
+  with, laid out as the hosted image lays them out
   (proofpane_open/paths.py finds oss/ beside open_edition/), without tests. Everything is compiled to bytecode here,
   so nothing in the app is written to when it runs.
 - desktop/build/ui/: the ADE built for the app's own window (`npm run build:desktop`), which talks to this Mac's
@@ -282,6 +283,8 @@ def copy_app():
     shutil.rmtree(app, ignore_errors=True)
     for part in APP_PARTS:
         shutil.copytree(os.path.join(OPEN_EDITION, part), os.path.join(app, "open_edition", part), ignore=LEAVE_OUT)
+    # the link client, which the server serves as the hosted image's does (proofpane_open/ade/link_client.py)
+    shutil.copy2(os.path.join(OPEN_EDITION, "ade_link.py"), os.path.join(app, "open_edition", "ade_link.py"))
     for part in OSS_PARTS:
         shutil.copytree(os.path.join(REPO, "oss", part), os.path.join(app, "oss", part), ignore=LEAVE_OUT)
     return app

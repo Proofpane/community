@@ -90,7 +90,7 @@ export function Modal(props: { title: string; onClose: () => void; children: Rea
         aria-modal="true"
         aria-label={props.title}
         tabIndex={-1}
-        className="flex max-h-[76vh] w-full flex-col overflow-hidden rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60 outline-none"
+        className="safe-margin flex max-h-[76vh] w-full flex-col overflow-hidden rounded-xl border border-line-strong bg-panel shadow-2xl shadow-black/60 outline-none"
         style={{ maxWidth: props.width ?? 560 }}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -115,8 +115,8 @@ export function Sheet(props: { label: string; onClose: () => void; children: Rea
   return (
     <div className="fixed inset-0 z-40 bg-black/50" onMouseDown={props.onClose}>
       <div ref={box} role="dialog" aria-modal="true" aria-label={props.label} tabIndex={-1}
-        className="h-full w-[86%] max-w-[340px] border-r border-line shadow-2xl outline-none"
-        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} onMouseDown={(e) => e.stopPropagation()}>
+        className="safe-pad h-full w-[86%] max-w-[340px] border-r border-line bg-panel shadow-2xl outline-none"
+        onMouseDown={(e) => e.stopPropagation()}>
         {props.children}
       </div>
     </div>

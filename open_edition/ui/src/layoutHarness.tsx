@@ -9,11 +9,17 @@
 // History list, sent in the clear and moved into the workspace (?which=history, or historypanel in the Linked
 // sessions panel's 560 pixels at a desktop's width), the sign-in page (?which=signin), the Files panel's code editor
 // on a file (?which=editor, whose search panel the measure opens), Linked sessions on linking a session
-// (?which=linkform, as the Manager's Link a session opens it), and the keys under a Claude Code session's terminal on a
-// desktop (?which=deskkeys, or deskkeyspane in a pane 220 pixels wide), each drawn as
-// the app draws it but outside the Linked sessions panel (whose keyboard the page cases hold), with fixed data and no
-// server, so that a headless browser can measure their rows, strips, fields and the slash menu's modals at a phone's
-// width. Never part of the app's build.
+// (?which=linkform, as the Manager's Link a session opens it) and on its list (?which=channel), the keys under a Claude
+// Code session's terminal on a desktop (?which=deskkeys, or deskkeyspane in a pane 220 pixels wide), and the other
+// full-screen layers, the Calendar (?which=calendar), the Progress board (?which=board), Approvals (?which=approvals)
+// and the phone's list of sessions in its sheet (?which=sheet), and what stands at the screen's edges: the title bar
+// (?which=titlebar), a terminal's keys at the foot (?which=keybar), the app's toasts, an error and a notice
+// (?which=toast, ?which=notice), a part that failed, as its inline line (?which=crash), and a program that has ended,
+// with its Start it again (?which=stopped); each drawn as the app draws it, with fixed data and no server, so that a
+// headless browser can measure their rows, strips, fields, the slash menu's modals and the phone's safe area at a
+// phone's width. And two probes no page of the app is, which the safe-area rule must find wrong: a full-screen box that
+// scrolls with no padding at its foot (?which=scrollfoot) and one whose rows reach the screen's sides
+// (?which=scrollside), each with forty rows. Never part of the app's build.
 import "./layoutStubs";
 import "./index.css";
 import { createRoot } from "react-dom/client";
@@ -26,12 +32,21 @@ import { ChatPane } from "./components/ChatPane";
 import { ClaudeSignInBanner } from "./components/ClaudeSignInBanner";
 import { DiffView } from "./components/DiffView";
 import { Agents } from "./components/Agents";
-import { Modal } from "./components/Modal";
+import { Approvals } from "./components/Approvals";
+import { Board } from "./components/Board";
+import { Calendar } from "./components/Calendar";
+import { Modal, Sheet } from "./components/Modal";
+import { Sidebar } from "./components/Sidebar";
 import { CommandPalette, type PaletteAction } from "./components/CommandPalette";
 import { NewSession } from "./components/NewSession";
 import { SessionRow } from "./components/History";
 import { SignIn } from "./components/SignIn";
 import { DeskKeys } from "./components/TerminalPane";
+import { TitleBar } from "./components/TitleBar";
+import { KeyBar } from "./components/TerminalPane";
+import { Toasts } from "./components/Toasts";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Stopped } from "./App";
 import type { HistorySession } from "./api";
 
 const T = Math.floor(Date.now() / 1000);
@@ -71,6 +86,24 @@ const record = {
 useStore.setState({ links: sessions as never, chat: { [record.id]: [] }, loadChat: async () => {},
   user: { id: "u1", email: "a-rather-long-address-for-a-phone@proofpane.example" } });
 const which = new URLSearchParams(location.search).get("which");
+// the toasts as the store gives them: an error, or a notice where there is none
+if (which === "toast") useStore.setState({ error: "The workspace could not be reached: try again in a minute." });
+if (which === "notice") useStore.setState({ notice: { text: "Saved: the change goes to the session.", tone: "done" } });
+/** The safe-area rule's probes: a box over the whole screen, outside the app's own column, that scrolls with forty rows
+ *  of buttons, with no padding (at its foot, or at its sides); styles inline, since no class of the app's draws it. */
+function Probe({ pad }: { pad: string }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, overflowY: "auto", padding: pad }}>
+      {Array.from({ length: 40 }, (_, i) => (
+        <button key={i} style={{ display: "block", width: "100%", height: 44 }}>Row {i + 1}</button>
+      ))}
+    </div>
+  );
+}
+/** A part of the page that fails as it draws, for the error boundary's line. */
+function Fails(): never {
+  throw new Error("A part of the page failed to draw.");
+}
 const busy = { ...record, chat: { ...(record.chat as object), state: "running" } } as SessionRecord;
 // two files changed, one renamed, with paths longer than a phone's line
 const diff = [
@@ -149,6 +182,27 @@ const drawn = which === "banner" ? <ClaudeSignInBanner onSignIn={() => {}} />
     </div>
   )
   : which === "linkform" ? <Channel onClose={() => {}} linking />
+  : which === "channel" ? <Channel onClose={() => {}} />
+  : which === "calendar" ? <Calendar onClose={() => {}} />
+  : which === "board" ? <Board onClose={() => {}} />
+  : which === "approvals" ? <Approvals records={[]} requests={[]} onClose={() => {}} onOpen={() => {}} />
+  // the phone's list of sessions, in the sheet App draws it in, with its own Close
+  : which === "sheet" ? (
+    <Sheet label="Sessions" onClose={() => {}}>
+      <Sidebar repos={["app"]} sessions={[]} selected={null} onSelect={() => {}} onNew={() => {}} onSettings={() => {}}
+        onClose={() => {}} workspace />
+    </Sheet>
+  )
+  : which === "titlebar" ? (
+    <><TitleBar workspace={false} pendingApprovals={0} onSearch={() => {}} onApprovals={() => {}} onMenu={() => {}} />
+      <div className="flex-1" /></>
+  )
+  : which === "keybar" ? <><div className="flex-1" /><KeyBar onKey={() => {}} onAttach={() => {}} /></>
+  : which === "toast" || which === "notice" ? <Toasts />
+  : which === "crash" ? <ErrorBoundary inline onClose={() => {}}><Fails /></ErrorBoundary>
+  : which === "stopped" ? <Stopped rec={{ ...record, program: "bash", chat: null } as unknown as SessionRecord} />
+  : which === "scrollfoot" ? <Probe pad="var(--safe-top) var(--safe-right) 0 var(--safe-left)" />
+  : which === "scrollside" ? <Probe pad="var(--safe-top) 0 var(--safe-bottom) 0" />
   : which === "card" ? <LinkCard l={link} questions={[]} onTicket={() => {}} />
   : which === "chatbusy" ? <ChatPane record={busy} />
   : which === "pane" ? (

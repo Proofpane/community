@@ -364,11 +364,11 @@ describe("linking a session", () => {
     fireEvent.click(screen.getByRole("radio", { name: new RegExp(where) }));
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
   };
-  const confirmed = async (name: string) => {
+  const confirmed = async (name: string, given = "The line to run") => {
     const word = await screen.findByRole("group", { name: `Linking “${name}”` });
     fireEvent.change(within(word).getByLabelText("Your password"), { target: { value: "right one" } });
     fireEvent.click(within(word).getByRole("button", { name: "Confirm" }));
-    return screen.findByLabelText("The line to run");
+    return screen.findByLabelText(given);
   };
 
   it("asks the session's name and where it runs before any ticket, holding the name to the server's rules", async () => {
@@ -412,9 +412,9 @@ describe("linking a session", () => {
     render(<Channel onClose={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: /Link a session/ }));
     named("Planner", "claude.ai");
-    const line = await confirmed("Planner");
-    expect(line.textContent).toMatch(/ --name 'Planner' --kind cloud --ref "https:\/\/claude\.ai\/code\/session_\$\{CLAUDE_CODE_REMOTE_SESSION_ID#cse_\}"$/);
-    expect(screen.getByRole("region", { name: "Linking Planner" }).textContent).toContain("run this line in the claude.ai session");
+    const block = await confirmed("Planner", "The block to paste");
+    expect(block.textContent).toMatch(/ --name 'Planner' --kind cloud --ref "https:\/\/claude\.ai\/code\/session_\$\{CLAUDE_CODE_REMOTE_SESSION_ID#cse_\}"$/);
+    expect(screen.getByRole("region", { name: "Linking Planner" }).textContent).toContain("paste this block into the claude.ai session");
   });
 
   it("clears the ticket's card once the link is there, and says it is linked", async () => {
