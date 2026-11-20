@@ -2,9 +2,11 @@
 restarted, shows each program's last output and how it ended, read only, until the program is started again."""
 
 import asyncio
+import hashlib
 import json
 import os
 import signal
+import sys
 import time
 
 from proofpane_workspace import terminals
@@ -116,6 +118,48 @@ def test_a_sign_in_screen_is_not_kept(tmp_path):
             await asyncio.sleep(0.05)
     asyncio.run(run())
     assert not os.path.exists(os.path.join(w._dir(record["id"]), "screen"))
+
+
+def test_a_code_hidden_in_a_terminal_is_starred_wherever_it_is_printed_whole_after(tmp_path):
+    # SIGNIN-DROP (queue 4.322): once a terminal is told to keep no copy of a code (Terminal.hide, as a sign-in's is
+    # before it is typed), each later printing of it whole is kept as `*`, one for each byte: one cut by two reads, one
+    # inside a program's escapes, one next to other visible characters; what was printed before is kept as it was
+    code = b"Zq7Xv3Rk9Pw2Lm5Tn8Hb4Jd6"
+    program = ("import sys, time\n"
+               "c = sys.argv[1]\n"
+               "def w(s):\n"
+               "    sys.stdout.write(s)\n"
+               "    sys.stdout.flush()\n"
+               "w('before ' + c + '\\n')\n"
+               "sys.stdin.readline()\n"
+               "w(c[:10])\n"
+               "time.sleep(0.5)\n"
+               "w(c[10:] + '\\n')\n"
+               "w('\\x1b[1m' + c + '\\x1b[0m\\n')\n"
+               "w('x' + c + 'y\\n')\n")
+
+    async def run():
+        env = {"PATH": os.environ["PATH"], "HOME": str(tmp_path), "LANG": "C"}
+        term = terminals.Terminal([sys.executable, "-c", program, code.decode()], str(tmp_path), env)
+        try:
+            deadline = time.monotonic() + 20
+            while b"before " + code not in term.backlog:
+                assert time.monotonic() < deadline, bytes(term.backlog)
+                await asyncio.sleep(0.05)
+            term.hide(len(code), hashlib.sha256(code).digest())
+            await term.write(b"go\r")
+            while term.running:
+                assert time.monotonic() < deadline, bytes(term.backlog)
+                await asyncio.sleep(0.05)
+            return bytes(term.backlog)
+        finally:
+            await term.stop()
+
+    kept = asyncio.run(run())
+    stars = b"*" * len(code)
+    assert kept.count(code) == 1 and b"before " + code in kept, kept         # printed before: kept as it was
+    assert kept.count(stars) == 3, kept
+    assert b"\x1b[1m" + stars + b"\x1b[0m" in kept and b"x" + stars + b"y" in kept, kept
 
 
 def test_a_saved_screen_that_cannot_be_read_is_none(tmp_path):

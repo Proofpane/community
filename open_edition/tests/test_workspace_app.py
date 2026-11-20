@@ -89,6 +89,22 @@ def test_every_route_needs_an_account(client, local):
         assert client.request(method, "/api/ade/workspace" + path).status_code == 401, path
 
 
+def test_every_answer_under_the_workspace_routes_carries_no_store(client, local, env):
+    # SIGNIN-DROP (queue 4.322): a session's view can hold an ended sign-in's last words, and so the code typed into it,
+    # and a browser may keep an answer that says nothing against it: every answer here says no-store, refusals too
+    h = signed_up(client)
+    answers = [client.get("/api/ade/workspace/sessions"),                          # signed out
+               client.get("/api/ade/workspace/sessions", headers=h)]               # the workspace not started
+    _started(client, h, env)
+    answers += [client.get("/api/ade/workspace", headers=h),                        # its state
+                client.get("/api/ade/workspace/sessions", headers=h),               # its sessions
+                client.post("/api/ade/workspace/sessions/aaaaaaaaaaaa/sign-in-code", headers=h, json={"code": "x"})]
+    assert [r.status_code for r in answers[:4]] == [401, 409, 200, 200] and answers[4].status_code >= 400
+    for r in answers:
+        assert r.headers.get("cache-control") == "no-store", (str(r.request.url), r.status_code)
+    assert client.get("/api/health").headers.get("cache-control") != "no-store"      # only the workspace's, here
+
+
 def test_a_provider_that_is_not_known_or_not_allowed_here_stops_the_app(monkeypatch):
     from proofpane_open.ade import workspaces
     monkeypatch.setenv("OPEN_EDITION_ADE", "docker")

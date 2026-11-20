@@ -135,28 +135,45 @@ the cursor and the checkpoint]
 ## Link a session on claude.ai
 
 A Claude Code session on claude.ai runs in a container that holds no link client, so you copy nothing by hand: one
-setting, once per environment, then one paste. The session's `python3` needs `cryptography`, as the client does on any
-machine; the block checks that first. [the manual, The session channel: Linking a session on claude.ai]
+setting, once per environment, and one paste, in either order, since a block pasted first waits for the setting while
+its ticket lives. The session's `python3` needs `cryptography`, as the client does on any machine; the block checks
+that first. [the manual, The session channel: Linking a session on claude.ai]
 
 1. **Let the ADE's host through, once per environment.** In claude.ai, in the settings of the environment the session
-   runs in, under Network access, choose Limited and add the ADE's host (the part of its address after `https://`) to
+   runs in, under Network access, choose Limited and add the ADE's host (its address without `https://` or a port) to
    Allowed domains, keeping Allow package managers ticked; a running session follows the change within about a minute.
-   The page says the same, with the host filled in, above the block of step 2. [the manual, The session channel:
-   Linking a session on claude.ai]
+   An environment whose network access is Full reaches it already, so leave it as it is. On Team and Enterprise plans,
+   Anthropic's page on cloud environments (`https://code.claude.com/docs/en/cloud-environments`, as read on 2026-11-20:
+   The Default environment, Organization-shared environments and Network access) says: "A shared environment opens
+   read-only there [in the environment's dialog], so an Owner changes its network access from the Cloud environments
+   page in admin settings instead"; "Each environment has its own allowed-domains list; there's no organization-level
+   allowlist that admins can push to every member's environments"; "To give a team one standard list, an Owner can
+   create an organization-shared environment with Limited network access and that list", one "shared with every member
+   of the organization"; and "An organization default set by an Owner fills the selection when you haven't picked
+   one". So an Owner can add the host once, in a shared environment, for the sessions that run in it; a member's own
+   environments need it added as above. The page's card gives the same as its step 1, the host filled in and in a Copy
+   button of its own, with a link to Anthropic's page on cloud environments. [the manual, The session channel: Linking
+   a session on claude.ai]
 2. **Paste the one block.** In Linked sessions, tap Link a session, name the session, say that it is on claude.ai, and
-   confirm as in step 3 above: the page shows one block, with Copy. Paste it into the claude.ai session whole; the
-   block's first line asks the session to run it in the background (it waits out the pairing's hold) and to tell you
-   each line it prints that begins with `ADE:`, word for word. It fetches the link client from the ADE, checks it
-   against the sha256 the page carries, puts it at `~/.proofpane-ade/ade_link.py`, and then runs `setup`, which links
-   the session and writes no hook (a cloud session reads no local settings file). Compare the fingerprint it prints
-   with the pairing's card, as in step 5 above. [the manual, The session channel: Linking a session on claude.ai;
-   Pairing waits]
-3. **What it says, when it stops.** Where the session's `python3` cannot import `cryptography`, the block says to
-   install it with pip (which Allow package managers lets through) and fetches nothing. Where the environment's network
-   refuses the ADE's host, the block says the setting of step 1, names the host, and runs nothing else; change it, wait
-   a minute, and paste the block again while its ticket lasts (or make a new one). Where the client the ADE serves is
-   not the one the page carries (an app of another release than the server's, say), the block says so and runs nothing:
-   take the block again from the page the ADE itself serves. [the manual, The session channel: Linking a session on
+   confirm as in step 3 above: the card shows the setting of step 1, then one block, with Copy. Paste it into the
+   claude.ai session whole, before or after step 1; the block's first line asks the session to run it in the
+   background with a timeout of an hour (it waits for the environment's setting while its ticket lives, and out the
+   pairing's hold), to stay with it until it ends and to tell you each line it prints that begins with `ADE:`, word for
+   word, as it comes. It fetches the link client from the
+   ADE, checks it against the sha256 the page carries, puts it at `~/.proofpane-ade/ade_link.py`, and then runs
+   `setup`, which links the session and writes no hook (a cloud session reads no local settings file). Compare the
+   fingerprint it prints with the pairing's card, as in step 5 above. [the manual, The session channel: Linking a
+   session on claude.ai; Pairing waits]
+3. **What it says, when it waits or stops.** Where the session's `python3` cannot import `cryptography`, the block says
+   to install it with pip (which Allow package managers lets through) and fetches nothing. Where the environment's
+   network refuses the ADE's host, the block says the setting of step 1 once, names the host and says that it waits: it
+   tries again every 10 seconds while its ticket lives and goes on by itself once the setting is changed, with nothing
+   to paste again; where the ticket has too little time left for another try and the link (it leaves 20 seconds for
+   that), it says so and runs nothing: make a new ticket and paste its block. Where the client the ADE serves is not the
+   one the page carries (an app of another release than the server's, say), the block says so and runs nothing: take the
+   block again from the page the ADE itself serves. The page says it too: about two minutes after the card shows the
+   block, while the ticket lives and no pairing has come, it puts the setting back above the block, with the host's
+   Copy, saying the session has not reached the ADE yet. [the manual, The session channel: Linking a session on
    claude.ai]
 
 ## Answer the session's prompts from the ADE

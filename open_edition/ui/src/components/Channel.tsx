@@ -13,7 +13,7 @@ import { useOffline, useStore } from "../store";
 import { useMedia } from "../useMedia";
 import { codePoint, DRAWN_OVER, HIDDEN, SECRET_SHAPES, visible } from "../textRules";
 import { ADE_URL, ASK_ADDRESS, CLIENT, FINGERPRINT, inForm, LINK_NAME, TICKET } from "../shellForms";
-import { cloudBlock, hostOf, hostRefused, onThisMachine } from "../cloudLink";
+import { AGAIN_EVERY, cloudBlock, ENV_DOCS, hostOf, hostRefused, NOT_REACHED, onThisMachine, REMIND_AFTER } from "../cloudLink";
 import { answerDraft, composerShown, composing, draftText, draftsToGone, dropDraft, instructionDraft, keepDraft, useLinkDrafts, type LinkDraft } from "../linkDrafts";
 import { ConfirmIt, type Change } from "./AccountDialog";
 import { Confirm, holdsText, timeAgo, useMenu } from "./bits";
@@ -156,15 +156,17 @@ const pinnable = (keys?: string[]) => (keys ?? []).filter((k) => inForm(FINGERPR
  *  name and kind as the owner gave them; on this Mac, --mirror, so its conversation comes to this page (the card says
  *  so, and that leaving it out links without it). A claude.ai session's line names its page from its own shell, and
  *  goes last in the one block that first puts the client there from the ADE, checked against this page's sha256
- *  (cloudLink.ts): a claude.ai container holds no client. Null when the answer's address or ticket is not in the form
- *  the server writes it (shellForms), or, for claude.ai, the build gave no sha256: no line is given then. */
+ *  (cloudLink.ts): a claude.ai container holds no client; it waits for the environment's setting until the ticket's
+ *  end, which it carries. Null when the answer's address or ticket is not in the form the server writes it
+ *  (shellForms), or, for claude.ai, the ticket's end is not a whole positive number or the build gave no sha256: no
+ *  line is given then. */
 export function pairLine(out: TicketOut, to: { name: string; kind: Where }): string | null {
   if (!inForm(ADE_URL, out.url) || !inForm(TICKET, out.ticket)) return null;
   const keys = pinnable(out.keys);
   const e2e = e2eFlag(out.e2e);
   const setup = `${CLIENT} setup --url ${out.url} --ticket ${out.ticket}${keys.length ? ` --keys ${keys.join(",")}` : ""}${e2e ? ` --e2e ${e2e}` : ""}`
     + ` --name ${shellQuote(to.name)} --kind ${to.kind}${to.kind === "cloud" ? ` --ref ${CLOUD_REF}` : " --mirror"}`;
-  return to.kind === "cloud" ? cloudBlock(out.url, setup) : setup;
+  return to.kind === "cloud" ? cloudBlock(out.url, setup, out.expires_at) : setup;
 }
 
 /** The line that pins passkeys in a linked session, run in that session's own window: its link's directory named by
@@ -593,14 +595,17 @@ function PairStart({ live, onGo, onCancel }: { live: LinkView[]; onGo: (name: st
   );
 }
 
-/** The last step of linking a session: the one line to run where it runs (for claude.ai, the one block to paste and,
- *  above it, the setting its environment needs: cloudLink.ts), Copy, how long its ticket works (and a new
- *  one once it has expired), and what it pins as it links. A new link's card goes once the link is there. `hold`: how
- *  long a pairing waits now, as the latest read of the links says it (high security, turned on since the ticket was
- *  made, lengthens it); the ticket's own word until there is one. */
+/** The last step of linking a session: the one line to run where it runs (for claude.ai, two numbered steps: the
+ *  setting its environment needs, once per environment, its host in a Copy button of its own and Anthropic's page
+ *  linked, then the one block to paste: cloudLink.ts; CLOUD-LINK-2, queue 4.319, since a person reached the block
+ *  first and met the refusal), Copy, how long its ticket works (and a new one once it has expired), and what it pins
+ *  as it links. A new link's card goes once the link is there. `hold`: how long a pairing waits now, as the latest
+ *  read of the links says it (high security, turned on since the ticket was made, lengthens it); the ticket's own word
+ *  until there is one. */
 function PairLine({ p, hold, onPut, onAgain }: { p: Extract<Pairing, { step: "line" }>; hold?: number; onPut: () => void; onAgain: () => void }) {
   const now = useNow();
   const [copied, setCopied] = useState(false);
+  const [hostCopied, setHostCopied] = useState(false);
   const left = p.out.expires_at - now / 1000;
   const keys = pinnable(p.out.keys).length;
   const what = p.out.high_security ? "hardware key" : "passkey";
@@ -610,9 +615,14 @@ function PairLine({ p, hold, onPut, onAgain }: { p: Extract<Pairing, { step: "li
   // a claude.ai session is given the one block that puts the client there first (cloudLink.ts), pasted whole
   const cloud = p.kind === "cloud";
   const run = cloud ? "paste this block into the claude.ai session" : `run this line ${where}`;
-  // the ticket made: the keyboard goes to Copy, the step's own button
+  // the ticket made: the keyboard goes to Copy, the first step's own button
   const copyButton = useRef<HTMLButtonElement>(null);
-  useEffect(() => { copyButton.current?.focus(); }, []);
+  const hostButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => { (hostButton.current ?? copyButton.current)?.focus(); }, []);
+  // the setting's words, which describe the host's Copy for a screen reader
+  const settingWords = useId();
+  // when the card showed the block: REMIND_AFTER seconds on, with no pairing come, it reminds of the setting
+  const [shownAt] = useState(() => Date.now());
   const line = p.line;
   if (line === null) {
     return (
@@ -624,16 +634,18 @@ function PairLine({ p, hold, onPut, onAgain }: { p: Extract<Pairing, { step: "li
       </section>
     );
   }
+  // where an environment's list of allowed domains can reach the ADE (not this machine's loopback), the environment's
+  // setting is step 1 and the block step 2, so the setting is met before the block's refusal is. Read only once a
+  // line is given: a line for claude.ai is given only for an address in the server's form (cloudBlock), so it is text.
+  const host = cloud && !onThisMachine(p.out.url) ? hostOf(p.out.url) : null;
+  // the ticket alive, REMIND_AFTER seconds since the block showed, and no pairing come (as one comes, this card becomes
+  // the pairing's): the setting again above the block, where a person who pasted first and waits is looking
+  const remind = host !== null && left > 0 && now - shownAt >= REMIND_AFTER * 1000;
   const copy = () => { void navigator.clipboard?.writeText(line); setCopied(true); setTimeout(() => setCopied(false), 1500); };
-  return (
-    <section aria-label={`Linking ${p.name}`} className="rounded-lg border border-accent/40 bg-accent/[0.05] p-3 text-[12.5px]">
-      <div className="flex items-start justify-between gap-2">
-        <div className="font-medium">
-          {p.link ? <>To link <Name name={p.name} /> again, {run}:</> : <>To link &ldquo;<Name name={p.name} />&rdquo;, {run}:</>}
-        </div>
-        <button className="icon-btn !h-6 !w-6 flex-none" title="Put away" aria-label="Put away" onClick={onPut}><X size={13} /></button>
-      </div>
-      {cloud && !onThisMachine(p.out.url) && <div className="mt-1 text-[11.5px] text-muted">{hostRefused(hostOf(p.out.url))}</div>}
+  const copyHost = (h: string) => { void navigator.clipboard?.writeText(h); setHostCopied(true); setTimeout(() => setHostCopied(false), 1500); };
+  // the line or block, its Copy, and how long its ticket works: the card's one step, or step 2 after the setting
+  const theLine = (
+    <>
       <pre aria-label={cloud ? "The block to paste" : "The line to run"} className="mt-1.5 overflow-x-auto whitespace-pre-wrap break-all rounded bg-bg px-2.5 py-2 font-mono text-[11.5px] text-fg">{line}</pre>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
         <button ref={copyButton} className="btn btn-sm btn-primary" onClick={copy}>{copied ? <Check size={12} /> : <Copy size={12} />} {copied ? "Copied" : cloud ? "Copy the block" : "Copy the line"}</button>
@@ -644,6 +656,51 @@ function PairLine({ p, hold, onPut, onAgain }: { p: Extract<Pairing, { step: "li
               <button className="btn btn-sm" onClick={onAgain}>Make a new ticket</button>
             </>}
       </div>
+    </>
+  );
+  return (
+    <section aria-label={`Linking ${p.name}`} className="rounded-lg border border-accent/40 bg-accent/[0.05] p-3 text-[12.5px]">
+      <div className="flex items-start justify-between gap-2">
+        <div className="font-medium">
+          {host
+            ? (p.link ? <>To link <Name name={p.name} /> again from claude.ai, two steps:</> : <>To link &ldquo;<Name name={p.name} />&rdquo; from claude.ai, two steps:</>)
+            : (p.link ? <>To link <Name name={p.name} /> again, {run}:</> : <>To link &ldquo;<Name name={p.name} />&rdquo;, {run}:</>)}
+        </div>
+        <button className="icon-btn !h-6 !w-6 flex-none" title="Put away" aria-label="Put away" onClick={onPut}><X size={13} /></button>
+      </div>
+      {host ? (
+        <ol aria-label="Two steps" className="mt-1.5 list-decimal space-y-2.5 pl-5">
+          <li>
+            <div>
+              {/* an environment whose network access is Full reaches the host already: this step is for one that does not */}
+              <span className="font-medium">Once per environment, unless it reaches {host} already:</span>{" "}
+              <span id={settingWords} className="text-muted">{hostRefused(host)}</span>
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              {/* a long host is cut short in the button and whole in its title; "Copied" keeps the host in its name */}
+              <button ref={hostButton} type="button" className="btn btn-sm max-w-full" title={host} aria-describedby={settingWords} onClick={() => copyHost(host)}>{hostCopied ? <Check size={12} /> : <Copy size={12} />} <span className="truncate">{hostCopied ? `Copied ${host}` : `Copy ${host}`}</span></button>
+              <a className="btn btn-sm" href={ENV_DOCS} target="_blank" rel="noopener noreferrer"><ExternalLink size={12} /> Anthropic&apos;s page on cloud environments</a>
+            </div>
+          </li>
+          <li>
+            <div className="font-medium">Then {run}:</div>
+            {/* the block waits for step 1 while the ticket lives (CLOUD-LINK-3), so a person who pastes first pastes once */}
+            <div className="mt-0.5 text-[11.5px] text-muted">Pasted before step 1 is done, the block waits for it, trying again every {AGAIN_EVERY} seconds while the ticket lives, and then goes on by itself: the two steps can come in either order.</div>
+            {/* a note, not a live region: one put in with its words is seldom announced, so the card's own region, on
+                the page from the start, says them (below) */}
+            {remind && host && (
+              <div role="note" aria-label="The session has not reached the ADE" className="mt-1.5 rounded border border-wait/50 bg-wait/[0.05] px-2.5 py-2">
+                <span className="font-medium">{NOT_REACHED}</span>{" "}
+                <span>{hostRefused(host)}</span>
+                <div className="mt-1.5">
+                  <button type="button" className="btn btn-sm max-w-full" title={host} onClick={() => copyHost(host)}>{hostCopied ? <Check size={12} /> : <Copy size={12} />} <span className="truncate">{hostCopied ? `Copied ${host}` : `Copy ${host}`}</span></button>
+                </div>
+              </div>
+            )}
+            {theLine}
+          </li>
+        </ol>
+      ) : theLine}
       <div className="mt-1.5 text-[11.5px] text-muted">
         {keys ? `It pins your ${keys === 1 ? what : `${keys} ${what}s`} as it links, so it acts only on what ${keys === 1 ? "that key signs" : "they sign"}.`
           : "You have no passkey yet: add one in Account, then give the session its pin line."}
@@ -657,7 +714,8 @@ function PairLine({ p, hold, onPut, onAgain }: { p: Extract<Pairing, { step: "li
       {p.kind === "local" && (
         <div className="mt-1 text-[11.5px] text-muted">It also puts the session&apos;s hooks in the settings file Claude Code reads for that folder (at the repository&apos;s root, or the main checkout&apos;s for a worktree), and says which file and what it changed. --mirror adds the mirror too: each turn&apos;s words and each tool call&apos;s line come to this page, sealed once Encryption is on; take it out of the line to link without them.</div>
       )}
-      <Said text={`The ticket is made. ${cloud ? "Copy the block and paste it into the claude.ai session" : `Copy the line and run it ${where}`}; the ticket works once, until ${clock(p.out.expires_at)}.`} />
+      <Said text={`The ticket is made. ${host ? `First, once per environment, let the environment reach ${host} if it does not already; then copy the block and paste it into the claude.ai session; pasted first, the block waits for that while the ticket lives, so either order works` : cloud ? "Copy the block and paste it into the claude.ai session" : `Copy the line and run it ${where}`}; the ticket works once, until ${clock(p.out.expires_at)}.`} />
+      {host && <Said text={remind ? `${NOT_REACHED} ${hostRefused(host)}` : ""} />}
     </section>
   );
 }

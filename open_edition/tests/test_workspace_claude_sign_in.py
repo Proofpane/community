@@ -316,6 +316,26 @@ def test_a_sign_in_that_ends_without_signing_in_says_what_it_said(cagent):
     assert cagent.http.get("/claude").json()["signed_in"] is False
 
 
+def test_an_ended_sign_in_gives_back_no_part_of_the_code_typed_into_it(cagent):
+    # SIGNIN-DROP (queue 4.322): the code is kept past its one call nowhere the agent gives the screen back: not in the
+    # ended sign-in's last words, in its view or the list, and not in what a terminal that attaches is sent; the
+    # stand-in, as a terminal does with a line read from it, echoes what is typed
+    code = "Zq7Xv3Rk9Pw2Lm5Tn8Hb4Jd6"                  # refused by the stand-in, so the sign-in ends saying so
+    parts = {code[i:i + 4] for i in range(len(code) - 3)}
+    got = _sign_in(cagent)
+    assert cagent.http.post(f"/sessions/{got['id']}/sign-in-code", json={"code": code}).status_code == 200
+    done = _until(cagent, got["id"], "running", lambda v: v is False)
+    assert "Paste code here if prompted >" in done["sign_in_text"]                      # its last words, still given
+    assert "OAuth error: the code was not accepted" in done["sign_in_text"]
+    with cagent.terminal(got["id"]) as ws:
+        screen = read_until(ws, b"OAuth error: the code was not accepted").decode("utf-8", "replace")
+    listed = cagent.http.get("/sessions")
+    assert listed.status_code == 200 and "Paste code here if prompted >" in listed.text      # the list holds its words
+    for given in (done["sign_in_text"], listed.text, screen):
+        assert not [p for p in parts if p in given], given
+    assert "Paste code here if prompted > " + "*" * len(code) in done["sign_in_text"]       # where the echo was
+
+
 def test_a_sign_in_that_signed_in_ends_once_claude_code_says_so_though_its_program_waits(cagent_waits):
     # after a code, the agent reads the account's status every few seconds and, once Claude Code
     # says it is signed in, ends the sign-in's program and session, though that program still waits for a key

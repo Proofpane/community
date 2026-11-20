@@ -257,8 +257,10 @@ def _workspace(user, now):
             else:
                 got = workspace_client.call(endpoint, "GET", "/sessions", timeout=WORKSPACE_WAIT)
                 found = got.get("sessions") if isinstance(got, dict) else None
-                result = {"running": True, "sessions": found if isinstance(found, list) else [], "said": None,
-                          "endpoint": endpoint}
+                # an ended sign-in's last words may hold the code typed into it: never kept here (SIGNIN-DROP)
+                found = [{k: v for k, v in r.items() if k != "sign_in_text"} if isinstance(r, dict) else r
+                         for r in found] if isinstance(found, list) else []
+                result = {"running": True, "sessions": found, "said": None, "endpoint": endpoint}
         except Exception as e:  # noqa: BLE001  a workspace that does not answer leaves its sessions out, no more
             print(f"connector: the workspace of {user['id']} could not be read: {type(e).__name__}", file=sys.stderr)
             result = {"running": None, "sessions": [], "endpoint": None,

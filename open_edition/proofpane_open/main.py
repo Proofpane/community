@@ -95,13 +95,14 @@ app = FastAPI(title="Proofpane Community", version=VERSION, docs_url=None, redoc
 
 class _NoStoreLinks:
     """Every answer under the session channel's routes, the second screen's (ade/signer_routes.py: steps parked for a
-    signer and the assertions over them), and the Claude app connector's (its codes and tokens must never be kept,
-    RFC 6749 5.1), carries Cache-Control: no-store, whoever wrote it: its own answers, its refusals, the sign-in
-    check's 401 and FastAPI's own 422 for a query or body it cannot read."""
+    signer and the assertions over them), the Claude app connector's (its codes and tokens must never be kept,
+    RFC 6749 5.1), and the workspace's (a session's view can hold an ended sign-in's last words: SIGNIN-DROP), carries
+    Cache-Control: no-store, whoever wrote it: its own answers, its refusals, the sign-in check's 401 and FastAPI's
+    own 422 for a query or body it cannot read."""
 
     PREFIXES = ("/api/ade/link/", "/api/ade/signer/", "/api/ade/signers", "/api/ade/sign-requests", "/oauth/",
-                "/api/connector")
-    EXACT = ("/mcp",)
+                "/api/connector", "/api/ade/workspace/")
+    EXACT = ("/mcp", "/api/ade/workspace")
 
     def __init__(self, inner):
         self.inner = inner

@@ -203,6 +203,20 @@ def test_the_workspace_stopped_is_said_and_neither_started_nor_kept_awake(client
     assert (stand_in.started, stand_in.touched) == (0, 0)
 
 
+def test_what_the_workspace_said_is_kept_without_a_sign_in_s_last_words(client, owner, app, monkeypatch):
+    # SIGNIN-DROP (queue 4.322): an ended sign-in's last words (`sign_in_text`) can hold the code typed into it; the
+    # lists never give a sign-in, and the cache of what the workspace said keeps none of those words either
+    Workspace(monkeypatch, sessions=[ws("a" * 12, "proofpane"),
+                                     ws("d" * 12, None, program="claude-sign-in", sign_in=True, running=False,
+                                        ended_at=NOW - 5, exit_code=1,
+                                        sign_in_text="Paste code here if prompted > Zq7Xv3Rk9Pw2Lm5Tn8\nOAuth error")])
+    ok(app, "list_sessions")
+    [(_when, said)] = connector._ws_cache.values()
+    kept = json.dumps(said, default=str)
+    assert "sign_in_text" not in kept and "Zq7Xv3Rk9Pw2Lm5Tn8" not in kept, kept
+    assert ["a" * 12, "d" * 12] == [s["id"] for s in said["sessions"]]           # the rest of what it said, as it was
+
+
 def test_no_workspace_on_this_deployment_is_no_workspace(client, owner, app, monkeypatch):
     monkeypatch.setattr(workspaces, "for_user", lambda user: (_ for _ in ()).throw(
         workspaces.WorkspaceAccess(404, "off")))

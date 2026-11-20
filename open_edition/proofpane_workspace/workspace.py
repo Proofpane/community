@@ -2368,7 +2368,12 @@ class Workspace:
         stamp = self._credentials_stamp(account)
         with self._status_lock:
             before = dict(self._status_last.get(self._status_key(account)) or {})
-        await term.write(code.strip().encode("ascii") + b"\r")
+        typed = code.strip().encode("ascii")
+        # kept past this call nowhere the screen is given back (SIGNIN-DROP): the terminal keeps only its length and
+        # digest, and HIDDEN in its place wherever the program prints it (the sign-in's last words, a viewer that
+        # attaches)
+        term.hide(len(typed), hashlib.sha256(typed).digest())
+        await term.write(typed + b"\r")
         self._status_changed_now(account)
         # one watch per run of the sign-in: a code typed again into the same run is watched by the watch it has; one
         # typed into a run started again (Stop, then Start again) is watched anew, the earlier run's watch let go

@@ -17,10 +17,15 @@ The backlog a viewer is shown leaves out the questions a program asked its termi
 position, what the terminal is): a terminal answers what it is shown, and answers to questions asked minutes ago
 would reach the program as keystrokes (GitHub's sign-in read them at its prompt and ended, 2026-09-28). A question
 asked while a viewer is attached reaches that viewer as it is written, and is answered as usual.
+
+A text a terminal is told to keep no copy of before it is typed into it (`hide`: a sign-in's code, SIGNIN-DROP) is
+held as HIDDEN, byte for byte, wherever the program then prints it whole: in the backlog, and so in every screen
+given back from it. A program that prints it in parts (one that redraws a line it wraps, say) can leave parts of it.
 """
 
 import asyncio
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -41,6 +46,8 @@ MAX_COLS = 500
 MAX_ROWS = 300
 STOP_GRACE = 3.0
 SAVE_EVERY = float(os.environ.get("PP_WORKSPACE_SCREEN_SAVE_EVERY", "5"))   # seconds between saves of a changed screen
+HIDDEN = b"*"                               # what stands in for each byte of a text kept no copy of (Terminal.hide)
+_VISIBLE = re.compile(rb"[\x21-\x7e]+")     # a run of visible characters, as a code is one: no space, no control
 
 # Run with `python -I -c`: take the terminal on stdin as the controlling terminal, then become the program.
 _SHIM = "import os,sys,fcntl,termios; fcntl.ioctl(0, termios.TIOCSCTTY, 0); os.execvp(sys.argv[1], sys.argv[1:])"
@@ -155,6 +162,7 @@ class Terminal:
         os.set_blocking(master, False)
         self.fd = master
         self.backlog = bytearray()
+        self._hidden = set()      # (length, sha256) of each text this terminal keeps no copy of (hide)
         self.viewers = set()
         self.exit_code = None
         self.ended_at = None      # when the exit was seen, in seconds since the epoch
@@ -185,6 +193,10 @@ class Terminal:
         self._on_activity()
         self._changed = True
         self.backlog += data
+        if self._hidden:
+            # back as far as the longest hidden text less one byte, so one cut by two reads is seen whole; a window
+            # wholly before that was checked when its own bytes came
+            self._scrub(len(self.backlog) - len(data) - max(length for length, _ in self._hidden) + 1)
         if len(self.backlog) > BACKLOG:
             del self.backlog[:len(self.backlog) - BACKLOG]
         for q in list(self.viewers):
@@ -193,6 +205,35 @@ class Terminal:
                 q.put_nowait(DROPPED)
             else:
                 q.put_nowait(data)
+
+    def hide(self, length, digest):
+        """Keep no copy of a text about to be typed into this terminal, `length` bytes whose sha256 is `digest` (a
+        sign-in's code, workspace.send_sign_in_code; SIGNIN-DROP): wherever the program then prints it whole, in one run
+        of visible characters, the backlog holds HIDDEN in its place, byte for byte, so its lines and wrapping stay as
+        they were, and the screen given back from it (a sign-in's last words, a viewer that attaches, a saved screen)
+        does not hold it. What it printed before is kept as it was (a link that holds the same characters stays whole),
+        and a program that prints the text in parts (one that redraws a line it wraps) can leave parts of it. Only the
+        length and digest are kept. A viewer attached as it is printed is sent the program's own output, as any
+        terminal shows what is typed into it."""
+        if length > 0:
+            self._hidden.add((length, digest))
+
+    def _scrub(self, start):
+        """Each `length` bytes of the runs of visible characters from `start` on, checked against what the terminal
+        keeps no copy of; each found becomes HIDDEN."""
+        found = []
+        for run in _VISIBLE.finditer(self.backlog, max(0, start)):
+            first, end = run.span()
+            for length, digest in self._hidden:
+                i = first
+                while i + length <= end:
+                    if hashlib.sha256(self.backlog[i:i + length]).digest() == digest:
+                        found.append((i, length))
+                        i += length
+                    else:
+                        i += 1
+        for i, length in found:
+            self.backlog[i:i + length] = HIDDEN * length
 
     async def _wait(self):
         code = await wait_for_exit(self.proc)
