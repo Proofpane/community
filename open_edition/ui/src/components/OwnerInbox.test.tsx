@@ -452,6 +452,158 @@ describe("an item Claude Code raised itself (a notification, a turn an API error
   });
 });
 
+// What a session's client seals is its item's JSON, and JSON may write any character as an escape: the text the server
+// keeps, and a sealed text once opened, is then plain ASCII, and the character is in the texts the card shows. The
+// session's own client holds each of an item's texts and names to the rule on characters before it seals
+// (ade_link.prompt_text_refusal), so only another program holding a link's key posts such an item; the card holds
+// each text and name within the item to the same clauses, sealed or in the clear, and shows none of an item that
+// breaks one. Each character below is written by its code point, so no editor or transport turns it into itself.
+describe("an item whose text within holds a character that does not show itself, written in its JSON as an escape", () => {
+  const cp = (code: number) => String.fromCodePoint(code);
+  /** A value's JSON with every character past ASCII written as an escape. */
+  const escaped = (value: unknown) => JSON.stringify(value).replace(/[^\x00-\x7f]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+  const DRAWN = "This text is not shown: it holds a mark drawn over or around a character, which could change how it reads";
+  /** The four: how each is put into a text, and what the card says in the item's place. */
+  const FOUR: [string, (text: string) => string, string][] = [
+    ["a solidus drawn over a character (U+0338)", (t) => `${t[0]}${cp(0x0338)}${t.slice(1)}`, DRAWN],
+    ["a stroke drawn over a character (U+0336)", (t) => `${t[0]}${cp(0x0336)}${t.slice(1)}`, DRAWN],
+    ["an accent after its letter, the text not in normal form C (U+0301)", (t) => `${t}e${cp(0x0301)}`, "This text is not shown: it is not in Unicode normal form C"],
+    ["a selector at the text's start (U+FE0F)", (t) => `${cp(0xfe0f)}${t}`, "This text holds characters the ADE does not show"],
+  ];
+  const SEQS = [7, 12, 13, 14];
+  const ANSWERS = ["Approve", "Deny", "Answer in your own words", "Answer with the chosen options"];
+  /** As a session seals an item, to be answered here. */
+  const sealedItem = (text: string): Partial<Prompt> => ({ text: sealedBy("L1", "prompt", PROMPT_CID, text) });
+  /** As a link posts an item to look at in the clear. */
+  const clearItem = (text: string): Partial<Prompt> => ({ look: true, client_id: "", text });
+
+  /** One card for each of the four, its item made by `item` from how the character is put into a text: each says in
+   *  its item's place why it is not shown, shows none of `never` and offers no answer. */
+  async function notShown(item: (put: (text: string) => string) => unknown, as: (text: string) => Partial<Prompt>, never: string[],
+                          written: (value: unknown) => string = escaped) {
+    showing(sessions({ prompts: FOUR.map(([, put], i) => prompt({}, { seq: SEQS[i], ...as(written(item(put))) })) }));
+    approvals();
+    const cards = screen.getAllByRole("group", { name: /Reported by the session mac/ });
+    expect(cards).toHaveLength(4);
+    const look = as("").look === true;
+    for (const [i, [name, , said]] of FOUR.entries()) {
+      expect(await within(cards[i]).findByText(said), name).toBeTruthy();
+      // where it is answered: said of an item to look at as of any, and of one to answer since nothing here answers it
+      const LOOK = "It is answered where the session shows it, its window or its page: nothing here decides it.";
+      const NOT_SHOWN = "Its text is not shown, so nothing here answers it: it is answered where the session shows it.";
+      expect(within(cards[i]).queryAllByText(LOOK), name).toHaveLength(look ? 1 : 0);
+      expect(within(cards[i]).queryAllByText(NOT_SHOWN), name).toHaveLength(look ? 0 : 1);
+      expect(within(cards[i]).queryByLabelText("Its input, whole"), name).toBeNull();
+      for (const answer of ANSWERS) expect(within(cards[i]).queryByRole("button", { name: answer }), `${name}: ${answer}`).toBeNull();
+      expect(within(cards[i]).queryByRole("radio"), name).toBeNull();
+      for (const word of never) expect(cards[i].textContent, `${name}: ${word}`).not.toContain(word);
+    }
+    noEnvelope();
+  }
+
+  it("is not shown where a sealed prompt opens to a Bash call whose command holds one: why is said in its place, and nothing answers it here", async () => {
+    await notShown((put) => ({ ...BASH, input: { ...BASH.input, command: put("rm -rf build") } }), sealedItem, ["rf build", "Bash", "Clean the build"]);
+  });
+
+  it("is not shown where a name of its input holds one", async () => {
+    await notShown((put) => ({ ...BASH, input: { [put("command")]: "rm -rf build", description: "Clean the build" } }), sealedItem, ["ommand", "rm -rf build", "Bash"]);
+  });
+
+  it("is not shown where the tool's name holds one", async () => {
+    await notShown((put) => ({ ...BASH, tool: put("Bash") }), sealedItem, ["ash", "rm -rf build"]);
+  });
+
+  it("is not shown where a question's words hold one: the question, its header, an option's label or its description", async () => {
+    const [first, second] = ASKED.questions;
+    const asked = (q: Record<string, unknown>) => ({ ...ASKED, questions: [{ ...first, ...q }, second] });
+    const [one, two] = first.options;
+    await notShown((put) => asked({ question: put("Which cap?") }), sealedItem, ["hich cap?", "Per user", "Which store?"]);
+    cleanup();
+    await notShown((put) => asked({ header: put("Cap") }), sealedItem, ["Which cap?", "Per user"]);
+    cleanup();
+    await notShown((put) => asked({ options: [{ ...one, label: put("Per user") }, two] }), sealedItem, ["Which cap?", "er user"]);
+    cleanup();
+    await notShown((put) => asked({ options: [{ ...one, description: put("One cap each") }, two] }), sealedItem, ["Which cap?", "ne cap each"]);
+  });
+
+  it("is not shown where it is nested in the input, in a list or in an object, at any depth", async () => {
+    await notShown((put) => ({ ...BASH, tool: "mcp__files__move", input: { moves: [{ from: "a", to: ["b", { deep: [[put("build")]] }] }] } }),
+                   sealedItem, ["uild", "mcp__files__move"]);
+  });
+
+  it("is not shown where a text of the item that the card does not show holds one: its session's id, a field the card does not read", async () => {
+    await notShown((put) => ({ ...BASH, session_id: put("cc-1") }), sealedItem, ["rm -rf build", "Bash"]);
+    cleanup();
+    await notShown((put) => ({ ...BASH, [put("where")]: { folder: "/srv/app" } }), sealedItem, ["rm -rf build", "Bash"]);
+  });
+
+  it("is not shown where the item came in the clear either, written as an escape or as itself, nor where a sealed one is only to look at", async () => {
+    const item = (put: (text: string) => string) => ({ ...BASH, input: { ...BASH.input, command: put("rm -rf build") } });
+    await notShown(item, clearItem, ["rf build", "Bash"]);
+    cleanup();
+    await notShown(item, clearItem, ["rf build", "Bash"], JSON.stringify);
+    cleanup();
+    await notShown(item, (text) => ({ look: true, ...sealedItem(text) }), ["rf build", "Bash"]);
+  });
+
+  it("offers Close alone on an item not shown, which hides it with the sign-in alone: nothing is signed, and its card goes", async () => {
+    showing(sessions({ prompts: [prompt({}, sealedItem(escaped({ ...BASH, input: { command: FOUR[0][1]("rm -rf build") } })))] }));
+    approvals();
+    const card = screen.getByRole("group", { name: /Reported by the session mac/ });
+    expect(await within(card).findByText(DRAWN)).toBeTruthy();
+    expect(within(card).getAllByRole("button").map((b) => b.textContent)).toEqual(["Close"]);
+    fireEvent.click(within(card).getByRole("button", { name: "Close" }));
+    await vi.waitFor(() => expect(sent("/api/ade/link/questions/7/close")).toHaveLength(1));
+    expect(sent("/api/ade/link/questions/7/close")[0].body).toBeUndefined();
+    expect(signed()).toHaveLength(0);
+    await vi.waitFor(() => expect(screen.queryByRole("group", { name: /Reported by the session mac/ })).toBeNull());
+  });
+
+  it("holds the event's name of an item Claude Code raised as it holds each of its words, and shows the rest", async () => {
+    const raised = (put: (text: string) => string) => ({ event: put("Notification"), session_id: "cc-1", agent_id: null, deadline: T + 1800,
+      words: { message: "Claude needs your attention", title: put("Claude Code") } });
+    showing(sessions({ prompts: FOUR.map(([, put], i) => prompt({}, { seq: SEQS[i], look: true, text: sealedBy("L1", "prompt", PROMPT_CID, escaped(raised(put))) })) }));
+    approvals();
+    const cards = screen.getAllByRole("group", { name: /Reported by the session mac/ });
+    for (const [i, [name, , said]] of FOUR.entries()) {
+      expect(await within(cards[i]).findByText("Claude needs your attention"), name).toBeTruthy();
+      // the event's name and the title, each in its own place
+      expect(within(cards[i]).getAllByText(said), name).toHaveLength(2);
+      expect(cards[i].textContent, name).toContain(`Claude Code: ${said}`);
+      expect(cards[i].textContent, name).not.toContain("otification");
+      expect(within(cards[i]).getByText("message"), name).toBeTruthy();
+    }
+  });
+
+  it("is still shown whole, and answered here, where its texts hold what the session's own client seals", async () => {
+    // a line break and a tab, an accented letter in normal form C, an emoji with its selector after it, a character
+    // of two code units, a letter past the Latin ones, an empty text, an empty name, a text that begins as an
+    // envelope does, and a combining mark in a text of its own: none of them breaks the rule on characters
+    const command = `printf 'a\\tb'\n\tcaf${cp(0xe9)} ${cp(0x2764)}${cp(0xfe0f)} ${cp(0x1f600)} ${cp(0x4e2d)}`;
+    const input = { command, description: "", "": "x", list: ["", "e2e1.x", `x${cp(0x0323)}`, 7, true, null] };
+    showing(sessions({ prompts: [JSON.stringify, escaped].map((written, i) =>
+      prompt({}, { seq: SEQS[i], ...sealedItem(written({ ...BASH, tool: `mcp__caf${cp(0xe9)}__run`, input })) })) }));
+    approvals();
+    const cards = screen.getAllByRole("group", { name: /Reported by the session mac/ });
+    expect(cards).toHaveLength(2);
+    for (const card of cards) {
+      expect(await within(card).findByText(`mcp__caf${cp(0xe9)}__run`)).toBeTruthy();
+      expect(within(card).getByLabelText("Its input, whole").textContent).toBe(JSON.stringify(input, null, 2));
+      expect(within(card).queryByRole("button", { name: "Approve" })).not.toBeNull();
+      expect(within(card).queryByRole("button", { name: "Deny" })).not.toBeNull();
+    }
+  });
+
+  it("shows as the words they are a text that is no item, its escapes as it writes them", async () => {
+    // not a tool call and not what Claude Code raised: nothing is parsed out of it, so nothing in it reads otherwise
+    const text = escaped({ note: FOUR[0][1]("not a tool call") });
+    showing(sessions({ prompts: [prompt({}, { look: true, ...sealedItem(text) })] }));
+    approvals();
+    expect(await screen.findByText(text)).toBeTruthy();
+    expect(text).toContain("\\u0338");
+  });
+});
+
 describe("a question a linked session asks the owner, in Approvals", () => {
   it("is listed there too, with Answer", async () => {
     const q = { seq: 5, time: "2026-11-02T09:59:00Z", kind: "question", from: "mac", to: "owner", ref: null,
@@ -547,5 +699,73 @@ describe("what a session posts of its prompts, outside their cards", () => {
     expect(latestLead({ kind: "prompt", to: "owner", ref: null, client_id: PROMPT_CID }, l).words).toBe(false);
     expect(latestLead({ kind: "proposal", to: "owner", ref: null, client_id: PROPOSAL_CID }, l).words).toBe(false);
     expect(latestLead({ kind: "note", to: "owner", ref: 7, client_id: "report:7" }, l).lead).toBe("Reported on its prompt [7]");
+  });
+
+  // The link card's log, "Show what it did", writes each event as a line. A prompt's and a proposal's line says what
+  // it is, as the card's newest line does, and holds none of its words: a text its card refuses is read nowhere there.
+  const cp = (code: number) => String.fromCodePoint(code);
+  const LEAD = "Reported a prompt in its window";
+  const logLines = () => [...document.querySelectorAll("div.font-mono")].map((d) => d.textContent ?? "");
+  const openLog = async (events: LinkEvent[], count: number) => {
+    showing(sessions());
+    serve({ "GET /api/ade/link/sessions": () => [200, sessions()], "GET /api/ade/link/timeline/L1?limit=100": () => [200, { events }] });
+    render(<LinkCard l={link({ events: events.length })} questions={[]} onTicket={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Show what it did/ }));
+    await vi.waitFor(() => expect(logLines()).toHaveLength(count));
+  };
+  const step = (seq: number, words: string): LinkEvent => ({ seq, time: "2026-11-02T10:02:00Z", kind: "step", from: "mac", to: "owner", ref: null,
+    text: sealedBy("L1", "step", PROMPT_CID, words), client_id: PROMPT_CID, from_id: "L1" });
+
+  it("writes a prompt and a proposal in its link's log as the line that says what each is, with none of their words: what their cards refuse is read nowhere there", async () => {
+    // three sealed prompts whose cards refuse their text whole: a mark drawn over a character, a selector at the
+    // command's start, an accent after its letter, each as itself; one whose JSON writes the mark as an escape; one
+    // whose text nothing refuses; one in the clear; and a proposal
+    const texts = [
+      JSON.stringify({ ...BASH, input: { command: `r${cp(0x0338)}m -rf build` } }),
+      JSON.stringify({ ...BASH, input: { command: `${cp(0xfe0f)}rm -rf build` } }),
+      JSON.stringify({ ...BASH, input: { command: `rm -rf builde${cp(0x0301)}` } }),
+      JSON.stringify({ ...BASH, input: { command: `r${cp(0x0338)}m -rf build` } }).replace(/[^\x00-\x7f]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`),
+      JSON.stringify(BASH),
+    ];
+    expect(texts[3]).toContain("r\\u0338m");
+    expect(JSON.parse(texts[3]).input.command).toBe(`r${cp(0x0338)}m -rf build`);
+    const prompts = texts.map((text, i) => prompt({}, { seq: 20 + i, text: sealedBy("L1", "prompt", PROMPT_CID, text) }));
+    const clear = prompt({}, { seq: 25, look: true, client_id: "", text: `ExitPlan${cp(0x0338)}Mode` });
+    const words = `ship i${cp(0x0338)}t to main`;
+    const proposed = proposal(words, { seq: 26, from: "mac", from_id: "L1", link_id: "L1", text: sealedBy("L1", "proposal", PROPOSAL_CID, words) });
+    await openLog([step(27, "ran the tests"), proposed, clear, ...prompts.slice().reverse()], 8);
+    await screen.findByText(/ran the tests/);
+    const lines = logLines();
+    expect(lines).toEqual([
+      "[27] step mac>owner: ran the tests",
+      "[26] proposal mac>owner: Proposed a message for one of your sessions",
+      `[25] prompt mac>owner: ${LEAD}`,
+      ...[24, 23, 22, 21, 20].map((seq) => `[${seq}] prompt mac>owner: ${LEAD}`),
+    ]);
+    for (const line of lines) {
+      for (const code of [0x0338, 0xfe0f, 0x0301]) expect(line, line).not.toContain(cp(code));
+      for (const word of ["rm -rf", "u0338", "ExitPlan", "ship", "Bash"]) expect(line, line).not.toContain(word);
+    }
+    // their texts are not opened for the log: the step's alone is
+    for (const p of [...prompts, proposed]) expect(fake.opened, String(p.seq)).not.toContain(p.text);
+    expect(fake.opened).toContain(step(27, "ran the tests").text);
+    noEnvelope();
+  });
+
+  it("says what a sealed prompt is in the log while the keys are locked too, and asks for no unlock on its account", async () => {
+    fake.state = "locked";
+    const p = prompt(BASH, { seq: 20 });
+    await openLog([p], 1);
+    expect(logLines()).toEqual([`[20] prompt mac>owner: ${LEAD}`]);
+    expect(screen.queryByText(/Some of this is encrypted/)).toBeNull();
+    expect(screen.queryByText("Encrypted")).toBeNull();
+    cleanup();
+    // a sealed step beside it is still Encrypted, with the one Unlock above the list
+    await openLog([step(21, "ran the tests"), p], 2);
+    expect(logLines()[1]).toBe(`[20] prompt mac>owner: ${LEAD}`);
+    expect(screen.getAllByText("Encrypted")).toHaveLength(1);
+    expect(screen.getByText(/Some of this is encrypted/)).toBeTruthy();
+    expect(document.body.textContent).not.toContain("ran the tests");
+    noEnvelope();
   });
 });

@@ -174,6 +174,7 @@ def test_serving_the_app_starts_the_prune(monkeypatch):
     monkeypatch.setattr(main.ade_push, "start", lambda every=None: None)
     monkeypatch.setattr(main.ade_moves, "start", lambda every=None: None)
     monkeypatch.setattr(main.ade_e2e_keys, "start", lambda every=None: None)
+    monkeypatch.setattr(main.account_delete, "start", lambda every=None: None)     # its round opens later tests' stores
     with TestClient(main.app):
         pass
     assert started == [None]

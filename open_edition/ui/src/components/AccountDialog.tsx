@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Bell, Check, CircleAlert, Copy, FileCheck2, HardDrive, KeyRound, Loader2, Lock, LogOut, Plug, ShieldCheck, Smartphone, Trash2, Upload, UserPlus, Users } from "lucide-react";
 import { pushOff, pushOn, pushState, pushTest, type PushState } from "../push";
-import { APP, Api, api, DESKTOP, onThisMac, server, setToken, type ConnectedApp, type DeviceRequest, type Health, type User } from "../api";
+import { APP, Api, api, ApiError, DESKTOP, onThisMac, PHONE, server, setToken, type ConnectedApp, type DeviceRequest, type Health, type User } from "../api";
 import { hostLabel } from "../places";
 import { confirmWays, confirmWithPasskey, confirmWithPassword, kindName, kindWords, makePasskey, newPasskeyOptions, passkeysHere, renamePasskey, type ConfirmWays, type NewPasskeyOptions } from "../passkey";
 import { checkFiles, type Checked } from "../records";
 import { useStore } from "../store";
+import { visible } from "../textRules";
 import { useE2EStore } from "../e2e";
 import { hasKeys, recoveryProof, STILL_LOADING, type RecoveryProof, type RevokeWhat } from "../e2eKeys";
-import { addWhileWaitingWords, EncryptionPane, holdWords, OFF_HIGH_WORDS, OFF_KEYS_WORDS, RevokeFromAccount } from "./Encryption";
+import { addWhileWaitingWords, EncryptionPane, holdWords, lengthWords, noticeWords, OFF_HIGH_WORDS, OFF_KEYS_WORDS, RevokeFromAccount } from "./Encryption";
 import { ConnectedAppsPane, KEEP_WORKING, StillConnected } from "./ConnectedApps";
 import { focusables, Modal } from "./Modal";
 import { SignersSection } from "./Signers";
@@ -16,6 +17,7 @@ import { StorageChoice } from "./StorageChoice";
 import { TaskCustody } from "./TaskCustody";
 import { Verdict } from "./bits";
 import { clock, dayTime } from "../when";
+import { forgetDeletion, keepDeletion } from "../accountDeletion";
 import { CLIENT, FINGERPRINT, inForm } from "../shellForms";
 
 export type AccountTab = "account" | "storage" | "encryption" | "notifications" | "people" | "verify" | "device" | "apps";
@@ -31,6 +33,12 @@ interface Passkey {
   phone_by_browser?: boolean; reported?: string | null;
   /** what the server says it is (passkeys.kind_of: hardware, synced, security-key or device); none from a server before */
   kind?: string | null;
+  /** the names of the connected apps whose linking of sessions this passkey turned on, each the app's own word: what
+   *  removing it turns off (ade/connector_link.py); none from a server before */
+  linking?: string[];
+  /** the names of the connected apps this passkey allowed whose linking is on, whoever turned it on, each the
+   *  app's own word: what removing it disconnects, which ends the sessions linked through them. */
+  disconnects?: string[];
 }
 /** Whether this server holds a valid copy of the FIDO metadata, without which no key counts as a hardware key. */
 interface Metadata { valid: boolean; next_update: string | null }
@@ -226,6 +234,29 @@ export function DeviceOrigin({ seen }: { seen: Pick<DeviceRequest, "created_at" 
   return <div className="mt-1 text-[12px] text-fg-dim">It asked at {at} from {from}{seen.same_network ? ", this browser's network too" : ""}.</div>;
 }
 
+/** What removing a passkey says, before it is removed, of the linking of sessions it turned on (`names`: the apps
+ *  still connected, each name the app's own word, drawn with the characters that do not show written out): removing
+ *  it turns that linking off, which ends the sessions linked through those apps and deletes what they posted.
+ *  Nothing where it turned none on. */
+export function linkingGoes(names: string[]): string | undefined {
+  if (!names.length) return undefined;
+  const many = names.length !== 1;
+  return `It turned linking on for ${names.length} connected app${many ? "s" : ""} (${names.map((n) => `\u201c${visible(n)}\u201d`).join(", ")}: ` +
+    `${many ? "their own words" : "its own word"}). Removing it turns that linking off: the sessions linked through ${many ? "them" : "it"} end, ` +
+    "and their posts and checkpoints are deleted.";
+}
+
+/** What removing a passkey says, before it is removed, of the connected apps it allowed whose linking is on
+ *  (`names`, as linkingGoes draws them): removing it disconnects them, which ends the sessions linked through them
+ *  and deletes what they posted. Nothing where it allowed none with linking on. */
+export function disconnectsGoes(names: string[]): string | undefined {
+  if (!names.length) return undefined;
+  const many = names.length !== 1;
+  return `It allowed ${names.length} connected app${many ? "s" : ""} with linking on (${names.map((n) => `\u201c${visible(n)}\u201d`).join(", ")}: ` +
+    `${many ? "their own words" : "its own word"}). Removing it disconnects ${many ? "them" : "it"}: the sessions linked through ${many ? "them" : "it"} end, ` +
+    "and their posts and checkpoints are deleted.";
+}
+
 /** A change the sign-in alone does not make (passkeys.py): it waits for the person's own word in ConfirmIt. The
  *  session channel's link changes (a ticket, a revoke) take the same word. `hardware`: a change only a hardware key
  *  confirms, whatever the account's high security (turning it on or off); while it is on, every change is one.
@@ -234,13 +265,20 @@ export function DeviceOrigin({ seen }: { seen: Pick<DeviceRequest, "created_at" 
  *  `device`: approving the device waiting with this code, which the confirmation is made for, and nothing else.
  *  `subject`: otherwise, the change the confirmation is made for, as the server names it (passkeys.CHANGE), so it is
  *  spent on that change alone. `passkeyOnly`: a passkey's word alone, neither the password's nor the recovery code's
- *  (renaming a passkey while end-to-end encryption is on: passkeys.rename). `to`: a rename's new name. */
-export interface Change { what: string; label: string; action: string; id?: string; ways: ConfirmWays; hardware?: boolean; e2e?: boolean; note?: string; device?: string; subject?: string; passkeyOnly?: boolean; to?: string }
+ *  (renaming a passkey while end-to-end encryption is on: passkeys.rename). `to`: a rename's new name. `passkeyFirst`:
+ *  a passkey's word while the account has one, the password's only where it has none (deleting the account, which the
+ *  password never makes while it has a passkey, and a deletion's cancel that the password may not make). `noPasskey`:
+ *  no passkey's word, where none of the account's passkeys may make the change (a deletion's cancel that only the
+ *  password may make). */
+export interface Change { what: string; label: string; action: string; id?: string; ways: ConfirmWays; hardware?: boolean; e2e?: boolean; note?: string; device?: string; subject?: string; passkeyOnly?: boolean; passkeyFirst?: boolean; noPasskey?: boolean; to?: string }
 
 /** What an account change's confirmation is made for (Change.subject): adding a passkey, removing or renaming the
- *  passkey `id`, turning high security on or off (`id`), signing out everywhere. */
+ *  passkey `id`, turning high security on or off (`id`), deleting the account and cancelling the deletion waiting under
+ *  the hold `id`, signing out everywhere. */
 export function accountSubject(change: Pick<Change, "what" | "id">): string {
   if (change.what === "add") return "passkey-add";
+  if (change.what === "delete") return "account-delete";
+  if (change.what === "delete-cancel") return `account-delete-cancel:${change.id ?? ""}`;
   if (change.what === "remove") return `passkey-remove:${change.id ?? ""}`;
   if (change.what === "rename") return `passkey-rename:${change.id ?? ""}`;
   if (change.what === "high") return `high-security-${change.id === "on" ? "on" : "off"}`;
@@ -296,26 +334,56 @@ export function ConfirmIt({ change, onConfirmed, onCancel }: { change: Change; o
   const hardware = !!change.hardware || !!change.ways.high_security;
   const e2e = !!change.e2e;
   const passkeyOnly = !!change.passkeyOnly && !e2e;     // a passkey's word alone: no password, no recovery code
+  // a passkey's word while the account has one; with none, the password's
+  const passkeyFirst = !!change.passkeyFirst && !e2e && !passkeyOnly && passkeys > 0;
   const hardwareKeys = change.ways.hardware ?? 0;
   const here = !APP && passkeysHere;
-  const viaPasskey = hardware ? here && hardwareKeys > 0 : (needed || e2e || passkeyOnly) && here && passkeys > 0;
-  const viaPassword = !hardware && !e2e && !passkeyOnly && needed && hasPassword;
+  const viaPasskey = !change.noPasskey && (hardware ? here && hardwareKeys > 0 : (needed || e2e || passkeyOnly || passkeyFirst) && here && passkeys > 0);
+  const viaPassword = !hardware && !e2e && !passkeyOnly && !passkeyFirst && needed && hasPassword;
   const byCode = e2e && ring?.via.kind === "recovery";
   const go = async (how: () => Promise<{ confirmation?: string; proof?: RecoveryProof }>) => {
     setBusy(true); setError("");
     try { const r = await how(); await onConfirmed(r.confirmation, r.proof); } catch (e) { setError(message(e)); } finally { setBusy(false); }
   };
   const ways = viaPasskey && hasPassword ? "one of your passkeys or your password" : viaPasskey ? "one of your passkeys" : "your password";
-  const said = e2e
-    ? `${change.label} takes ${hardware ? "one of your hardware keys" : "one of your passkeys"} or your recovery code as well as this sign-in, since end-to-end encryption is on: your password does not confirm it.${here ? "" : ` Passkeys work only in a browser at ${hostLabel(server())}.`}`
+  // The browser where a passkey or a hardware key confirms what the app cannot, named by its address: for a deletion
+  // or its cancel in an app build, a link straight to Account's tab there (App.tsx's #account), opened in the phone's
+  // browser as the privacy link is, since Apple's page on account deletion asks for "a link directly to the page on
+  // your website where they can complete the process" (STORE-READY, queue 4.328); for every other change, in words as
+  // before, Apple's rule and the ruling of 21:25 UTC on 2026-11-23 being of the deletion alone.
+  const accountTab = APP && (change.what === "delete" || change.what === "delete-cancel") && server()
+    ? `${server()}/app/#account` : null;
+  const at = (before: string, after: string): ReactNode => (accountTab
+    ? (
+      <>
+        {before}
+        <a className="text-accent hover:underline" href={accountTab} target="_blank" rel="noopener noreferrer">
+          {hostLabel(server())}
+        </a>
+        {after}
+      </>
+    )
+    : `${before}${hostLabel(server())}${after}`);
+  const elsewhere = (words: string): ReactNode =>
+    (here ? words : at(`${words} Passkeys work only in a browser at `, "."));
+  const yourKeys = hardware ? "one of your hardware keys" : "one of your passkeys";
+  const said: ReactNode = e2e
+    ? elsewhere(`${change.label} takes ${yourKeys} or your recovery code as well as this sign-in, since end-to-end `
+      + "encryption is on: your password does not confirm it.")
     : passkeyOnly
-    ? `${change.label} takes ${hardware ? "one of your hardware keys" : "one of your passkeys"} as well as this sign-in, since end-to-end encryption is on: your password does not confirm it.${here ? "" : ` Passkeys work only in a browser at ${hostLabel(server())}.`}`
+    ? elsewhere(`${change.label} takes ${yourKeys} as well as this sign-in, since end-to-end encryption is on: your `
+      + "password does not confirm it.")
     : hardware
     ? hardwareKeys === 0 ? `${change.label} takes one of your hardware keys, and this account has none: add one first.`
-      : !here ? `${change.label} takes one of your hardware keys, and they work only in a browser at ${hostLabel(server())}: confirm it there.`
+      : !here ? at(`${change.label} takes one of your hardware keys, and they work only in a browser at `,
+        ": confirm it there.")
       : `${change.label} takes one of your hardware keys as well as this sign-in${change.ways.high_security ? ", since high security is on" : ""}; your password and your other passkeys do not confirm it.`
+    : passkeyFirst
+    ? elsewhere(`${change.label} takes one of your passkeys as well as this sign-in; your password does not `
+      + "confirm it.")
     : !needed ? `${change.label}?` : !viaPasskey && !hasPassword
-      ? `${change.label} takes one of your passkeys as well as this sign-in, and they work only in a browser at ${hostLabel(server())}: confirm it there.`
+      ? at(`${change.label} takes one of your passkeys as well as this sign-in, and they work only in a browser at `,
+        ": confirm it there.")
       : `${change.label} takes ${ways} as well as this sign-in, so a sign-in someone else has taken cannot do it.`;
   return (
     <div ref={box} role="group" aria-label={change.label} className="mt-3 rounded-lg border border-wait/50 bg-wait/[0.05] p-3">
@@ -587,7 +655,7 @@ function AccountPane({ user, onEncryption }: { user: User; onEncryption?: () => 
                   aria-describedby={lastHardware(k) ? `last-hardware-${k.id}` : undefined} onClick={() => lastHardware(k) ? undefined : (e2eOn
                   ? revoke({ what: { remove: [k.id] }, label: `Removing \u201c${k.name}\u201d`,
                     words: `End-to-end encryption is on, so removing \u201c${k.name}\u201d replaces its keys: a new master key, sealed to the passkeys that stay and the recovery code, and a new content key every link seals to. What it signed that no session has taken is withdrawn. One touch of another passkey signs it.` })
-                  : void begin({ what: "remove", id: k.id, label: `Removing \u201c${k.name}\u201d`, action: "Remove it", note: e2eKeys ? OFF_KEYS_WORDS : undefined }))}>
+                  : void begin({ what: "remove", id: k.id, label: `Removing \u201c${k.name}\u201d`, action: "Remove it", note: [e2eKeys ? OFF_KEYS_WORDS : undefined, linkingGoes(k.linking ?? []), disconnectsGoes(k.disconnects ?? [])].filter(Boolean).join(" ") || undefined }))}>
                   <Trash2 size={12} /> Remove
                 </button>
               </li>
@@ -702,7 +770,102 @@ function AccountPane({ user, onEncryption }: { user: User; onEncryption?: () => 
         {ask("everywhere")}
         {everywhere && stillConnected && <StillConnected {...stillConnected} />}
       </Section>}
+
+      {/* no control in the desktop app, whichever place is open, nor on this Mac's own account, which has nothing to
+          confirm a deletion with */}
+      {!DESKTOP && !local && <DeleteAccount account={user.id} keys={keys} />}
     </>
+  );
+}
+
+/** Who may cancel a deletion that waits, in words: the password, where it counted when the deletion was placed, and the
+ *  passkeys that did and are still the account's, by name. */
+export function cancelWords(byPassword: boolean, passkeys: string[]): string {
+  const keys = passkeys.length === 1 ? `the passkey ${passkeys[0]}`
+    : passkeys.length > 1 ? `the passkeys ${passkeys.slice(0, -1).join(", ")} and ${passkeys[passkeys.length - 1]}` : "";
+  const ways = [byPassword ? "your password" : "", keys].filter(Boolean);
+  return ways.length ? `It can be cancelled with ${ways.join(" or ")}.`
+    : "Nothing the account still has may cancel it: write to this deployment's operator.";
+}
+
+/** A deletion that waits, as GET /api/account/delete gives it (account_delete.py): when it was placed and takes effect,
+ *  what made it ("passkey", "password", or "admin" for this deployment's operator), and which credentials may cancel
+ *  it ("password", and passkeys by their ids). */
+interface Deletion { id: string; approved_at: number; takes_effect_at: number; made_with: string; checked?: string | null; told?: number | null; cancel_by: string[] }
+
+/** Deleting the account (account_delete.py): what it ends, how long it waits and that no email will come, said before
+ *  anything is asked; placed with a confirmation made for it, a passkey's while the account has one, since the password
+ *  never takes a passkey away; the deletion that waits shown with its time and a cancel, which takes a confirmation
+ *  made for that cancel by a credential that may cancel it. This browser keeps the hold's id (accountDeletion.ts), so
+ *  the next time the page opens it can say the deletion is done (SignIn). */
+function DeleteAccount({ account, keys }: { account: string; keys: Passkey[] | null }) {
+  const [read, setRead] = useState<{ deletion: Deletion | null; waits: number } | null>(null);
+  const [absent, setAbsent] = useState(false);
+  const [asking, setAsking] = useState<Change | null>(null);
+  const [error, setError] = useState("");
+  const load = useCallback(async () => {
+    try {
+      const r = await api<{ deletion: Deletion | null; waits: number }>("/api/account/delete");
+      setRead(r);
+      // none waits for this account, which is signed in: one this browser placed for it was cancelled
+      if (!r.deletion) forgetDeletion(account);
+    } catch (e) {
+      // a server of an earlier release offers no deletion (the phone app may name one): nothing is shown
+      if (e instanceof ApiError && e.status === 404 && e.fromApp) setAbsent(true);
+      else setError(message(e));
+    }
+  }, [account]);
+  useEffect(() => { void load(); }, [load]);
+  const begin = async (change: Omit<Change, "ways">) => {
+    setError(""); setAsking(null);
+    try { setAsking({ ...change, subject: accountSubject(change), ways: await confirmWays() }); } catch (e) { setError(message(e)); }
+  };
+  const confirmed = (change: Change) => async (confirmation?: string) => {
+    if (change.what === "delete") {
+      const r = await api<{ deletion: Deletion | null }>("/api/account/delete", { method: "POST", body: { confirmation } });
+      if (r.deletion) keepDeletion(r.deletion.id, account);
+    } else {
+      await api(`/api/ade/holds/${encodeURIComponent(change.id ?? "")}/cancel`, { method: "POST", body: { confirmation } });
+      forgetDeletion(account);
+    }
+    setAsking(null);
+    await load();
+  };
+  const waiting = read?.deletion ?? null;
+  const length = read ? lengthWords(read.waits) : null;
+  // the account's passkeys that may cancel the deletion that waits, as it was placed; one removed since cannot confirm
+  const cancelKeys = waiting ? (keys ?? []).filter((k) => waiting.cancel_by.includes(k.id)) : [];
+  const byPassword = !!waiting && waiting.cancel_by.includes("password");
+  if (absent) return null;
+  return (
+    <Section title="Delete this account" note={read ? `${waiting ? "It can be cancelled until its time" : `Deleting it waits ${length ?? "its wait"}, and can be cancelled until then`}; then the account and what it holds on this server are deleted, and nothing undoes it; other people's records that name it by id are kept as their own rules keep them, an address they typed for it cleared. No email will come: Community sends none, and each device of yours with notifications on is told when it is asked for and when it is done.` : undefined}>
+      {waiting ? (
+        <div className="rounded-lg border border-wait/50 bg-wait/[0.05] p-3 text-[12.5px]">
+          <div>Your account is deleted at {dayTime(waiting.takes_effect_at)} unless you cancel it. No email will come.</div>
+          {waiting.made_with === "admin" && <div className="mt-1 text-[12px] text-fg-dim">This deployment&apos;s operator placed it, on a request checked so: {waiting.checked ?? "not said"}</div>}
+          {/* how many devices its notice went toward, kept on the hold: the owner's chance to cancel it from elsewhere */}
+          {typeof waiting.told === "number" && <div className="mt-1 text-[12px] text-fg-dim">{noticeWords(waiting.told)}</div>}
+          {/* who may cancel it is said once the account's passkeys are read; until then, or where that read failed, Cancel is
+              offered as the server's own refusal will judge it */}
+          {keys !== null && <div className="mt-1 text-[12px] text-fg-dim">{cancelWords(byPassword, cancelKeys.map((k) => k.name))}</div>}
+          {(keys === null || byPassword || cancelKeys.length > 0) && <button className="btn btn-sm mt-2" onClick={() => void begin({ what: "delete-cancel", id: waiting.id, label: "Cancelling the deletion", action: "Cancel it", passkeyFirst: !byPassword, noPasskey: keys !== null && cancelKeys.length === 0 })}>Cancel the deletion</button>}
+        </div>
+      ) : read && (
+        // nothing to press before the read has said none waits and how long one would wait
+        <>
+          <div className="text-[12.5px]">It ends:</div>
+          <ul className="mb-3 ml-4 list-disc text-[12.5px] text-fg-dim">
+            <li>Standing offers and custody, each as ending it does.</li>
+            <li>The pairing with Proofpane, removed as unpairing does it: nothing is revoked in Proofpane.</li>
+            <li>Your workspace&apos;s machine and volume, destroyed as Delete the workspace now destroys them; a workspace that is a folder on the server&apos;s own machine stays.</li>
+            <li>Connected apps, signers, hook tokens and links.</li>
+          </ul>
+          <button className="btn btn-sm btn-danger" onClick={() => void begin({ what: "delete", label: "Deleting this account", action: "Delete it", passkeyFirst: true })}><Trash2 size={12} /> Delete this account</button>
+        </>
+      )}
+      {asking && <ConfirmIt key={`${asking.what}-${asking.id ?? ""}`} change={asking} onConfirmed={confirmed(asking)} onCancel={() => setAsking(null)} />}
+      {error && <div role="alert" className="mt-2 text-[12.5px] text-fail">{error}</div>}
+    </Section>
   );
 }
 
@@ -719,6 +882,15 @@ export function withdrawnWords(withdrawn: number, stopped: number, cancelled = 0
 }
 
 function NotificationsPane() {
+  // the phone app shows none: its web view has no push and no notifications, and the app loads no plugin for them
+  // (phone/src-tauri/src/lib.rs), so it says so in its own words rather than a browser's
+  if (PHONE) {
+    return (
+      <Section title="This phone" note="While the app is open, Approvals, in the title bar, lists what waits for you.">
+        <div className="text-[12.5px] text-muted">This app shows no notifications.</div>
+      </Section>
+    );
+  }
   // the desktop app's own notifications are the system's, from this Mac's server; a hosted place's reach this Mac by a
   // browser's push or the phone app
   if (DESKTOP) {

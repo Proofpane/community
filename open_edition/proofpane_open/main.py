@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-from . import VERSION, auth, build, config, fido_mds, oauth, passkeys, tools
+from . import VERSION, account_delete, auth, build, config, fido_mds, oauth, passkeys, tools
 from .ade import actions as ade_actions
 from .ade import agents as ade_agents
 from .ade import agents_routes as ade_agents_routes
@@ -80,6 +80,7 @@ async def _lifespan(app):
     # makes device passkeys of the hardware keys whose model it reports revoked or compromised
     fido_mds.start(passkeys.blob_arrived, passkeys.awaiting_judgment)
     ade_workspaces.start()      # the fly provider's spending meter
+    account_delete.start()      # the deletions due, applied with the notifier off too, and their stragglers swept
     if ade_workspaces.provider() is not None:
         ade_agents.start_poller()       # agents' runs copied back from running machines (ade/agents.py)
         # the app's word on each workspace's record of skill proposals (ade/skill_improve.py)
@@ -311,6 +312,7 @@ def _passkey_error(request, exc):
     return JSONResponse(status_code=exc.status, content={"detail": str(exc)})
 
 
+@app.exception_handler(account_delete.DeletionError)
 @app.exception_handler(ade_agents.AgentError)
 @app.exception_handler(ade_holds.HoldError)
 @app.exception_handler(ade_suites.SuiteError)
@@ -631,6 +633,32 @@ def sign_out_everywhere(body: Optional[ConfirmationIn] = None, user=Depends(curr
     apps = oauth.signed_out_words(recent)
     ade_push.notice(user["id"], ade_push.words("signed-out-apps" if recent and apps else "signed-out"))
     return {"token": token, "connected_apps": recent, "apps": apps}
+
+
+@app.get("/api/account/delete")
+def account_deletion(user=Depends(current_user)):
+    # the deletion that waits, if one does: when it takes effect, what made it, and which credentials may cancel it; and
+    # how long one placed now would wait, which the page says before anything is asked
+    return {"deletion": account_delete.waiting(user["id"]), "waits": account_delete.delay()}
+
+
+@app.post("/api/account/delete")
+def account_delete_place(request: Request, body: Optional[ConfirmationIn] = None, user=Depends(current_user)):
+    # deleting the account waits (account_delete.py): placed with a confirmation made for it, by account_holds' rule
+    # for its maker, and told to the account's devices; cancelled through POST /api/ade/holds/{id}/cancel with a
+    # confirmation made for that cancel
+    return account_delete.place(user["id"], body.confirmation if body else None,
+                                net=auth.network_of(_client(request), wide=True))
+
+
+@app.get("/api/account/deletion/{hold_id}")
+def account_deleted(hold_id: str):
+    # no sign-in, since the account is gone: the device it was placed from kept the hold's id, and reads by that id
+    # alone that it is done, from a record holding nothing else (account_delete.done)
+    done = account_delete.done(hold_id)
+    if done is None:
+        raise HTTPException(status_code=404, detail="No deletion done is recorded under that id.")
+    return done
 
 
 @app.post("/api/admin/invitations")

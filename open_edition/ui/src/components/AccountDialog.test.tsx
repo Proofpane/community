@@ -5,7 +5,7 @@ import { useStore } from "../store";
 import { useE2EStore } from "../e2e";
 import * as K from "../e2eKeys";
 import type { CustodyOverview } from "../taskOffersApi";
-import { AccountDialog, BuildLine, ConfirmIt, DeviceOrigin, withdrawnWords } from "./AccountDialog";
+import { AccountDialog, BuildLine, ConfirmIt, DeviceOrigin, disconnectsGoes, linkingGoes, withdrawnWords } from "./AccountDialog";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); useStore.setState(useStore.getInitialState()); });
 
@@ -216,6 +216,58 @@ describe("a change the sign-in alone does not make: removing a passkey, signing 
     fireEvent.click(within(app).getByRole("button", { name: /Click again to revoke it/ }));
     expect(await within(app).findByText("Revoked.")).toBeTruthy();
     expect(calls.filter((c) => c.method === "DELETE").map((c) => c.path)).toEqual(["/api/connector/grants/g1"]);
+  });
+
+  it("says, before a passkey is removed, which apps' linking leans on it and what its removal ends and deletes", async () => {
+    serve({
+      "GET /api/account/passkeys": () => [200, { passkeys: [{ ...laptop, linking: ["Claude", "B\u202eot"] }, { ...laptop, id: "k2", name: "Phone", linking: [] }] }],
+      "GET /api/account/confirm": () => [200, { needed: true, password: true, passkeys: 2 }],
+    });
+    useStore.setState({ user: owner });
+    render(<AccountDialog onClose={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Laptop" }));
+    const panel = await screen.findByRole("group", { name: "Removing \u201cLaptop\u201d" });
+    // the apps' names are their own words: drawn as text, between quotation marks, a hidden character shown as itself
+    expect(panel.textContent).toContain(
+      "It turned linking on for 2 connected apps (\u201cClaude\u201d, \u201cB[U+202E]ot\u201d: their own words). " +
+      "Removing it turns that linking off: the sessions linked through them end, and their posts and checkpoints are deleted.");
+    expect(linkingGoes(["Claude"])).toBe(
+      "It turned linking on for 1 connected app (\u201cClaude\u201d: its own word). " +
+      "Removing it turns that linking off: the sessions linked through it end, and their posts and checkpoints are deleted.");
+    expect(linkingGoes([])).toBeUndefined();
+  });
+
+  it("says, before a passkey is removed, which apps it allowed have linking on and that its removal disconnects them", async () => {
+    serve({
+      "GET /api/account/passkeys": () => [200, { passkeys: [{ ...laptop, linking: ["Other"], disconnects: ["Claude", "B\u202eot"] }, { ...laptop, id: "k2", name: "Phone", linking: [], disconnects: [] }] }],
+      "GET /api/account/confirm": () => [200, { needed: true, password: true, passkeys: 2 }],
+    });
+    useStore.setState({ user: owner });
+    render(<AccountDialog onClose={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Laptop" }));
+    const panel = await screen.findByRole("group", { name: "Removing \u201cLaptop\u201d" });
+    expect(panel.textContent).toContain(
+      "It allowed 2 connected apps with linking on (\u201cClaude\u201d, \u201cB[U+202E]ot\u201d: their own words). " +
+      "Removing it disconnects them: the sessions linked through them end, and their posts and checkpoints are deleted.");
+    expect(typeof disconnectsGoes).toBe("function");
+    // and the app that stays connected, whose linking it turned on, is said apart
+    expect(panel.textContent).toContain("It turned linking on for 1 connected app (\u201cOther\u201d: its own word).");
+    expect(disconnectsGoes(["Claude"])).toBe(
+      "It allowed 1 connected app with linking on (\u201cClaude\u201d: its own word). " +
+      "Removing it disconnects it: the sessions linked through it end, and their posts and checkpoints are deleted.");
+    expect(disconnectsGoes([])).toBeUndefined();
+  });
+
+  it("says nothing of linking before removing a passkey that turned none on", async () => {
+    serve({
+      "GET /api/account/passkeys": () => [200, { passkeys: [{ ...laptop, linking: [] }] }],
+      "GET /api/account/confirm": () => [200, { needed: true, password: true, passkeys: 1 }],
+    });
+    useStore.setState({ user: owner });
+    render(<AccountDialog onClose={() => {}} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Laptop" }));
+    const panel = await screen.findByRole("group", { name: "Removing \u201cLaptop\u201d" });
+    expect(panel.textContent).not.toContain("linking");
   });
 
   it("says what removing a passkey did to connected apps, as the server says it", async () => {

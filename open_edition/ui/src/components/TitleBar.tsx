@@ -1,8 +1,9 @@
 import { useRef, useState, type ReactNode } from "react";
-import { AppWindow, Bell, Bot, Check, ChevronDown, Clock, Cloud, FileCheck2, KeyRound, Laptop, LockKeyhole, LogOut, Menu, Plus, Radio, Scale, ScrollText, Search, ShieldCheck, Smartphone, SquareKanban, UserPlus } from "lucide-react";
+import { AppWindow, Bell, Bot, Check, ChevronDown, Clock, Cloud, FileCheck2, KeyRound, Laptop, LockKeyhole, LogOut, Menu, Plus, Radio, Scale, ScrollText, Search, Shield, ShieldCheck, Smartphone, SquareKanban, UserPlus } from "lucide-react";
 import { useTheme, type ThemePref } from "../theme";
 import { workspaceWord, type WorkspaceStatus } from "../types";
-import { DESKTOP, type AccountKind, type AccountsView, type Quotas, type Window } from "../api";
+import { DESKTOP, PHONE, type AccountKind, type AccountsView, type Quotas, type Window } from "../api";
+import { PRIVACY_POLICY } from "../privacyPolicy";
 import { activeId, addHosted, dropUnsigned, LOCAL, places, setActive, type Place } from "../places";
 import { Kbd, usd, useMenu } from "./bits";
 import { clock, weekdayTime } from "../when";
@@ -357,6 +358,12 @@ function AccountMenu({ email, admin, onAccount, onChannel, onTimes, onLicenses, 
           <ThemeChoice />
           {onTimes && item(<Clock size={14} />, "Times on the board", onTimes)}
           {onLicenses && item(<Scale size={14} />, "Licenses", onLicenses)}
+          {PHONE && (
+            <a role="menuitem" href={PRIVACY_POLICY} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}
+              className="flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-[12.5px] text-fg-dim hover:bg-hover hover:text-fg [@media(pointer:coarse)]:h-11">
+              <Shield size={14} /> Privacy
+            </a>
+          )}
           {onSignOut && <div className="my-1 h-px bg-line" />}
           {onSignOut && item(<LogOut size={14} />, "Sign out", onSignOut)}
         </div>

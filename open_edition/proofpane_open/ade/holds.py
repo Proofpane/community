@@ -105,15 +105,17 @@ def get(db, hold_id):
     return _view(row) if row is not None else None
 
 
-def place(db, user_id, kind, subject, summary, now):
+def place(db, user_id, kind, subject, summary, now, seconds=None):
     """Inside the approval's own transaction: a hold on the approved action of `kind` on `subject` (the id of what it
-    acts on), taking effect delay(kind) seconds after `now`. `summary` says what was approved, in a line the page shows;
-    the notice says none of it (tell)."""
+    acts on), taking effect delay(kind) seconds after `now`, or `seconds` after it where its caller gives them, for a kind
+    whose delay is bounded by its own module rather than by MOST_DELAY (an account's deletion, account_delete.py).
+    `summary` says what was approved, in a line the page shows; the notice says none of it (tell)."""
     if kind not in _KINDS:
         raise ValueError(f"{kind} is not a kind of hold")
     hold_id = uuid.uuid4().hex
+    wait = delay(kind) if seconds is None else seconds
     db.execute("INSERT INTO ade_holds (id, user_id, kind, subject, summary, approved_at, takes_effect_at) "
-               "VALUES (?,?,?,?,?,?,?)", (hold_id, user_id, kind, subject, summary, now, now + delay(kind)))
+               "VALUES (?,?,?,?,?,?,?)", (hold_id, user_id, kind, subject, summary, now, now + wait))
     return get(db, hold_id)
 
 

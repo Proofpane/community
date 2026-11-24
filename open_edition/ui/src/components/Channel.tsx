@@ -5,7 +5,8 @@ import { ArrowDown, ArrowLeft, AtSign, Check, Cloud, Copy, ExternalLink, Hourgla
 import { api, Api, ApiError, APP, server, type HistorySession, type HistoryTalk, type LinkAsk, type LinkEvent, type LinkMove, type LinkView, type StorageOption } from "../api";
 import { useE2E, useE2EStore, type E2EState } from "../e2e";
 import { E2EApi } from "../e2eKeys";
-import { confirmWays, MOVE_LIFE, passkeysHere, prepareSigned, signPrepared, textDigest, type Prepared, type Signed, type SignedPurpose } from "../passkey";
+import { confirmWays, kindName, MOVE_LIFE, passkeysHere, prepareSigned, signPrepared, textDigest, type Prepared, type Signed, type SignedPurpose } from "../passkey";
+import { APPROVE, backupEligible, DEVICE_BOUND_KINDS, GUARD_OPEN, holdsStep, kindsWords, NO_BACKUP, PAGE_TRUST, phoneTakeOf, readsAsApprove, sameAllowance, stepOf, type PhoneTake, type Step, type StepKind } from "../phoneTake";
 import { SignedBy, SignOnMac, useKnownPasskeys, useSignerPaired } from "./SignOnMac";
 import type { SignedFacts } from "../secondScreen";
 import { hostLabel } from "../places";
@@ -27,6 +28,7 @@ import { KEEP } from "./StorageChoice";
 import { OutLink } from "./OutLink";
 import { EncryptedBar, eventShown, eventSlotOf, InClear, KeptClear, rowSealed, SealWords, ShownText, talkRefOf, talkShown, talkSlotOf, Unlock, useAccount, useOpened, useShownRows, type Seal, type Shown } from "./Sealed";
 import { PromptCard, ProposalCard } from "./LinkInbox";
+import { ConnectorLinks, useConnectorLinks } from "./ConnectorLinks";
 import { SigningWindow } from "./SigningWindow";
 import { LAST_MINUTE_WORDS, sendInWindow, sendRefusal, windowOf, WindowSendError } from "../signWindow";
 import { clock, dayTime, full } from "../when";
@@ -388,6 +390,9 @@ export function Channel({ onClose, reading: first = null, linking = false }: { o
     if (wasReading.current && !reading && local) void loadMoves();
     wasReading.current = !!reading;
   }, [reading, local, loadMoves]);
+  // the sessions linked through a connected app (ConnectorLinks.tsx), which are no links of the store's: read as the
+  // panel opens and again as the store reads the linked sessions (Read again among them), never on a timer of their own
+  const viaApps = useConnectorLinks(links);
   const groups = useMemo(() => machines(links?.links ?? [], listed ?? []), [links, listed]);
 
   // on a phone the panel is the whole screen, its header held at the top: Close first, where a thumb finds it, and the
@@ -483,7 +488,7 @@ export function Channel({ onClose, reading: first = null, linking = false }: { o
             </section>
           )}
           {links === null && <div className="flex justify-center py-8 text-muted"><Loader2 size={16} className="animate-spin" /></div>}
-          {links && links.links.length === 0 && !pairing && (
+          {links && links.links.length === 0 && !pairing && viaApps.links.length === 0 && (
             <div className="px-2 py-8 text-center text-[12.5px] text-muted">
               <div>
                 No session is linked yet. Link one: you name it, say whether it is on this Mac or on claude.ai, and get one
@@ -510,6 +515,7 @@ export function Channel({ onClose, reading: first = null, linking = false }: { o
               </section>
             );
           })}
+          <ConnectorLinks links={viaApps.links} failed={viaApps.failed} reload={viaApps.reload} />
           {others.length > 0 && (
             <div className="rounded-lg border border-line p-3">
               <div className="mb-1 text-[11.5px] text-muted">Questions from sessions no longer linked</div>
@@ -1172,11 +1178,131 @@ export function Question({ q, linkId }: { q: LinkEvent & { link_id?: string }; l
       <div className="mb-1 text-[11px] text-muted" title={full(q.time)}>
         {q.from} asks {q.to === "owner" ? "you" : q.to === "all" ? "every session" : q.to} · {ago(q.time)}
       </div>
-      <div className="whitespace-pre-wrap break-words text-[12.5px]"><ShownText shown={words}>{(t) => visible(t)}</ShownText></div>
+      <div className="whitespace-pre-wrap break-words text-[12.5px]"><ShownText shown={words}>{(t) => <QuestionWords text={t} />}</ShownText></div>
       <QuestionActions q={q} linkId={linkId} words={words} acts={acts} />
     </div>
   );
 }
+
+/** A question's words as the page shows them, on its card and on its row in a conversation: where they hold a step
+ *  its session's guard keeps for the owner at the machine (stepOf), the question's own words, then the step apart,
+ *  its command and folder each set out; else as they are. */
+function QuestionWords({ text }: { text: string }) {
+  const step = stepOf(text);
+  if (!step) return <>{visible(text)}</>;
+  const words = step.words.replace(/\n+$/, "");
+  return (
+    <>
+      {words && <div>{visible(words)}</div>}
+      <div role="group" aria-label="The step" className="mt-1.5 rounded-md border border-wait/50 bg-bg px-2.5 py-2 text-[12px]">
+        <div className="text-fg-dim">{visible(step.head)}</div>
+        <pre aria-label="Its command" className="mt-1 whitespace-pre-wrap break-all font-mono text-[11.5px] text-fg">{visible(step.command)}</pre>
+        <div className="mt-1 text-fg-dim">in <span className="font-mono">{visible(step.folder)}</span></div>
+        <div className="mt-1 text-[11px] text-muted">{visible(step.last)}</div>
+      </div>
+    </>
+  );
+}
+
+/** The account's passkeys as Account lists them, and whether its high security is on (only its hardware keys sign a
+ *  command then). */
+export interface AccountKeys { passkeys: AccountKey[]; high: boolean }
+
+/** The account's passkeys (AccountKeys), read where `wanted`: undefined while they are read, null where they cannot
+ *  be. */
+function useAccountKeys(wanted: boolean): AccountKeys | null | undefined {
+  const [keys, setKeys] = useState<AccountKeys | null | undefined>(undefined);
+  useEffect(() => {
+    if (!wanted) return;
+    let live = true;
+    api<{ passkeys?: AccountKey[]; high_security?: boolean }>("/api/account/passkeys").then(
+      (r) => {
+        if (live) setKeys({ passkeys: Array.isArray(r?.passkeys) ? r.passkeys : [], high: r?.high_security === true });
+      },
+      () => { if (live) setKeys(null); });
+    return () => { live = false; };
+  }, [wanted]);
+  return keys;
+}
+
+/** The names of the account's passkeys an allowance's keys (`fingerprints`) name, in its order, of those that can sign
+ *  a command; `bound`, for a step only a key that cannot be backed up counts for, without those the server says are
+ *  synced. */
+function namedKeys(fingerprints: readonly string[], account: AccountKeys, bound: boolean): string[] {
+  return fingerprints.flatMap((f) => {
+    const k = account.passkeys.find((p) => p.fingerprint === f);
+    if (!k || (account.high && k.tier !== "hardware") || (bound && kindName(k) === "synced passkey")) return [];
+    return [k.name];
+  });
+}
+
+/** What an Approve of a question's step lets its session do, as far as the page can tell: `lets` where the step's last
+ *  line said, when it asked, that the owner allowed it, and its link's report shows that same allowance still
+ *  (sameAllowance), naming a key of his that counts for the step; `keys` the fingerprints that allowance names, and
+ *  `names` those of the account's passkeys among them that count (null where the passkeys are not read, or cannot
+ *  be); `bound` the step's kinds for which only a key that cannot be backed up counts. The report only ever takes
+ *  away: a last line that says the owner did not allow it is never read as allowed. */
+export interface StepApproval { lets: boolean; keys: string[]; names: string[] | null; bound: StepKind[] }
+
+export function stepApproval(step: Step, reported: PhoneTake | null,
+                             account: AccountKeys | null | undefined): StepApproval {
+  const bound = step.kinds.filter((k) => DEVICE_BOUND_KINDS.includes(k));
+  if (!reported || !sameAllowance(step, reported)) return { lets: false, keys: [], names: null, bound };
+  const names = account ? namedKeys(reported.keys, account, bound.length > 0) : null;
+  return { lets: names === null || names.length > 0, keys: reported.keys, names, bound };
+}
+
+/** What the box Approve opens says of a question's step, by the step's own last line, which its session wrote as it
+ *  asked: where it says the owner had not allowed the step's kinds, that the session keeps the step for him at the
+ *  machine and an Approve here will not let it run, and where that is allowed; where it says he allowed them, and the
+ *  link's report shows that allowance still (stepApproval), what an Approve lets the session do, with the keys that
+ *  count; where the report does not, that it said so when it asked, but an Approve here may not let it run. */
+export function approveWords(step: Step, approval: StepApproval, name: string): string {
+  const said = step.said;
+  if (!("at" in said)) {
+    return `${name} keeps this step for you at the machine: an Approve here will not let it run. As it said when `
+      + `it asked, you had not allowed it to take ${kindsWords(said.missing)} on your Approve from the page. You can `
+      + "allow that only at the machine, in a terminal of your own (pin --phone-take), and only for what it asks after "
+      + "that.";
+  }
+  const when = dayTime(said.at), kinds = kindsWords(step.kinds);
+  if (!approval.lets) {
+    return `When ${name} asked, it said you had allowed it, at the machine on ${when}, to take ${kinds} on your `
+      + "Approve from the page; but what it reports now does not show that allowance still covering this, so an "
+      + "Approve here may not let it run.";
+  }
+  const who = (approval.names ? nameList(approval.names, "or") : "a key your allowance names")
+    + (approval.bound.length ? `, and only with ${NO_BACKUP}` : "");
+  return `Approve lets ${name} run this command once, in that folder, before your answer expires, if you sign it with `
+    + `${who}: as it said when it asked, you allowed it at the machine, on ${when}, to take ${kinds} on your Approve `
+    + "from the page.";
+}
+
+/** What the sign box says of a step's Approve that the session's allowance would not count, held after the touch:
+ *  signed with a key it does not name (the passkey `signer`, as encryption's view names its credential), with those it
+ *  names that count; or, for a step only a key that cannot be backed up counts for, signed with one whose signature
+ *  says it can be backed up (its authenticator data's BE flag), named where the page can tell it. Null where, as far as
+ *  the page can tell, it counts. */
+export function approvalHeld(a: StepApproval, signed: Signed, signer: AccountKey | undefined,
+                             name: string): string | null {
+  const not = `This Approve would not let ${name} run the step:`;
+  if (signer?.fingerprint && !a.keys.includes(signer.fingerprint)) {
+    const counts = a.names?.length ? ` It counts what ${nameList(a.names, "or")} signs.` : "";
+    return `${not} your allowance does not name ${signer.name}, the key you signed with. Nothing is sent until you `
+      + `choose.${counts}`;
+  }
+  const response = (signed.credential as { response?: { authenticatorData?: unknown } } | null)?.response;
+  if (!a.bound.length || backupEligible(response?.authenticatorData) !== true) return null;
+  return `${not} ${signer ? `${signer.name}, the key you signed with,` : "the key you signed with"} can be backed up, `
+    + `and for ${kindsWords(a.bound)} only ${NO_BACKUP} counts. Nothing is sent until you choose.`;
+}
+
+/** Why an answer that reads as an approval is refused where a question asks for a step: Approve, beside Answer, says
+ *  first what an Approve lets the session do; where the page cannot read the step, it takes no approval here. */
+export const STEP_ANSWER_WORDS = "To approve this step, use Approve: it says first what an Approve lets the "
+  + "session do.";
+export const STEP_UNREAD_WORDS = "This question holds a step this page cannot read, so it takes no Approve here: "
+  + "approve it at the machine, or answer in other words.";
 
 /** The keys a press acts by, by the item it acts on, for the page (Acting.tsx): a question's, a waiting's, a prompt's or a
  *  proposal's close; a command's withdrawal; a hold's cancel. */
@@ -1247,16 +1373,36 @@ export function QuestionActions({ q, linkId, words, acts: given, onSending, onSe
   const dismissed = acts.taken(closing);
   // an answer begun and not sent opens again with its words
   const [answering, setAnswering] = useState(() => !!linkId && !!draftText(answerDraft(linkId, q.seq)));
+  // Approve pressed on a question that asks for a step: its box, which signs the one word that approves it
+  const [approving, setApproving] = useState(false);
   // an answer on its way, said on this card where no conversation says it
   const [sendingHere, setSendingHere] = useState<string | null>(null);
   const sendingTo = onSending ?? setSendingHere;
   const described = useId();
   const toOwner = q.to === "owner" || q.to === "all";
+  // the step it asks for, where its words hold one this page reads (stepOf), and what its link reports of the owner's
+  // allowance to take such steps on an Approve from the page; an approval written as an answer to it is refused
+  const step = words.ok ? stepOf(words.value) : null;
+  const holds = words.ok && holdsStep(words.value);
+  const reported = phoneTakeOf(useStore((s) => s.links?.links.find((l) => l.id === linkId)?.phone_take));
+  // what an Approve lets the session do, by the keys of the account's that the allowance names, read as Approve opens
+  const account = useAccountKeys(approving);
+  const approval = step ? stepApproval(step, reported, account) : null;
+  const asStep = !holds ? undefined
+    : (t: string) => (readsAsApprove(t) ? (step ? STEP_ANSWER_WORDS : STEP_UNREAD_WORDS) : null);
+  // Answer, and Approve beside it for a step, where it is to the owner, from a live link, and its words are shown
+  const offered = toOwner && !!linkId && words.ok && !answering && !approving && signsHere();
+  // the digest is of the question's text as the server holds it: for a sealed question, its sealed text; but for
+  // one the server sealed as encryption was turned on, of the words its session asked in the clear, as opened
+  // here, since that session's own record of them is what it checks an answer against
+  const answered = async () =>
+    ({ ref: q.seq, digest: await textDigest(q.sealed_in_place && words.ok ? words.value : q.text) });
   return (
     <>
       {dismissed ? <TakenLine said={`${dismissed}: ${q.from} is told you closed it`} sure={acts.sure(closing)} /> : (
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          {toOwner && linkId && words.ok && !answering && signsHere() && <button className="btn btn-sm btn-primary" onClick={() => setAnswering(true)}><KeyRound size={12} /> Answer</button>}
+          {offered && <button className="btn btn-sm btn-primary" onClick={() => setAnswering(true)}><KeyRound size={12} /> Answer</button>}
+          {offered && step && <button className="btn btn-sm btn-primary" onClick={() => setApproving(true)}><KeyRound size={12} /> Approve</button>}
           <button className="btn btn-sm" aria-describedby={described}
             onClick={() => void acts.act(closing, "Dismissed", () => Api.closeLinkQuestion(q.seq), refresh)}>
             Dismiss question
@@ -1267,14 +1413,27 @@ export function QuestionActions({ q, linkId, words, acts: given, onSending, onSe
       <CameBack why={acts.failed(closing)} />
       {sendingHere !== null && <SendingLine words={sendingHere} what="Your answer" />}
       {answering && !dismissed && linkId && words.ok && (
-        // the digest is of the question's text as the server holds it: for a sealed question, its sealed text; but for
-        // one the server sealed as encryption was turned on, of the words its session asked in the clear, as opened
-        // here, since that session's own record of them is what it checks an answer against
         <SignBox purpose="answer" to={linkId} toName={q.from} placeholder="Your answer" submit="Review the answer" focus
-          draft={{ key: answerDraft(linkId, q.seq), name: q.from }}
-          extra={async () => ({ ref: q.seq, digest: await textDigest(q.sealed_in_place && words.ok ? words.value : q.text) })}
+          draft={{ key: answerDraft(linkId, q.seq), name: q.from }} check={asStep} extra={answered}
           onDone={async () => { setAnswering(false); await onSent?.(); sendingTo(null); await refresh(); }}
           onCancel={() => setAnswering(false)} onSending={sendingTo} />
+      )}
+      {approving && !dismissed && linkId && step && approval && (
+        // the one word that approves a step, signed as an answer to its question as Answer signs one; what it lets the
+        // session do said first, by what its session said when it asked and its link's report of the owner's allowance,
+        // and what an Approve here is; after the touch, one its allowance would not count is held (approvalHeld)
+        <div className="mt-2">
+          <div className="rounded-md border border-wait/40 bg-wait/[0.06] px-2.5 py-1.5 text-[11.5px] text-fg-dim">
+            <div role="note" aria-label="What an Approve lets it do">{approveWords(step, approval, q.from)}</div>
+            <div role="note" aria-label="What an Approve here is" className="mt-1 text-[11px] text-muted">
+              {PAGE_TRUST}
+            </div>
+          </div>
+          <SignBox purpose="answer" to={linkId} toName={q.from} fixed={APPROVE} submit="Review the approval" focus
+            approval={approval.lets ? approval : undefined}
+            extra={answered} onDone={async () => { setApproving(false); await onSent?.(); sendingTo(null); await refresh(); }}
+            onCancel={() => setApproving(false)} onSending={sendingTo} />
+        </div>
       )}
     </>
   );
@@ -1289,7 +1448,7 @@ export const CHECK_TEXT = "Reply with your status: what you are doing, and what 
  *  signed are exactly those shown under "You are signing"; the session and the life signed with them were chosen on
  *  the card before Review. Signing what a connected app proposed: `proposal` is its id, which the payload carries, and
  *  the app's name; `start` its words, which the owner may change before Review. */
-export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed, start, proposal, onDone, onCancel, after, draft, focus, head, check, onFailed, answers, onSending }: {
+export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed, start, proposal, onDone, onCancel, after, draft, focus, head, check, onFailed, answers, onSending, approval }: {
   purpose: SignedPurpose; to: string; toName?: string; placeholder?: string; submit: string; fixed?: string; start?: string;
   proposal?: { id: string; by: string };
   extra?: () => Promise<{ ref?: number; digest?: string }>; onDone: () => Promise<void>; onCancel?: () => void; after?: number;
@@ -1310,6 +1469,9 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
    *  once the server refused them, or once it took them and `onDone` has run, or before, where `onDone` says null
    *  itself once its place has read what went */
   onSending?: (words: string | null) => void;
+  /** a step's Approve that its session's allowance lets run (stepApproval): after the touch, one the allowance would
+   *  not count is held as an unpinned passkey's is (approvalHeld) */
+  approval?: StepApproval;
 }) {
   const [text, setText] = useState(fixed ?? start ?? (draft ? draftText(draft.key) : ""));
   const [hours, setHours] = useState(1);
@@ -1324,6 +1486,17 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
   const [error, setError] = useState("");
   // said at Review, before the touch: which passkeys the session will refuse (pinCheck)
   const [warning, setWarning] = useState<PinWarning | null>(null);
+  // what a touch signed with a passkey the session has not pinned (the warning's credentials), and what is said of
+  // it: nothing is sent until the owner sends it anyway or signs again; the keyboard goes to Sign again, and back to
+  // Sign after it
+  const [held, setHeld] = useState<{ signed: Signed; words: string; said: string } | null>(null);
+  // for a step's Approve: the account's passkeys by their credential ids, read at Review, which tell the key a touch
+  // signed with
+  const [signers, setSigners] = useState<Map<string, AccountKey> | null>(null);
+  const heldFirst = useRef<HTMLButtonElement>(null);
+  const backToSign = useRef(false);
+  // the session it goes to as Linked sessions last read it: when it was last heard, and whether it is silent
+  const link = useStore((s) => s.links?.links.find((l) => l.id === to));
   // Cancel with words typed asks first: a second click discards them
   const [discarding, setDiscarding] = useState(false);
   // Review and Sign wait while the page cannot reach the server, saying why
@@ -1349,7 +1522,12 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
   useEffect(() => {
     if (prepared) signButton.current?.focus();
     else if (backToWords.current) { backToWords.current = false; words.current?.focus(); }
+    if (!prepared) setHeld(null);                           // what was held goes with its review
   }, [prepared]);
+  useEffect(() => {
+    if (held) heldFirst.current?.focus();
+    else if (backToSign.current) { backToSign.current = false; signButton.current?.focus(); }
+  }, [held]);
   useEffect(() => {
     if (focus) (words.current ?? reviewButton.current)?.focus();
   }, []);       // eslint-disable-line react-hooks/exhaustive-deps
@@ -1398,13 +1576,31 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
     setBusy(true); setError("");
     try {
       const prepare = async () => prepareSigned(purpose, to, { text: whole.normalize("NFC"), life: hours * 3600, after, id: proposal?.id, ...(extra ? await extra() : {}) });
-      const [p, w] = await Promise.all([prepare(), pinCheck(to)]);
+      const [p, w, keyed] = await Promise.all([prepare(), pinCheck(to), approval ? credentialKeys() : null]);
       setWarning(w);
+      setSigners(keyed);
       setPrepared(p);
       reviewedAt.current = Date.now();
+      const life = purpose === "instruction" || purpose === "answer"
+        ? ` ${lifeWords(Number(p.payload.expires_at), link, toName, purpose)}` : "";
       setSaid(`${signingWhat(p, toName, after, proposal?.by, answers).replace(/:$/, ".")} ${w ? `${pinWords(w, toName ?? "The session")} ` : ""}`
-              + `Sign with your ${p.allow.length ? "hardware key" : "passkey"} to send it.`);
+              + `Sign with your ${p.allow.length ? "hardware key" : "passkey"} to send it.${life}`);
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
+  };
+  // a touch made with a passkey the session has not pinned, where its pins are known, or, for a step's Approve, one its
+  // allowance would not count (approvalHeld): held, said so, and nothing sent (true); any other is sent as it is. The
+  // passkey is told by the credential that signed, as encryption's view names the account's passkeys (pinCheck,
+  // credentialKeys), so one it cannot tell is sent as before
+  const holdIfRefused = (signed: Signed, words: string) => {
+    const id = (signed.credential as { id?: unknown } | null)?.id;
+    const key = typeof id === "string" ? warning?.credentials?.find((c) => c.id === id)?.name : undefined;
+    const name = toName ?? "The session";
+    const told = key && warning ? heldWords(warning, key, name)
+      : approval ? approvalHeld(approval, signed, typeof id === "string" ? signers?.get(id) : undefined, name) : null;
+    if (!told) return false;
+    setHeld({ signed, words, said: told });
+    setSaid(told);
+    return true;
   };
   // the server's refusal in the place's own words where it has them, else in the server's
   const failedWords = async (e: unknown) => (onFailed ? await onFailed(e).catch(() => null) : null) ?? message(e);
@@ -1438,9 +1634,23 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
     setBusy(true); setError("");
     try {
       const signed = await signPrepared(prepared);          // the prompt first, nothing awaited before it
-      await send(signed, prepared.words);
+      if (!holdIfRefused(signed, prepared.words)) await send(signed, prepared.words);
     } catch (e) { setPrepared(null); setError(await failedWords(e)); } finally { setBusy(false); pressed.current = false; }
   };
+  // what was held, sent as it was signed, on the owner's word; within the review's life, as any send
+  const sendAnyway = async () => {
+    if (!held || signing.off || pressed.current || stale()) return;
+    const h = held;
+    pressed.current = true;
+    setBusy(true); setError(""); setHeld(null);
+    try {
+      await send(h.signed, h.words);
+    } catch (e) {
+      setPrepared(null); setError(await failedWords(e));
+    } finally { setBusy(false); pressed.current = false; }
+  };
+  // what was held, put away unsent: the review stays, to sign again with another passkey
+  const signAgain = () => { backToSign.current = true; setHeld(null); };
   // the reviewed words under the window: signed here with its key, no passkey; the window's place moves only on the
   // server's 2xx, and an answer that did not come is settled from the links list (signWindow.ts)
   const sendWindowed = async () => {
@@ -1465,6 +1675,7 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
   };
   const signedOnMac = async (signed: Signed) => {
     if (!prepared || pressed.current) return;
+    if (holdIfRefused(signed, prepared.words)) { setOnMac(false); return; }
     pressed.current = true;
     try { await send(signed, prepared.words); } catch (e) { setPrepared(null); setOnMac(false); setError(await failedWords(e)); } finally { pressed.current = false; }
   };
@@ -1536,6 +1747,10 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
           {/* clipped to its own lines, so nothing in an app's name is drawn over the words below it */}
           <div className="overflow-hidden text-[11.5px] text-fg-dim">{signingWhat(prepared, toName, after, proposal?.by, answers)}</div>
           {purpose !== "resume" && <pre className="mt-1 whitespace-pre-wrap break-words rounded bg-bg px-2 py-1.5 font-mono text-[12px] text-fg">{prepared.words}</pre>}
+          {(purpose === "instruction" || purpose === "answer") && (
+            // until when it can be taken, and when its session was last heard: unread by then, it is taken no more
+            <div role="note" aria-label="When it expires" className="mt-1 text-[11px] text-fg-dim">{lifeWords(Number(prepared.payload.expires_at), link, toName, purpose)}</div>
+          )}
           {proposal && purpose !== "resume" && (
             <div className="mt-1 overflow-hidden text-[11px] text-wait">
               {prepared.words === ((head ?? "") + (start ?? "")).normalize("NFC")
@@ -1545,7 +1760,18 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
           )}
           <div className="mt-1 text-[11px] text-faint">Your passkey's prompt does not show these words: this is the only place you see them before you sign.</div>
           {warning && <PinNotice w={warning} name={toName ?? "The session"} />}
-          {!onMac && (
+          {held && (
+            // signed with a passkey the session has not pinned, or one its allowance would not count for a step's
+            // Approve: nothing goes until the owner chooses
+            <div role="group" aria-label="Not sent yet" className="mt-1.5 rounded-md border border-fail/50 bg-fail/[0.05] p-2 text-[12px]">
+              <div className="text-fail">{held.said}</div>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <button ref={heldFirst} className="btn btn-sm btn-primary" disabled={busy} onClick={signAgain}><KeyRound size={12} /> Sign again</button>
+                <button className={`btn btn-sm ${UNAVAILABLE}`} disabled={busy} {...signing.attrs} onClick={() => void sendAnyway()}><Send size={12} /> Send anyway</button>
+              </div>
+            </div>
+          )}
+          {!onMac && !held && (
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               <button ref={signButton} className={`btn btn-sm btn-primary ${UNAVAILABLE}`} disabled={busy || sending} {...signing.attrs} onClick={() => void sign()}>
                 {sending ? <><Loader2 size={12} className="animate-spin" /> Sending</>
@@ -1571,21 +1797,31 @@ export function SignBox({ purpose, to, toName, placeholder, submit, extra, fixed
 
 const REVIEW_LIFE = 290;    // seconds a review is signed within: the nonce's 300, less a margin for the prompt
 
-/** One of the account's passkeys as Account lists it (GET /api/account/passkeys): a session pins it by its fingerprint. */
-export interface AccountKey { id: string; name: string; created_at: number; fingerprint?: string; tier?: string }
+/** One of the account's passkeys as Account lists it (GET /api/account/passkeys): a session pins it by its fingerprint;
+ *  its kind as the server says it (passkey.ts kindName). */
+export interface AccountKey {
+  id: string; name: string; created_at: number; fingerprint?: string; tier?: string; kind?: string | null;
+  backed_up?: boolean;
+}
 
 /** Which of the passkeys that can sign a command a session refuses: it acts only on what a passkey it pinned signed.
- *  `known`: from the pins it reports (with its History list); where it reports none, the passkeys added after it was
- *  linked, which it pinned only if it was given their pin line. `all`: it refuses every one of them. */
-export interface PinWarning { refused: { name: string; fingerprint: string }[]; all: boolean; known: boolean; pinned: string[] }
+ *  `known`: from the pins it reports (with its heartbeat or its History list), none of them where it reports it pins
+ *  none; where it reports none, the passkeys added after it was linked, which it pinned only if it was given their pin
+ *  line. `all`: it refuses every one of them. `credentials`: where they are known, the refused passkeys by their
+ *  credential ids, as encryption's view names them, so a touch made with one of them is told after it, before anything
+ *  is sent (SignBox). */
+export interface PinWarning {
+  refused: { name: string; fingerprint: string }[]; all: boolean; known: boolean; pinned: string[];
+  credentials?: { id: string; name: string }[];
+}
 
 /** The warning a review gives before the touch (PinWarning), from the account's passkeys, whether its high security is
- *  on (only its hardware keys sign a command then), the pins the session reports (none: not reported) and when it was
- *  linked. Null when it refuses none of them, or when that cannot be told. */
+ *  on (only its hardware keys sign a command then), the pins the session reports (null or none: not reported; []: it
+ *  pins none) and when it was linked. Null when it refuses none of them, or when that cannot be told. */
 export function pinsWarning(keys: AccountKey[], high: boolean, pins: string[] | null | undefined, linked: number | null | undefined): PinWarning | null {
   const can = keys.filter((k) => !!k.fingerprint && (!high || k.tier === "hardware"));
   if (!can.length) return null;
-  const known = !!pins && pins.length > 0;
+  const known = Array.isArray(pins);
   const refused = can.filter((k) => (known ? !pins!.includes(k.fingerprint!) : linked != null && k.created_at > linked));
   if (!refused.length) return null;
   return { refused: refused.map((k) => ({ name: k.name, fingerprint: k.fingerprint! })), all: refused.length === can.length, known,
@@ -1593,19 +1829,92 @@ export function pinsWarning(keys: AccountKey[], high: boolean, pins: string[] | 
 }
 
 /** pinsWarning for a review of a command to link `to`, read as it is made: the account's passkeys, and the session's
- *  pins as encryption's view of the account serves them (the one the page holds where it cannot be read now). Null
- *  where they cannot be read: nothing is said then. */
+ *  pins as encryption's view of the account serves them, read now; where that view cannot be read or names no such
+ *  link, as Linked sessions last read them where it reports them; else as the view the page holds has them. Where the
+ *  pins are known, the refused passkeys' credential ids, as that view names the account's passkeys. Null where the
+ *  passkeys cannot be read: nothing is said then. */
 export async function pinCheck(to: string): Promise<PinWarning | null> {
   try {
-    const [mine, view] = await Promise.all([
+    const [mine, fresh] = await Promise.all([
       api<{ passkeys: AccountKey[]; high_security?: boolean }>("/api/account/passkeys"),
-      E2EApi.view().catch(() => useE2EStore.getState().view),
+      E2EApi.view().catch(() => null),
     ]);
-    const linked = useStore.getState().links?.links.find((l) => l.id === to)?.created_at;
-    return pinsWarning(mine.passkeys ?? [], !!mine.high_security, view?.links.find((l) => l.link_id === to)?.pins, linked);
+    const view = fresh ?? useE2EStore.getState().view;
+    const link = useStore.getState().links?.links.find((l) => l.id === to);
+    const listed = view?.links.find((l) => l.link_id === to);
+    const pins = fresh && listed ? listed.pins : Array.isArray(link?.pins) ? link.pins : listed?.pins;
+    const keys = mine.passkeys ?? [];
+    const w = pinsWarning(keys, !!mine.high_security, pins, link?.created_at);
+    if (!w?.known || !view) return w;
+    const ids = new Map(view.passkeys.map((p) => [p.passkey_id, p.credential_id]));
+    const credentials = w.refused.flatMap((r) => {
+      const id = ids.get(keys.find((k) => k.fingerprint === r.fingerprint)?.id ?? "");
+      return id ? [{ id, name: r.name }] : [];
+    });
+    return { ...w, credentials };
   } catch {
     return null;
   }
+}
+
+/** The account's passkeys by the credential ids encryption's view names them by, read now (that view, where it
+ *  cannot be read now, as the page holds it), so the key a touch signed with is told after it; null where they cannot
+ *  be read. */
+export async function credentialKeys(): Promise<Map<string, AccountKey> | null> {
+  try {
+    const [mine, fresh] = await Promise.all([
+      api<{ passkeys: AccountKey[] }>("/api/account/passkeys"),
+      E2EApi.view().catch(() => null),
+    ]);
+    const view = fresh ?? useE2EStore.getState().view;
+    if (!view) return null;
+    const keys = mine.passkeys ?? [];
+    return new Map(view.passkeys.flatMap((p) => {
+      const k = keys.find((x) => x.id === p.passkey_id);
+      return k && p.credential_id ? [[p.credential_id, k] as const] : [];
+    }));
+  } catch {
+    return null;
+  }
+}
+
+/** What the sign box says of a step signed with a passkey (`key`) the session has not pinned, held after the touch. */
+export function heldWords(w: PinWarning, key: string, name: string): string {
+  return `${name} would refuse this: it has not pinned ${key}, the passkey you signed with. Nothing is sent until you `
+    + `choose.${w.pinned.length ? ` It takes what ${nameList(w.pinned, "or")} signs.` : ""}`;
+}
+
+/** What a review says before the touch of how long the instruction or answer it signs lives, and of the session it
+ *  goes to (`l`, as Linked sessions last read it): when it was last heard, and whether it is silent; and that unread
+ *  by then (`expiresAt`, the step's `expires_at`), it expires unread and nothing acts on it. Given that time alone,
+ *  not the step: a function handed a step is one the challenge audit counts (challengeAudit.test.ts), and this one
+ *  reads nothing else of it. */
+export function lifeWords(expiresAt: number, l: LinkView | undefined, toName: string | undefined,
+                          what: "instruction" | "answer"): string {
+  const name = toName ?? "the session";
+  const named = name.charAt(0).toUpperCase() + name.slice(1);
+  const at = l ? heardAt(l) : null;
+  const heard = !l ? "" : at == null ? `${named} has not been heard from yet. `
+    : `${named} was last heard ${ago(isoOf(at))} (${dayTime(at)})`
+      + `${l.silent ? `, and is silent: not heard for more than two of its ${l.interval_min}-minute intervals` : ""}. `;
+  return `${heard}If ${l ? "it" : name} does not read its link before ${dayTime(expiresAt)}, this `
+    + `${what} expires unread, and nothing acts on it.`;
+}
+
+/** What a link's card says of the owner's allowance as its link reports it: which steps it may take on his Approve
+ *  from the page, since when, and signed with which of his passkeys (those the allowance names that can sign a
+ *  command; in the allowance's own words where they are not read, or cannot be); for a deployment or a push, that only
+ *  a key that cannot be backed up counts. */
+export function allowanceWords(take: PhoneTake, account: AccountKeys | null | undefined): string {
+  const head = `You allowed it at the machine, on ${dayTime(take.at)}, to take ${kindsWords(take.kinds)} on your `
+    + "Approve from the page";
+  const names = account ? namedKeys(take.keys, account, false) : null;
+  if (names && !names.length) {
+    return `${head}, but none of the keys your allowance names is a passkey of yours that can sign here.`;
+  }
+  const bound = take.kinds.filter((k) => DEVICE_BOUND_KINDS.includes(k));
+  return `${head}, signed with ${names ? nameList(names, "or") : "a key your allowance names"}.`
+    + (bound.length ? ` For ${kindsWords(bound)}, only ${NO_BACKUP} counts.` : "");
 }
 
 /** "A", "A and B", "A, B and C" (or, with "or"). */
@@ -1701,8 +2010,12 @@ const QUEUED_HEARD = 600;
  *  alike. */
 const queuedFor = (l: Pick<LinkView, "last_heartbeat_at">) =>
   (l.last_heartbeat_at != null && Date.now() / 1000 - l.last_heartbeat_at < QUEUED_HEARD ? QUEUED_SAID : QUEUED_UNHEARD);
+/** What the page says of one of the owner's commands that expired: no session took it before then (one taken is
+ *  never said to have expired), and a session's client takes none past its life. */
+export const EXPIRED_SAID = "It expired before its session took it, so nothing acted on it.";
 const stateSaid = (s: LinkEvent["state"] | undefined, queued: string) =>
-  (s === "answered" ? "The session says it replied: its word, not checked" : s === "queued" ? queued : undefined);
+  (s === "answered" ? "The session says it replied: its word, not checked" : s === "queued" ? queued
+    : s === "expired" ? EXPIRED_SAID : undefined);
 
 /** The owner's newest commands to a session, each with where it stands; one no session has taken can be withdrawn. */
 export function Commands({ l }: { l: LinkView }) {
@@ -1730,6 +2043,8 @@ export function Commands({ l }: { l: LinkView }) {
             )}
           </div>
           {withdrawn && <TakenLine said={withdrawn} sure={acts.sure(key)} />}
+          {/* one sent in a signing window says it was not taken, and why, beside the window */}
+          {c.state === "expired" && !c.delegation && <div className="ml-1 text-[11px] text-muted">{EXPIRED_SAID}</div>}
           {c.delegation ? <SentInWindow c={c} /> : <SignedBy facts={c as SignedFacts} keys={keys} />}
           <CameBack why={acts.failed(key)} />
         </div>
@@ -1822,6 +2137,10 @@ export function LinkCard({ l, questions, waitings, onTicket, onTalk, sessionsBel
     : live ? { ev: live, label: "No checkpoint yet; its live view's newest line" } : null;
   const heard = isoOf(heardAt(l));
   const ref = l.session_ref && l.session_ref.startsWith("https://claude.ai/") ? l.session_ref : null;
+  // the owner's allowance, given at the machine, to take the steps its guard keeps for the owner on an Approve from the
+  // page, as its client reports it, and the account's passkeys it names
+  const take = phoneTakeOf(l.phone_take);
+  const takeKeys = useAccountKeys(!!take);
   const revoke = async () => {
     try { setRevoking({ what: "revoke", label: `Revoking ${l.name}`, action: "Revoke it", subject: `link-revoke:${l.id}`, ways: await confirmWays() }); } catch (e) { setError(e); }
   };
@@ -1841,6 +2160,10 @@ export function LinkCard({ l, questions, waitings, onTicket, onTalk, sessionsBel
         {heard && heardThrough(l) && <span className="text-muted">{heardThrough(l)}</span>}
         {l.silent && <span className="text-fail">silent for more than two of its {l.interval_min}-minute intervals{l.heard_through === "keeper" ? KEEPER_SILENCE : ""}</span>}
       </div>
+      {take && (
+        <div className="mt-0.5 text-[11.5px] text-wait" title={full(take.at)}>{allowanceWords(take, takeKeys)}</div>
+      )}
+      {take && <div className="text-[11.5px] text-muted">{GUARD_OPEN}</div>}
       {ref && <a className="text-[11.5px] text-accent hover:underline" href={ref} target="_blank" rel="noopener noreferrer">its session on claude.ai</a>}
       {instead ? <Latest ev={instead.ev} l={l} label={instead.label} /> : (
         <div className="mt-1.5 whitespace-pre-wrap break-words text-[12.5px] text-fg-dim">
@@ -2079,6 +2402,15 @@ function LinkMenu({ name, onTicket, onRevoke, onStop }: { name: string; onTicket
 const anyLocked = (shown: { seal?: Seal | null }[]) => shown.some((s) => s.seal?.at === "locked");
 const sealOfShown = (s: Shown<string>) => (s.ok ? {} : { seal: s.seal });
 
+/** What the log writes for a prompt or a proposal in place of its words, or null for any other event: the line the
+ *  card's newest line has for it (latestLead), which holds none of its words. Its words are read on its card
+ *  (LinkInbox.tsx), which holds them to the rules before it shows them; a line here would show them as they read. */
+function itemLead(ev: Pick<LinkEvent, "kind" | "to" | "ref" | "mirror" | "client_id">): string | null {
+  return ev.kind === "prompt" || ev.kind === "proposal" ? latestLead(ev, { commands: [] }).lead : null;
+}
+
+/** A link's log, "Show what it did": each of its events as one line, a sealed one opened with the account's keys; a
+ *  prompt and a proposal as the line that says what each is (itemLead). */
 function Timeline({ id }: { id: string }) {
   const setError = useStore((s) => s.setError);
   const account = useAccount();
@@ -2092,17 +2424,22 @@ function Timeline({ id }: { id: string }) {
     } catch (e) { setError(e); }
   };
   useEffect(() => { void load(); }, [id]);    // eslint-disable-line react-hooks/exhaustive-deps
-  // what this link posted is sealed by this link; the owner's commands to it never are
-  const opener = useOpened((events ?? []).map((ev) => ({ envelope: ev.text, slot: eventSlotOf(ev, id, account) })));
+  // what this link posted is sealed by this link; the owner's commands to it never are. A prompt's and a proposal's
+  // text is not opened here: its line says what it is (itemLead)
+  const opener = useOpened((events ?? []).filter((ev) => itemLead(ev) === null)
+    .map((ev) => ({ envelope: ev.text, slot: eventSlotOf(ev, id, account) })));
   if (events === null) return <div className="mt-2 flex justify-center text-muted"><Loader2 size={14} className="animate-spin" /></div>;
-  const lines = events.map((ev) => ({ ev, words: eventShown(ev, id, account, opener) }));
+  const lines = events.map((ev) => {
+    const lead = itemLead(ev);
+    return { ev, lead, words: lead === null ? eventShown(ev, id, account, opener) : null };
+  });
   return (
     <div className="mt-2 max-h-72 space-y-0.5 overflow-y-auto rounded bg-bg p-2">
-      {anyLocked(lines.map((l) => sealOfShown(l.words))) && <EncryptedBar />}
+      {anyLocked(lines.map((l) => (l.words ? sealOfShown(l.words) : {}))) && <EncryptedBar />}
       {events.length === 0 && <div className="text-[11.5px] text-muted">Nothing posted yet.</div>}
-      {lines.map(({ ev, words }) => (
+      {lines.map(({ ev, lead, words }) => (
         <div key={ev.seq} className="whitespace-pre-wrap break-words font-mono text-[11px] text-fg-dim" title={full(ev.time)}>
-          {linkHead(ev)}<ShownText shown={words} unlock={false}>{lineText}</ShownText>
+          {linkHead(ev)}{words ? <ShownText shown={words} unlock={false}>{lineText}</ShownText> : lead}
         </div>
       ))}
       {more && <button className="btn btn-sm mt-1" onClick={() => void load(events[events.length - 1].seq)}>Older</button>}
@@ -3115,6 +3452,7 @@ function SaidRow({ s, after, queued = QUEUED_SAID, stepSaid = false }: { s: Said
           {mark}
           {s.state && <span className={`pill ${s.state === "queued" ? "text-wait" : "text-muted"}`} title={stateSaid(s.state, queued)}>{stateWord(s.state)}</span>}
           {s.state === "queued" && <span>{queued}</span>}
+          {s.state === "expired" && <span>{EXPIRED_SAID}</span>}
           <span title={s.mirror === "owner" ? "As the session's mirror reports what you typed there" : "Signed with one of your passkeys"}>{s.head}</span> · {when}
         </div>
         <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-xl rounded-br-sm bg-active px-3 py-2 text-[12.5px] text-fg">{words(visible(s.text))}</div>
@@ -3128,7 +3466,7 @@ function SaidRow({ s, after, queued = QUEUED_SAID, stepSaid = false }: { s: Said
         ? <div className="text-[12.5px]">{words(null)}</div>
         : s.markdown
           ? <div className="markdown max-w-full break-words text-[13px] leading-[1.6] text-fg"><ReactMarkdown remarkPlugins={[remarkGfm]} components={SAID_MARKDOWN}>{visible(s.text)}</ReactMarkdown></div>
-          : <div className="whitespace-pre-wrap break-words text-[12.5px] text-fg">{visible(s.text)}</div>}
+          : <div className="whitespace-pre-wrap break-words text-[12.5px] text-fg">{s.question ? <QuestionWords text={s.text} /> : visible(s.text)}</div>}
       {after}
     </div>
   );

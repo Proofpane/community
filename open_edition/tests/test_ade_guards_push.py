@@ -204,6 +204,8 @@ def test_serving_the_app_starts_the_notifier(monkeypatch):
     monkeypatch.setattr(main.ade_push, "start", lambda every=None: started.append(every))
     # the compaction sweep (ade/e2e_keys.py) is tested apart: no thread of it runs on after this test
     monkeypatch.setattr(main.ade_e2e_keys, "start", lambda every=None: None)
+    # nor of the account deletion's round (account_delete.py), which would open later tests' stores
+    monkeypatch.setattr(main.account_delete, "start", lambda every=None: None)
     with TestClient(main.app):
         pass
     assert started == [None]

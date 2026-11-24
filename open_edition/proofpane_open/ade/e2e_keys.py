@@ -333,8 +333,8 @@ def note_required(link_id, now=None):
 
 
 def check_pins(value):
-    """The fingerprints of the owner keys a link pinned, as its History list reports them: a list of 32 lowercase hex
-    each, at most passkeys.MAX_PASSKEYS; None when it reports none. 422 otherwise."""
+    """The fingerprints of the owner keys a link pinned, as its History list and its heartbeat report them: a list of
+    32 lowercase hex each, at most passkeys.MAX_PASSKEYS; None when it reports none. 422 otherwise."""
     if value is None:
         return None
     if not isinstance(value, list) or len(value) > passkeys.MAX_PASSKEYS \
@@ -1235,9 +1235,14 @@ def _forget_decided(db, hold, user_id, now):
     """Inside the transaction that turns encryption on, or on again, after sealing in place or where it seals nothing:
     the words of the account's connector proposals already decided (their words, their reasons and the words on them),
     which stay outside what encryption seals, cleared at once rather than a day after each was decided
-    (proposals.forget_decided); one that still waits keeps them for the owner to read. Where any were cleared, they
-    were written over, so the database is due for compaction, as after sealing in place."""
-    if proposals.forget_decided(db, user_id, now):
+    (proposals.forget_decided); one that still waits keeps them for the owner to read. And the sessions linked
+    through the connector, which hold no key and seal nothing: each ended, its posts and its checkpoint deleted
+    (connector_link.encryption_on). Where any were cleared or deleted, they were written over, so the database is due
+    for compaction, as after sealing in place."""
+    from . import connector_link
+    cleared = proposals.forget_decided(db, user_id, now)
+    cleared += connector_link.encryption_on(db, user_id, now)
+    if cleared:
         _compaction_due(db, hold, user_id)
 
 
@@ -2901,8 +2906,8 @@ def account_view(user_id, now=None):
                       "kind": passkeys.kind_of(k["tier"], k["backup_eligible"], k["backed_up"], k["attachment"]),
                       "maker": passkeys.model_of(k["maker"], k["tier_why"])}
                      for k in keys],
-        # each live link's pins as it last reported them with its History list: null for one that never has, so the page
-        # tells that from one that pins none ([]), which refuses every signed command
+        # each live link's pins as it last reported them, with its History list or its heartbeat: null for one that
+        # never has, so the page tells that from one that pins none ([]), which refuses every signed command
         # and the envelope forms it said it can seal, with its History list or as it read the statements (null until it
         # says): its word alone, which the page lists before the upgrade so the owner updates a link that cannot seal to
         # a post-quantum key first

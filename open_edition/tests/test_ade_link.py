@@ -416,6 +416,44 @@ def test_anything_shaped_like_a_secret_is_refused_by_its_shape(client, owner, se
         assert shape in r.json()["detail"]
 
 
+# one text of each shape that begins a word, made of parts here so that no file holds one whole
+AFTER_A_BREAK = [
+    ("sk-ant-" + "api03-abc", "sk-ant-"), ("sk-" + "a" * 20, "16 or more"), ("ghp_" + "x", "ghp_"),
+    ("github_pat_" + "x", "github_pat_"), ("FlyV1 " + "fm2_x", "FlyV1"), ("AKIA" + "xyz", "AKIA"),
+    ("adeh_" + "x", "adeh_"), ("PP-" + "ABCDEFGH", "ticket"), ("sk_live_" + "x", "sk_live_"), ("xoxb-" + "1", "xoxb-"),
+    ("AIza" + "a" * 30, "AIza"), ("glpat-" + "x", "glpat-"), ("npm_" + "a" * 36, "npm_"),
+    ("eyJ" + "a" * 10 + ".eyJ" + "a" * 10 + ".", "eyJ")]
+
+
+def test_the_shapes_that_begin_a_word_each_have_their_text_here():
+    from proofpane_open.ade import link
+    begin_a_word = [(name, pattern) for name, pattern in link.SECRET_SHAPES if pattern.pattern.startswith(r"\b")]
+    assert len(AFTER_A_BREAK) == len(begin_a_word) == len(link.SECRET_SHAPES) - 1
+    for (secret, shape), (name, pattern) in zip(AFTER_A_BREAK, begin_a_word):
+        assert shape in name and pattern.search(secret), (shape, name)
+
+
+@pytest.mark.parametrize("lead", ["key:\n", "\t", "\r", "a\nb\n"])
+@pytest.mark.parametrize("secret,shape", AFTER_A_BREAK)
+def test_a_checkpoint_s_secret_is_refused_wherever_it_stands_in_a_text_or_a_name(client, owner, secret, shape, lead):
+    """A checkpoint's texts and names are held to the shapes as the texts they are, not as the JSON that stores them:
+    there a line break, a tab or a carriage return before a shape is a backslash and a letter, and the shape begins
+    no word."""
+    mac = paired(client, owner)
+    for document in ({"notes": lead + secret}, {"list": [{"deep": ["x", lead + secret]}]}, {lead + secret: 1}):
+        r = mac.call("PUT", "/checkpoint", {"expected_version": 0, "document": document})
+        assert r.status_code == 422 and shape in r.json()["detail"] and secret not in r.json()["detail"], r.text
+    # nothing was kept: the version is the one it began with
+    assert mac.call("PUT", "/checkpoint", {"expected_version": 0, "document": {"doing": "x"}}).status_code == 200
+
+
+def test_a_shape_whose_parts_stand_in_two_texts_of_a_checkpoint_is_still_refused(client, owner):
+    mac = paired(client, owner)
+    r = mac.call("PUT", "/checkpoint", {"expected_version": 0,
+                                        "document": {"a": "-----BEGIN OPENSSH", "b": "PRIVATE KEY-----"}})
+    assert r.status_code == 422 and "PRIVATE KEY" in r.json()["detail"]
+
+
 def test_task_is_not_a_secret(client, owner):
     mac = paired(client, owner)
     assert post(mac, "step", "task-1234567890abcdefghij done").status_code == 200

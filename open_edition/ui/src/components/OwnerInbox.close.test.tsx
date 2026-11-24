@@ -603,3 +603,59 @@ describe("a sealed prompt whose text is not opened yet", () => {
     expect(cards()[0].textContent).toContain("Still open: it waits for your answer in Approvals until its deadline.");
   });
 });
+
+describe("a prompt whose text was read and is not shown", () => {
+  // The rules refuse it, whole or in a text within (written in its JSON as an escape): nothing in the page answers it,
+  // so it is said to be answered where the session shows it, as a text not in a prompt's form is. One whose envelope
+  // only did not open keeps the words it had.
+  const cp = (code: number) => String.fromCodePoint(code);
+  const sealedText = (text: string) => seal({ text, session: null, said_at: null }, eventSlot(ACCOUNT, "L1", "prompt", undefined, null, CID));
+  const WITHIN = `{"tool":"Bash","input":{"command":"r\\u0338m -rf build"},"session_id":"cc-1","agent_id":null,"deadline":${T + 1800}}`;
+  const WHOLE = JSON.stringify({ ...BASH, input: { command: `r${cp(0x0338)}m -rf build` } });
+  const DRAWN = "This text is not shown: it holds a mark drawn over or around a character, which could change how it reads";
+  const NOT_SHOWN = "Its text is not shown, so nothing here answers it: it is answered where the session shows it.";
+
+  for (const [how, text] of [["in a text within", WITHIN], ["whole", WHOLE]]) {
+    it(`says under an open one, refused ${how}, where it is answered, and under its Close the note of a text nothing here answers`, async () => {
+      expect(JSON.parse(text).input.command).toBe(`r${cp(0x0338)}m -rf build`);
+      showing(sessions({ prompts: [prompt({}, { text: sealedText(text) })] }), []);
+      approvals();
+      await screen.findByText(DRAWN);
+      const [card] = cards();
+      expect(within(card).getByText(NOT_SHOWN)).toBeTruthy();
+      expect(buttonsOf(card)).toEqual(["Close"]);
+      expect(noteOf(screen.getByRole("button", { name: "Close" }))).toBe(NOTE_NOT_A_PROMPT);
+    });
+
+    it(`says of a hidden one, refused ${how}, that it is answered where the session shows it, with nothing to answer it there`, async () => {
+      showing(sessions(), [closed(prompt({}, { seq: 21, text: sealedText(text) }), "waiting", { hidden_at: T + 60 })]);
+      approvals();
+      await screen.findByText(DRAWN);
+      expect(endedLines()).toEqual([`Hidden at ${dayTime(T + 60)}: it is answered where the session shows it, and nothing here decides it.`]);
+      expect(hiddenCards().map(buttonsOf)).toEqual([[]]);
+    });
+
+    it(`says of one out of the open list, refused ${how}, in its session's conversation, that it is still open and answered where the session shows it`, async () => {
+      const p = prompt({}, { text: sealedText(text) });
+      showing(sessions({ prompts: [] }), [], { "GET /api/ade/link/timeline/L1?limit=100": () => [200, { events: [p] }] });
+      render(<Conversation l={link()} onBack={() => {}} onClose={() => {}} />);
+      await screen.findByText(DRAWN);
+      const [card] = cards();
+      expect(card.textContent).toContain("Still open: it is answered where the session shows it.");
+      expect(card.textContent).not.toContain("in Approvals");
+      // the line under an open card is not said of one that is out of the open list
+      expect(card.textContent).not.toContain(NOT_SHOWN);
+      expect(buttonsOf(card)).toEqual([]);
+    });
+  }
+
+  it("keeps, for one whose envelope did not open, the words of a prompt that waits for an answer", async () => {
+    const p = prompt({}, { text: seal({ text: JSON.stringify(BASH), session: null, said_at: null }, "another-place") });
+    showing(sessions({ prompts: [p] }), [closed({ ...p, seq: 21 }, "waiting", { hidden_at: T + 60 })]);
+    approvals();
+    await vi.waitFor(() => expect(screen.queryAllByText("This text could not be read")).toHaveLength(2));
+    expect(screen.queryByText(NOT_SHOWN)).toBeNull();
+    expect(noteOf(within(openCards()[0]).getByRole("button", { name: "Close" }))).toBe(NOTE);
+    expect(endedLines()).toEqual([WAITING_WORDS(T + 60, T + 1800)]);
+  });
+});

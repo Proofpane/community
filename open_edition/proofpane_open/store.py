@@ -612,6 +612,44 @@ CREATE TABLE IF NOT EXISTS ade_connector_events (
 );
 CREATE INDEX IF NOT EXISTS ade_connector_events_grant ON ade_connector_events (grant_id, at);
 CREATE INDEX IF NOT EXISTS ade_connector_events_at ON ade_connector_events (at);
+-- a session linked through a connected app (ade/connector_link.py): no link of the session channel, with no key and no
+-- hold of its own; the app's connection (grant_id) answers for it, and its name is its own word, one live name an
+-- account whatever its case and spaces (name_key). Its checkpoint, when the owner asked it to stop, and, once it
+-- ended, when and why: an ended one keeps neither its checkpoint nor its posts
+CREATE TABLE IF NOT EXISTS ade_connector_links (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    grant_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    name_key TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    heard_at INTEGER,
+    ended_at INTEGER,
+    ended_why TEXT,
+    checkpoint TEXT,
+    checkpoint_version INTEGER NOT NULL DEFAULT 0,
+    checkpoint_at INTEGER,
+    stop_asked_at INTEGER
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ade_connector_links_live ON ade_connector_links (user_id, name_key)
+    WHERE ended_at IS NULL;
+CREATE INDEX IF NOT EXISTS ade_connector_links_grant ON ade_connector_links (grant_id, ended_at);
+CREATE INDEX IF NOT EXISTS ade_connector_links_ended ON ade_connector_links (ended_at);
+-- what such a session posted to the owner's page: a step, a note, a waiting, a question or a done, in the clear; a
+-- question with when it was closed and by what (owner, or post:SEQ, the session's own done or note that refers to it)
+CREATE TABLE IF NOT EXISTS ade_connector_link_events (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    link_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    text TEXT NOT NULL,
+    ref INTEGER,
+    at INTEGER NOT NULL,
+    closed_at INTEGER,
+    closed_by TEXT
+);
+CREATE INDEX IF NOT EXISTS ade_connector_link_events_link ON ade_connector_link_events (link_id, seq);
+CREATE INDEX IF NOT EXISTS ade_connector_link_events_user ON ade_connector_link_events (user_id);
 -- a proposal a connected app made (ade/proposals.py): it waits on the page until the owner signs or accepts it, or
 -- refuses it, its app withdraws it, what it is for goes, or its time ends
 CREATE TABLE IF NOT EXISTS ade_proposals (
@@ -794,6 +832,24 @@ CREATE TABLE IF NOT EXISTS account_pending (
     takes_away TEXT NOT NULL,
     net TEXT,
     created_at INTEGER NOT NULL
+);
+-- Every table with a user_id column holds rows an account's deletion removes (account_delete.keyed_tables finds them at
+-- run time; only ade_workspace_spend keeps its rows, its id taken off): a record that must outlive its account keys it
+-- by another column.
+-- an account's deletion done (account_delete.py): the id of the hold it waited on and when it took effect, and nothing
+-- else, no account's id and no address, so that the device it was placed from can read that it is done
+CREATE TABLE IF NOT EXISTS account_deletions (
+    hold_id TEXT PRIMARY KEY,
+    deleted_at INTEGER NOT NULL
+);
+-- a deleted account's machine or volume at Fly not yet destroyed: Fly's app and id alone, nothing of the account, kept
+-- until a destroy succeeds (fly_provider.sweep_deleted, at each of the meter's readings); kind: machines or volumes
+CREATE TABLE IF NOT EXISTS account_deleted_fly (
+    app TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    fly_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (app, kind, fly_id)
 );
 -- the account's encryption apart from its keys: whether its master key must be replaced before encryption is turned on
 -- again (a passkey that unlocked it was removed, or left out by high security, while it was off); whether the database
@@ -1521,7 +1577,8 @@ CREATE INDEX IF NOT EXISTS ade_task_grant_widenings_user ON ade_task_grant_widen
 # The controller's records (ade/controller.py): one controller row per owner; the owner's requests and decisions, word
 # for word; the requirements, sessions
 # and questions the app took from the workspace's record, each once by its id (ade_controller_actions); and the
-# controller's journal, which has no UPDATE path and no DELETE path.
+# controller's journal, which has no UPDATE path and no DELETE path but an account's deletion, which removes the
+# account's rows whole (account_delete.py).
 CONTROLLER_SCHEMA = """
 CREATE TABLE IF NOT EXISTS ade_controllers (
     user_id TEXT PRIMARY KEY,
@@ -2052,6 +2109,9 @@ ADDED_COLUMNS = (("ade_repos", "verify_config", "TEXT"), ("users", "token_gen", 
                  # confirmation allowed a connection, so removing that passkey revokes it (none for the password's)
                  ("ade_connector_clients", "wide", "TEXT"), ("ade_connector_requests", "asked_wide", "TEXT"),
                  ("ade_connector_grants", "confirmed_by", "TEXT"),
+                 # when the owner let sessions link through a connected app (ade/connector_link.py); null: they may not
+                 ("ade_connector_grants", "links_at", "INTEGER"),
+                 ("ade_connector_grants", "links_by", "TEXT"),
                  # how a request to allow an app reached /oauth/authorize, as its browser said: its Sec-Fetch-Site, and
                  # the origin of its Referer
                  ("ade_connector_requests", "fetch_site", "TEXT"), ("ade_connector_requests", "came_from", "TEXT"),
@@ -2118,7 +2178,10 @@ ADDED_COLUMNS = (("ade_repos", "verify_config", "TEXT"), ("users", "token_gen", 
                  # what a link's client said it takes on its last read of its state, and when; and the digest of the
                  # delegation an instruction was signed under in a signing window (ade_link_delegations)
                  ("ade_links", "features", "TEXT"), ("ade_links", "features_at", "INTEGER"),
-                 ("ade_link_events", "delegation", "TEXT"))
+                 ("ade_link_events", "delegation", "TEXT"),
+                 # what a linked session's owner allowed it to take on his Approve from the page, as its heartbeat last
+                 # said, as JSON ({kinds, keys, at}: ade/link.py, heartbeat); NULL where it said none
+                 ("ade_links", "phone_take", "TEXT"))
 
 
 # made once the columns they name are there, in a store made before them too; and the connector's codes and tokens by

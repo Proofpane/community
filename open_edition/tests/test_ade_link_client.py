@@ -296,9 +296,12 @@ def test_a_refusal_is_printed_and_never_retried(capsys, tmp_path, waits, command
         code, _, err = run(capsys, "--dir", a_link_to(ade.url, tmp_path / "mac"), *command)
     finally:
         ade.close()
-    # one request each, beside the read of the owner's encryption keys (GET /e2e) a text to the owner makes first
-    assert code == 2 and len([r for r in ade.requests if not r[1].startswith("/api/ade/link/e2e")]) == 1 \
-        and waits == []
+    # one request each, beside the read of the owner's encryption keys (GET /e2e) a text to the owner makes first; a
+    # heartbeat refused with the owner's pins and allowance beside it goes once more as before them, with no wait
+    sent = [r for r in ade.requests if not r[1].startswith("/api/ade/link/e2e")]
+    assert code == 2 and len(sent) == (2 if command == ["heartbeat"] else 1) and waits == []
+    if command == ["heartbeat"]:
+        assert [json.loads(body) for _, _, body in sent] == [{"pins": [], "phone_take": None}, {}]
     assert "shaped like an Anthropic key" in err or "not taken (HTTP 422" in err
 
 

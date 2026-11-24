@@ -26,7 +26,9 @@ the other's. Every answer is JSON but the link client's own, and carries Cache-C
                                                     minutes, linked or cancelled, by their tickets' ids
                                                     (ended_pairings), and the server's time (server_time); each link
                                                     with what its client last reported of its session (reported,
-                                                    reported_at)
+                                                    reported_at), the owner keys it pinned (pins, null until it
+                                                    reports them) and what it may take on the owner's Approve from
+                                                    the page (phone_take: {kinds, keys, at} or null)
     GET    /api/ade/link/timeline/{link_id}         owner: one link's events, newest first (?before=SEQ&limit=N), but
                                                     the mirrored notes naming a session; ?session=ID: those alone
     POST   /api/ade/link/questions/{seq}/close      owner: the fixed closing note to the asker; for an open proposal or
@@ -43,8 +45,10 @@ the other's. Every answer is JSON but the link client's own, and carries Cache-C
     PUT    /api/ade/link/links/{link_id}/reads-others  owner: {allowed}: let it read the others' checkpoints, or not
     PUT    /api/ade/link/links/{link_id}/proposes   owner: {allowed}: let it propose messages for the other sessions,
                                                     or not -> {proposes}
-    POST   /api/ade/link/heartbeat                  link: {} or {reported}: presence, and what its client read of
-                                                    its own session (link.heartbeat)
+    POST   /api/ade/link/heartbeat                  link: {} or any of {reported, pins, phone_take}: presence, what
+                                                    its client read of its own session, the owner keys it pinned,
+                                                    and what its owner allowed it to take on his Approve from the
+                                                    page (link.heartbeat); a keeper's (?via=keeper): {}
     POST   /api/ade/link/events                     link: {client_id, kind, to?, ref?, text, mirror?, session?,
                                                     said_at?} -> {seq, session, e2e}
     PUT    /api/ade/link/checkpoint                 link: {expected_version, document} -> {version}

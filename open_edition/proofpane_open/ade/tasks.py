@@ -443,7 +443,8 @@ def journal(db, user_id, task_id, kind, payload, *, run_id=None, fence=None, now
     """Append one event to the task's journal and return its seq. `kind` is one of JOURNAL_KINDS;
     `payload` a dict of ids, states and the workspace's own reasons, never a model's words, at most JOURNAL_PAYLOAD_MAX
     bytes as compact JSON (ValueError past it, never cut). `task_id` is None only for a custody event that names no
-    task. The only writer of ade_agent_task_events, which has no UPDATE path and no DELETE path but forget's."""
+    task. The only writer of ade_agent_task_events, which has no UPDATE path and no DELETE path but forget's and an
+    account's deletion, which removes the account's rows whole (account_delete.py)."""
     if kind not in JOURNAL_KINDS:
         raise ValueError(f"{kind} is not a kind of the task journal")
     if not isinstance(payload, dict):
@@ -1540,6 +1541,18 @@ def _instructions(task, steps, decisions, step_n):
     return out
 
 
+def _owner_shape(task, steps, decisions, instructions):
+    """The first secret shape in the owner's part of a packet, or None: in each of its texts as it was written, then
+    in the whole as the packet holds it (`instructions`). As a packet holds a text (owner_text), a line break, a tab
+    or a carriage return before a shape is an escape that ends in a letter or a digit, and the shape begins no word
+    there: so each text is read as written too. The whole is still read, for a shape whose parts stand in two."""
+    for text in (task["title"], task["goal"], *(s["objective"] for s in steps), *(d["text"] for d in decisions)):
+        shape = secret_shape(text)
+        if shape is not None:
+            return shape
+    return secret_shape(json.dumps(instructions, ensure_ascii=False))
+
+
 def instructions_size(title, goal, objectives, decisions, continued_from=None):
     """The bytes of a task's instructions as its packet would hold them (canonical JSON, escaped), measured at the
     longest step: what INSTRUCTIONS_MAX bounds when the owner makes or changes it, a received task's with
@@ -1630,7 +1643,7 @@ def build_packet(db, task, run_id, attempt, fence, now):
     steps, decisions = _steps(db, task["id"]), _decisions(db, task["id"])
     instructions = _instructions(task, steps, decisions, task["step"])
     owner_bytes = _canon(instructions)
-    shape = secret_shape(json.dumps(instructions, ensure_ascii=False))
+    shape = _owner_shape(task, steps, decisions, instructions)
     if shape is not None:
         raise PacketHeld("secret", f"The task's own text holds something shaped like {shape}: edit it, then Continue.")
     if len(owner_bytes) > shapes.PACKET_BUDGETS["instructions"]:
@@ -3819,8 +3832,8 @@ def resolve(user, task_id, given, now=None):
             if what == "window":
                 lift(db, user["id"], ref_text(task["backend"]), now)
             if what == "secret":
-                shape = secret_shape(json.dumps(_instructions(task, _steps(db, task["id"]), _decisions(db, task["id"]),
-                                                              task["step"]), ensure_ascii=False))
+                steps, decisions = _steps(db, task["id"]), _decisions(db, task["id"])
+                shape = _owner_shape(task, steps, decisions, _instructions(task, steps, decisions, task["step"]))
                 if shape is not None:
                     raise _error(412, f"The task's own text still holds something shaped like {shape}: edit it.")
             _resolved(db, user["id"], task, what, outcome, now)

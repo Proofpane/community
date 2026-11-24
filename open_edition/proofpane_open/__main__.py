@@ -8,6 +8,12 @@
                                                                their user id) as a teammate, one JSON line each
     python -m proofpane_open account-record reduce PERSON      each of them reduced at once to "a teammate"
     python -m proofpane_open account-record statement SEQ TEXT the person's statement attached to entry SEQ
+    python -m proofpane_open delete-account EMAIL --checked TEXT [--untold]
+                                                               a deletion of EMAIL's account placed, on a request
+                                                               checked out of band as TEXT says, kept with it; it
+                                                               waits as one placed from the page does, its owner
+                                                               told, and never takes effect at once; where no device
+                                                               of the account has notifications on, only with --untold
 
 The first admin has no account to invite anyone from, so their own invitation comes from here; on the fly image,
 whose `fly ssh console` session may have no PATH, through its wrapper:
@@ -15,7 +21,10 @@ whose `fly ssh console` session may have no PATH, through its wrapper:
     fly ssh console -a <app> -C "/usr/local/bin/proofpane-open invite you@example.com"
 
 The link is printed once; the token in it is stored only as its hash. The account record's three forms answer a
-person's request under the Privacy Act's principles 6 and 7; each exits 0, or 1 with one line on standard error.
+person's request under the Privacy Act's principles 6 and 7; each exits 0, or 1 with one line on standard error. So
+does delete-account, which prints the hold's id, when it takes effect and how many devices its notice was sent toward
+as one JSON line; without --checked it exits 2, as argparse does for a missing option. It applies no deletion itself: one
+already due is the server's to apply, and is said.
 """
 
 import argparse
@@ -40,7 +49,13 @@ def main(argv=None):
     said = forms.add_parser("statement")
     said.add_argument("seq", type=int)
     said.add_argument("text")
+    gone = sub.add_parser("delete-account")
+    gone.add_argument("email")
+    gone.add_argument("--checked", required=True)
+    gone.add_argument("--untold", action="store_true")
     args = parser.parse_args(argv)
+    if args.cmd == "delete-account":
+        return delete_account(args)
     if args.cmd == "ade-status":
         return ade_status(args.email)
     if args.cmd == "account-record":
@@ -56,6 +71,26 @@ def main(argv=None):
         print(f"one use, expires in {config.INVITE_TTL_SECONDS // 3600} hours", file=sys.stderr)
         return 0
     print(json.dumps(tools.public_key(), indent=1))
+    return 0
+
+
+def delete_account(args):
+    import sqlite3
+    from . import account_delete
+    try:
+        placed = account_delete.place_by_operator(args.email, args.checked, untold=args.untold)
+    except (account_delete.DeletionError, auth.AuthError) as e:
+        print(f"Nothing was placed: {e}", file=sys.stderr)
+        return 1
+    except sqlite3.DatabaseError as e:          # OperationalError among them
+        said = ("the store was busy; run it again" if "locked" in str(e) or "busy" in str(e)
+                else f"the store could not be written ({e})")
+        print(f"Nothing was placed: {said}.", file=sys.stderr)
+        return 1
+    print(json.dumps(placed))
+    if placed["told"] < 1:
+        print("Placed, and told no device: tell its owner out of band when it takes effect and how to cancel it.",
+              file=sys.stderr)
     return 0
 
 

@@ -197,6 +197,21 @@ def test_a_report_holding_a_secret_s_shape_is_refused_as_a_checkpoint_is(client,
     assert row(mac.link_id)["last_heartbeat_at"] is None
 
 
+@pytest.mark.parametrize("lead", ["key:\n", "\t", "\r"])
+def test_a_report_s_texts_are_each_held_to_the_shapes_as_texts(client, owner, lead):
+    """Each text of a report is held to the shapes as the text it is, before the whole is scanned as JSON: a shape
+    after a line break, a tab or a carriage return, which the JSON's scan alone does not find (there each is a
+    backslash and a letter), is refused in a task's text, a background task's text and the model's name."""
+    mac = paired(client, owner)
+    secret = lead + "ghp_" + "0123456789abcdef"
+    for report in ({"tasks": [{"text": secret, "state": "pending"}]},
+                   {"background": [{"id": "b1", "kind": "shell", "text": secret, "state": "running"}]},
+                   {"usage": {"model": secret}}):
+        r = beat(mac, report)
+        assert r.status_code == 422 and "shaped like" in r.json()["detail"], (report, r.text)
+    assert row(mac.link_id)["last_heartbeat_at"] is None
+
+
 def test_with_encryption_on_the_report_s_words_go_sealed_and_in_the_clear_are_refused(client, owner, keys):
     mac = paired(client, owner)
     keys.turn_on()
@@ -303,6 +318,9 @@ class FakeLink:
 
 
 SID = "0a1b2c3d-0000-4000-8000-000000000001"
+# what every heartbeat says beside its report of the owner's pins and his allowance (pin --phone-take): a FakeLink's
+# directory holds no pin
+BEAT = {"pins": [], "phone_take": None}
 
 
 def sent_report(monkeypatch, tmp_path, mode=("clear",), sensitive=(False, None), sessions=({SID}, None), judged="go",
@@ -388,15 +406,16 @@ def test_the_client_s_report_is_bounded_and_keeps_nothing_of_a_secret_s_shape(mo
 def test_a_heartbeat_sends_the_report_and_after_a_refusal_once_more_presence_alone(monkeypatch, tmp_path):
     report = sent_report(monkeypatch, tmp_path)
     assert report is not None
-    refused = FakeLink(422)
+    refused = FakeLink(422)                         # a 422: sent again as before the pins and allowance, and taken
     assert ade_link.cmd_heartbeat(refused, None) == 0
-    assert refused.sent == [("POST", "/heartbeat", {"reported": report}), ("POST", "/heartbeat", {})]
+    assert refused.sent == [("POST", "/heartbeat", dict(BEAT, reported=report)), ("POST", "/heartbeat",
+                                                                                  {"reported": report})]
     failed = FakeLink(503)                          # a server's error, which the report may have caused
     assert ade_link.cmd_heartbeat(failed, None) == 0
-    assert failed.sent == [("POST", "/heartbeat", {"reported": report}), ("POST", "/heartbeat", {})]
+    assert failed.sent == [("POST", "/heartbeat", dict(BEAT, reported=report)), ("POST", "/heartbeat", BEAT)]
     busy = FakeLink(429)                            # not for its report: none is sent again, the next one comes anyway
     assert ade_link.cmd_heartbeat(busy, None) == 3
-    assert busy.sent == [("POST", "/heartbeat", {"reported": report})]
+    assert busy.sent == [("POST", "/heartbeat", dict(BEAT, reported=report))]
 
 
 def test_the_client_s_lists_fit_their_bytes_the_oldest_background_task_left_out_first_then_the_last_tasks(
@@ -456,12 +475,12 @@ def test_a_refusal_for_encryption_is_kept_as_the_ade_s_word_before_presence_goes
 
     class Kept(FakeLink):
         def request(self, method, path, body=None, **kw):
-            kept.append("presence" if body == {} else "report")
+            kept.append("presence" if "reported" not in body else "report")
             return FakeLink.request(self, method, path, body, **kw)
 
     refused = Kept(409, word)
     assert ade_link.cmd_heartbeat(refused, None) == 0
-    assert refused.sent == [("POST", "/heartbeat", {"reported": report}), ("POST", "/heartbeat", {})]
+    assert refused.sent == [("POST", "/heartbeat", dict(BEAT, reported=report)), ("POST", "/heartbeat", BEAT)]
     # so the next one's lists go sealed, or stay; read again once presence has gone
     assert kept == ["report", "presence", (409, word, ("clear",))]
 
@@ -495,7 +514,7 @@ def test_a_heartbeat_where_no_claude_code_session_names_itself_reads_none_of_its
     monkeypatch.setattr(ade_link, "_sensitive_poster", lambda lk: asked.append(2) or (False, None))
     fake = FakeLink()
     assert ade_link.cmd_heartbeat(fake, None) == 0
-    assert fake.sent == [("POST", "/heartbeat", {})] and asked == []      # presence alone, no record read
+    assert fake.sent == [("POST", "/heartbeat", BEAT)] and asked == []    # presence alone, no record read
 
 
 def test_with_encryption_on_the_client_seals_the_report_s_words(monkeypatch, tmp_path):
@@ -510,6 +529,34 @@ def test_with_encryption_on_the_client_seals_the_report_s_words(monkeypatch, tmp
     # where encryption may be on but the link has no key to seal to, the numbers alone
     held = sent_report(monkeypatch, tmp_path / "held", mode=("hold", "no key yet")) or {}
     assert set(held) == {"usage"}
+
+
+@pytest.mark.parametrize("lead", [" ", "\n", "\t", "\r", " a\nb\n"])
+@pytest.mark.parametrize("sealed", [False, True])
+def test_the_client_leaves_out_a_text_shaped_like_a_secret_wherever_the_shape_stands(monkeypatch, tmp_path, lead,
+                                                                                    sealed):
+    """Each text of the client's lists is made one line and held to the shapes as a text (_report_text) before the
+    lists' JSON is scanned whole, so no list holds a line break or a tab for the JSON to write as an escape. A task
+    whose text holds a shape after one is left out, and a background task's text emptied: in the clear and, with
+    encryption on, in what is sealed, where the client's is the only scan there is."""
+    secret = "ghp_" + "0123456789abcdef"
+    todos = [{"content": "kept one", "status": "pending", "activeForm": "x"},
+             {"content": "deploy with" + lead + secret, "status": "pending", "activeForm": "x"}]
+    uses = [{"type": "tool_use", "id": "s0", "name": "Bash",
+             "input": {"description": "run with" + lead + secret, "run_in_background": True}}]
+    results = [{"type": "tool_result", "tool_use_id": "s0", "content": "Command running in background with ID: x0"}]
+    extra = (_line(type="assistant", message={"model": "m", "content": [
+                 {"type": "tool_use", "id": "t9", "name": "TodoWrite", "input": {"todos": todos}}, *uses]}),
+             _line(type="user", message={"role": "user", "content": results}))
+    private = X25519PrivateKey.generate()
+    mode = ("seal", raw_public(private), "k" * 32, "acct") if sealed else ("clear",)
+    words = sent_report(monkeypatch, tmp_path, mode=mode, extra=extra) or {}
+    if sealed:
+        opened = open_envelope(private, words["sealed"], e2e.slot("acct", "L1", "reported"))
+        words = json.loads(opened) if isinstance(opened, (bytes, str)) else opened
+    assert [t["text"] for t in words["tasks"]] == ["kept one"]
+    assert next(b for b in words["background"] if b["id"] == "x0")["text"] == ""
+    assert secret not in json.dumps(words)
 
 
 # ---- the client's report: its lists, its bounds and its reads --------------------------------------------------------
@@ -650,7 +697,7 @@ def test_a_report_slow_to_read_is_left_out_and_presence_goes_at_once(monkeypatch
     began = time.monotonic()
     try:
         assert ade_link.cmd_heartbeat(fake, None) == 0
-        assert fake.sent == [("POST", "/heartbeat", {})] and time.monotonic() - began < 2
+        assert fake.sent == [("POST", "/heartbeat", BEAT)] and time.monotonic() - began < 2
     finally:
         release.set()
         assert done.wait(10) or not release.is_set()    # the read ended inside the case, its stand-ins in place

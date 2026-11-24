@@ -1113,8 +1113,9 @@ def prune(now=None):
         _document_reads[:] = [r for r in _document_reads if r[0] > now - 3600]
         for key in [k for k, (until, _) in _document_failures.items() if until <= now]:
             del _document_failures[key]
-    from .ade import proposals
+    from .ade import connector_link, proposals
     proposals.prune(now)
+    connector_link.prune(now)       # the sessions linked through an app: the idle and the ended (ade/connector_link.py)
 
 
 def start(every=PRUNE_EVERY):
@@ -1320,9 +1321,9 @@ def set_account(user_id, on, confirmation=None, now=None):
 
 def revoke_in(db, grant, why, now):
     """Inside the caller's transaction: end a grant at once. Its tokens stop at their next use, each being looked up
-    with its grant; its hold, while it waits, is cancelled; its waiting proposals are void. False when it had ended
-    already."""
-    from .ade import proposals
+    with its grant; its hold, while it waits, is cancelled; its waiting proposals are void; the sessions linked
+    through it end (ade/connector_link.py). False when it had ended already."""
+    from .ade import connector_link, proposals
     done = db.execute("UPDATE ade_connector_grants SET revoked_at = ?, revoked_why = ? WHERE id = ? AND revoked_at IS "
                       "NULL", (now, why, grant["id"])).rowcount
     if not done:
@@ -1331,6 +1332,7 @@ def revoke_in(db, grant, why, now):
         db.execute("UPDATE ade_holds SET cancelled_at = ? WHERE id = ? AND cancelled_at IS NULL AND done_at IS NULL",
                    (now, grant["hold_id"]))
     proposals.void_grant(db, grant["id"], now)
+    connector_link.end_for_grant(db, grant["id"], connector_link.BY_REVOKE, now)
     record(db, grant["user_id"], grant["id"], "revoked", subject=why, now=now)
     return True
 
@@ -1338,15 +1340,20 @@ def revoke_in(db, grant, why, now):
 def passkeys_going(db, user_id, passkey_ids, why, now):
     """Inside the caller's transaction, as passkeys of the account go (removed, or a revocation that removes them
     placed): every connection one of them allowed (its confirmed_by), in effect or waiting on its hold, revoked with
-    `why` (revoke_in, which cancels a waiting one's hold with it). A lost device's passkey, removed, leaves no
-    connection it allowed. The ids revoked."""
+    `why` (revoke_in, which cancels a waiting one's hold with it); and linking that one of them turned on, for an app
+    still connected, turned off, its sessions ended and their posts and checkpoints deleted
+    (connector_link.passkeys_going). A lost device's passkey, removed, leaves no connection it allowed and no linking
+    it turned on. (the ids revoked, the ids of the apps still connected whose linking was turned off)."""
     ids = [p for p in passkey_ids if p]
     if not ids:
-        return []
+        return [], []
     rows = db.execute(f"SELECT * FROM ade_connector_grants WHERE user_id = ? AND revoked_at IS NULL AND ends_at > ? AND "
                       f"confirmed_by IN ({','.join('?' * len(ids))}) ORDER BY allowed_at, id",
                       (user_id, now, *ids)).fetchall()
-    return [g["id"] for g in rows if revoke_in(db, g, why, now)]
+    revoked = [g["id"] for g in rows if revoke_in(db, g, why, now)]
+    # and linking one of them turned on, for an app still connected, is turned off (ade/connector_link.py)
+    from .ade import connector_link
+    return revoked, connector_link.passkeys_going(db, user_id, ids, now)
 
 
 def recent_grants(user_id, now=None):
@@ -1358,11 +1365,22 @@ def recent_grants(user_id, now=None):
             if g["state"] in ("connecting", "waiting", "active") and g["allowed_at"] > now - RECENT_DAYS * 86400]
 
 
-def lost_device_words(revoked=0):
-    """What removing a passkey says of connected apps: how many connections it allowed were revoked, and, while the
-    connector is on, that the others keep working until revoked in Connected apps."""
+def lost_device_words(revoked=0, unlinked=0, linked=0):
+    """What removing a passkey says of connected apps: how many connections it allowed were revoked, and, where
+    linking was on for `linked` of them, that the sessions linked through those ended and their posts and checkpoints
+    were deleted; for how many apps still connected linking, which it had turned on, was turned off, and the same of
+    their sessions; and, while the connector is on, that connected apps otherwise keep working until revoked in
+    Connected apps."""
     said = [f"{revoked} app connection{'s' if revoked != 1 else ''} it allowed {'were' if revoked != 1 else 'was'} "
             "revoked."] if revoked else []
+    if revoked and linked:
+        through = "it" if revoked == 1 else "them" if linked >= revoked else f"{linked} of them"
+        said[0] = (f"{said[0][:-1]}: the sessions linked through {through} ended, and their posts and checkpoints "
+                   "were deleted.")
+    if unlinked:
+        said.append(f"Linking was turned off for {unlinked} connected app{'s' if unlinked != 1 else ''} it had turned "
+                    f"it on for: the sessions linked through {'them' if unlinked != 1 else 'it'} ended, and their "
+                    "posts and checkpoints were deleted.")
     if enabled():
         said.append("Other connected apps keep working until you revoke them in Connected apps." if revoked
                     else KEEP_WORKING)
@@ -1409,7 +1427,9 @@ def grant_view(row, now):
             "connected_at": row["connected_at"], "takes_effect_at": row["takes_effect_at"], "hold_id": row["hold_id"],
             "ends_at": row["ends_at"], "revoked_at": row["revoked_at"], "revoked_why": row["revoked_why"],
             "last_used_at": row["last_used_at"], "last_net": row["last_net"],
-            "proposals_waiting": row["waiting"] if "waiting" in row.keys() else 0}
+            "proposals_waiting": row["waiting"] if "waiting" in row.keys() else 0,
+            # whether the owner let sessions link through it (ade/connector_link.py)
+            "links": bool(row["links_at"])}
 
 
 def grants_for(user_id, now=None):

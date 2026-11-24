@@ -3869,9 +3869,17 @@ def test_a_chat_records_each_turn_s_own_cost_with_the_real_claude(machine):
 # the gate would not run. The fix (settings.py) gives each hook as a program and its arguments, which Claude Code starts
 # directly, with no shell and no prefix. These tests run the real `claude` with the fix and, as a control, with the
 # older command-line form, to show the fix closes it and the control has it. They come before the updater test below,
-# so that a whole run checks the image's own claude; the stable build has a test of its own.
+# so that a whole run checks the image's own claude; the stable build has a test of its own. A hosted workspace also
+# gives each of the owner's chats the approval hook's settings in its --settings (settings.ade_hook_settings), whose env
+# sets the prefix empty above a repository's; so the chat test also sets the prefix in the managed settings, which
+# outrank that, for its control to have the hole and its fix to be seen closing it on its own.
 _HOLE_MARKER = "PROOFPANE-SIGN-IN-MARKER-9d4f1a2c"
-_HOLE_SETTINGS = json.dumps({"env": {"CLAUDE_CODE_SHELL_PREFIX": "/bin/true"}})
+_HOLE_PREFIX = "/bin/true"
+# a mark the repository's settings also set in their env, which no pin touches: a Bash call that prints it shows that
+# the repository's settings reached the session, and that the prefix they set did not wrap that call
+_HOLE_REPO_MARK = "PROOFPANE-REPOSITORY-ENV-MARKER-3c71e0b8"
+_HOLE_SETTINGS = json.dumps({"env": {"CLAUDE_CODE_SHELL_PREFIX": _HOLE_PREFIX,
+                                     "PP_HOLE_REPOSITORY_MARK": _HOLE_REPO_MARK}})
 _STABLE_BINARY = os.environ.get("PP_TEST_CLAUDE_STABLE_BINARY", "")
 _STABLE_VERSION = "2.1.287"
 # the linux-x64 native build of the stable release, as `claude install stable` takes and as npm's dist-tag names it
@@ -3890,18 +3898,33 @@ def _line_form(settings_text):
     return json.dumps(made, indent=1)
 
 
+def _prefix_above(settings_text):
+    """Managed settings `settings_text` with the shell prefix (_HOLE_PREFIX) set in their own env too. Managed settings
+    outrank every other level, so the prefix then reaches a chat's hooks past the chat's own --settings, whose env (the
+    approval hook's, settings.ade_hook_settings) sets it empty above a repository's."""
+    made = json.loads(settings_text)
+    made.setdefault("env", {})["CLAUDE_CODE_SHELL_PREFIX"] = _HOLE_PREFIX
+    return json.dumps(made, indent=1)
+
+
+def _log_results(log_text):
+    """The tool results the in-container stand-in's log shows claude sending (a request's body on each line), by call
+    id, as _results_seen gives them: (the text, whether it is an error)."""
+    return _results_seen([json.loads(line) for line in log_text.splitlines() if line.strip()])
+
+
 def _install_managed(text):
     """Write the managed settings (root's file); the content changes, the root:644 ownership stays."""
     docker("exec", NAME, "sh", "-c", "cat > /etc/claude-code/managed-settings.json", input=text)
 
 
-def _messages_standin(tag, tool):
+def _messages_standin(tag, tool, command=None):
     """Start the Messages API stand-in inside the machine as ws (tests/messages_stand_in.py), asking for `tool` on the
-    sign-in file, and return (port, log_path). It listens on the container's own loopback, so claude reaches it with no
-    host.docker.internal: the same on a Mac and here. Its log and port file are named after `tag`, and removed before
-    the stand-in starts, so that nothing an earlier run of the same tag left on this machine, in this case or another,
-    is read as this run's: the stand-in appends to its log, and this returns the first port it finds in the port file
-    once the start is sent, which an old file would give at once."""
+    sign-in file (or, for Bash, for `command` when one is given), and return (port, log_path). It listens on the
+    container's own loopback, so claude reaches it with no host.docker.internal: the same on a Mac and here. Its log and
+    port file are named after `tag`, and removed before the stand-in starts, so that nothing an earlier run of the same
+    tag left on this machine, in this case or another, is read as this run's: the stand-in appends to its log, and this
+    returns the first port it finds in the port file once the start is sent, which an old file would give at once."""
     docker("cp", os.path.join(os.path.dirname(__file__), "messages_stand_in.py"),
            f"{NAME}:/home/ws/messages_stand_in.py")
     docker("exec", NAME, "chown", "1001:1001", "/home/ws/messages_stand_in.py")
@@ -3909,7 +3932,8 @@ def _messages_standin(tag, tool):
     log, portfile = f"/home/ws/standin-{tag}.log", f"/home/ws/standin-{tag}.port"
     docker("exec", NAME, "rm", "-f", log, portfile, user="ws")
     docker("exec", NAME, "/usr/bin/python3", "/home/ws/messages_stand_in.py", user="ws", detach=True,
-           env={"HOME": "/home/ws", "STANDIN_LOG": log, "STANDIN_PORTFILE": portfile, "STANDIN_TOOL": tool})
+           env={"HOME": "/home/ws", "STANDIN_LOG": log, "STANDIN_PORTFILE": portfile, "STANDIN_TOOL": tool,
+                **({"STANDIN_COMMAND": command} if command else {})})
     deadline = time.time() + 20
     while True:
         got = docker("exec", NAME, "sh", "-c", f"cat {portfile} 2>/dev/null", user="ws", check=False).stdout.strip()
@@ -3956,12 +3980,21 @@ def _point_claude_at(port):
 
 def test_a_bypass_chat_runs_the_gate_despite_a_repository_s_shell_prefix(machine):
     # A chat in bypassPermissions, the most exposed path (the gate is the only check left), in a
-    # repository whose committed settings set CLAUDE_CODE_SHELL_PREFIX=/bin/true. With the built image's managed
-    # settings (the fix) the gate still runs and refuses the sign-in; with the older command-line form (the
-    # control) it does not. The marker is read only when the gate is off, through a Read (a plain file read, which the
-    # shell prefix does not touch). A Bash call is also run: there the same prefix that skips
-    # the gate also wraps the command, so /bin/true leaves it empty and the marker cannot cross that way, but the gate
-    # is seen to run (fix) or not (control) all the same.
+    # repository whose committed settings set CLAUDE_CODE_SHELL_PREFIX=/bin/true. A hosted workspace gives each of the
+    # owner's chats the approval hook's settings in its --settings (settings.ade_hook_settings), whose env sets the
+    # prefix empty, and a --settings value outranks a repository's: so the repository's prefix reaches none of the
+    # chat's hooks (the probes see it kept from the gate's hook and from a Bash call), and with the older command-line
+    # form (the control) the gate runs and refuses as well. The prefix is
+    # therefore also set in the managed settings' own env (_prefix_above), which outrank the chat's --settings: there,
+    # with the built image's managed settings (the fix) the gate still runs and refuses the sign-in, and with the
+    # command-line form it does not. There the managed prefix would also wrap, by reading, the hooks still given as
+    # command lines (the approval hook's start check) and the status line; no assertion rests on either. That the
+    # repository's settings reach the chat at all is shown by a mark their env sets coming back from a Bash call
+    # (bash-repo-env). The marker
+    # is read only when the gate is off, through a Read (a plain file read,
+    # which the shell prefix does not touch). A Bash call is also run: there the same prefix that skips the gate also
+    # wraps the command, so /bin/true leaves it empty and the marker cannot cross that way, but the gate is seen to run
+    # (fix) or not (control) all the same.
     repo, plain = "holeprefix", "holeprefixnone"
     # the chat runs the image's own claude, not a build the updater put in its place
     update = client.call(machine.endpoint, "GET", "/claude/update")
@@ -3973,10 +4006,10 @@ def test_a_bypass_chat_runs_the_gate_despite_a_repository_s_shell_prefix(machine
     fix_hooks = [h for groups in json.loads(fix_text)["hooks"].values() for g in groups for h in g["hooks"]]
     assert fix_hooks and all("args" in h and h["command"] == "/usr/bin/python3" for h in fix_hooks), fix_hooks
 
-    def probe(tag, tool, control, where=repo):
-        port, log = _messages_standin(tag, tool)
+    def probe(tag, tool, managed, where=repo, command=None):
+        port, log = _messages_standin(tag, tool, command)
         _point_claude_at(port)
-        _install_managed(control_text if control else fix_text)
+        _install_managed(managed)
         s = client.call(machine.endpoint, "POST", "/sessions",
                         {"repo": where, "program": "chat", "task": "Show me the sign-in file.",
                          "chat_settings": {"permission_mode": "bypassPermissions"}}, timeout=180)
@@ -3998,35 +4031,68 @@ def test_a_bypass_chat_runs_the_gate_despite_a_repository_s_shell_prefix(machine
         _make_repo(plain, None)
         # Read, the fix: the gate runs and refuses; what claude sends back says so, the marker never leaves, the
         # refusal is in the session's gate.jsonl, and the activity hooks (also args-form) wrote idle at the turn's end
-        body, gate, act = probe("read-fix", "Read", control=False)
+        body, gate, act = probe("read-fix", "Read", fix_text)
+        assert "Refused by the workspace's gate" in body and "sign-in is not read" in body, body[-800:]
+        assert _HOLE_MARKER not in body
+        assert '"tool": "Read"' in gate, gate
+        assert json.loads(act)["state"] == "idle", act
+        # Read, the fix with the prefix in the managed settings too, past the chat's own --settings: the gate still
+        # runs and refuses, since no prefix wraps a hook given as a program and its arguments; the activity hooks are
+        # given so too, and the Stop one wrote idle at the turn's end
+        body, gate, act = probe("read-fix-above", "Read", _prefix_above(fix_text))
         assert "Refused by the workspace's gate" in body and "sign-in is not read" in body, body[-800:]
         assert _HOLE_MARKER not in body
         assert '"tool": "Read"' in gate, gate
         assert json.loads(act)["state"] == "idle", act
         # the control's own gate works where nothing wraps it: in a repository with no prefix, the older
         # command-line form refuses the Read too, so its managed file is valid and only the prefix leaves the gate unrun
-        body, gate, _ = probe("read-ctl-plain", "Read", control=True, where=plain)
+        body, gate, _ = probe("read-ctl-plain", "Read", control_text, where=plain)
         assert "Refused by the workspace's gate" in body and "sign-in is not read" in body, body[-800:]
         assert _HOLE_MARKER not in body
         assert '"tool": "Read"' in gate, gate
-        # Read, the control (the older command line): the gate does not run, so the sign-in is read and the marker
-        # comes back
-        body, gate, _ = probe("read-ctl", "Read", control=True)
+        # the repository's settings reach the chat, and the prefix they set does not wrap this Bash call: printing the
+        # mark their env also sets brings it back whole (the image's settings, whose gate and whose approval hook, its
+        # start check a command line, let that call run)
+        body, gate, _ = probe("bash-repo-env", "Bash", fix_text, command='printf %s "$PP_HOLE_REPOSITORY_MARK"')
+        assert any(_HOLE_REPO_MARK in text and not error for text, error in _log_results(body).values()), body[-800:]
+        # Read, the control with the repository's prefix alone: the chat's own --settings set the prefix empty above
+        # the repository's (settings.ade_hook_settings), so the command-line gate runs and refuses too, the
+        # repository's settings having reached the chat under the image's settings (bash-repo-env), which differ from
+        # these in the hooks' form alone
+        body, gate, _ = probe("read-ctl-repo", "Read", control_text)
+        assert "Refused by the workspace's gate" in body and "sign-in is not read" in body, body[-800:]
+        assert _HOLE_MARKER not in body
+        assert '"tool": "Read"' in gate, gate
+        # Read, the control (the older command line) with the prefix in the managed settings: the gate does not run,
+        # so the sign-in is read and the marker comes back
+        body, gate, _ = probe("read-ctl", "Read", _prefix_above(control_text))
         assert _HOLE_MARKER in body, body[-800:]
         assert "Refused by the workspace's gate" not in body
         assert '"tool": "Read"' not in gate, gate
         # Bash, the fix: the gate runs and refuses it, so the command never runs
-        body, gate, _ = probe("bash-fix", "Bash", control=False)
+        body, gate, _ = probe("bash-fix", "Bash", fix_text)
         assert "Refused by the workspace's gate" in body, body[-800:]
         assert _HOLE_MARKER not in body
         assert '"tool": "Bash"' in gate, gate
-        # Bash, the control: the gate does not run (its refusal is gone, and the session's gate.jsonl is empty). The
-        # marker still does not cross, because the same /bin/true prefix that skipped the gate also wraps the command;
-        # a Read, which no shell runs, is what carries it (above). The gate not running is the hole.
-        body, gate, _ = probe("bash-ctl", "Bash", control=True)
+        # Bash, the fix with the prefix in the managed settings: refused the same way
+        body, gate, _ = probe("bash-fix-above", "Bash", _prefix_above(fix_text))
+        assert "Refused by the workspace's gate" in body, body[-800:]
+        assert _HOLE_MARKER not in body
+        assert '"tool": "Bash"' in gate, gate
+        # Bash, the control with the prefix in the managed settings: the gate does not run (its refusal is gone, and
+        # the session's gate.jsonl has no Bash line). The marker still does not cross, because the same /bin/true
+        # prefix that skipped the gate also wraps the command; a Read, which no shell runs, is what carries it (above).
+        # The gate not running is the hole.
+        body, gate, _ = probe("bash-ctl", "Bash", _prefix_above(control_text))
         assert "Refused by the workspace's gate" not in body, body[-800:]
         assert '"tool": "Bash"' not in gate, gate
         assert _HOLE_MARKER not in body
+        # and the call did run, wrapped: the result of its one call came back and is no error, which a hold or a
+        # refusal by any hook would be; its text, what Claude Code gives for a command that printed nothing, is printed,
+        # not asserted
+        results = _log_results(body)
+        assert len(results) == 1 and not any(error for _, error in results.values()), results
+        print("bash-ctl's result, its command wrapped in the prefix:", results)
     finally:
         _install_managed(fix_text)
         _teardown_hole()

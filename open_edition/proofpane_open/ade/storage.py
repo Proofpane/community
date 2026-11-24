@@ -241,12 +241,12 @@ def _count(db, sql, args):
 
 
 def _approvals(db, uid):
-    """The commands held for the account's approval, which stay whatever the choice, since nothing deletes one."""
+    """The commands held for the account's approval, which stay whatever the choice, since no choice deletes one."""
     n = _count(db, "SELECT COUNT(*) FROM ade_requests WHERE user_id = ?", (uid,))
     if not n:
         return []
     return [(f"{n} commands held for your approval stay" if n != 1 else "1 command held for your approval stays")
-            + ", since nothing deletes one."]
+            + ", since no choice of where your work lives deletes one."]
 
 
 def left_behind(user, choice, db=None):

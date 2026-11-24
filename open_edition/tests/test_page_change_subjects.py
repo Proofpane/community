@@ -70,14 +70,17 @@ def test_the_page_names_every_change_the_server_spends_a_confirmation_for():
                     # renaming a passkey takes the person's word
                     "passkey-rename:ID",
                     "link-ticket:new", "link-ticket:ID", "link-revoke:ID", "link-approve:ID", "link-approve:ID:ID",
-                    "connector-on", "connector-allow:ID:propose", "connector-allow:ID:read", "request-approve:ID",
+                    "connector-on", "connector-allow:ID:propose", "connector-allow:ID:read", "connector-links:ID",
+                    "request-approve:ID",
                     "signer-ticket", "e2e-upgrade:ID",
                     # the tasks (passkeys.CHANGE's nine task forms)
                     "task-account-own:ID", "task-cross:ID", "task-custody-cross:ID", "task-offer:ID",
                     "task-custody:ID", "task-custody-accept:ID", "task-custody-confirm:ID", "task-account-record:ID",
                     "task-secret-lift:ID:ID",
                     # deleting a workspace left behind at once (ade/storage.py)
-                    "workspace-delete"}
+                    "workspace-delete",
+                    # deleting the account, and cancelling the deletion while it waits (account_delete.py)
+                    "account-delete", "account-delete-cancel:ID"}
 
 
 def test_a_name_in_another_spelling_is_caught():

@@ -342,6 +342,11 @@ WORDS = {
     "held-task-offer": ("An offer of a task waits", WAITS, "/app/#agents"),
     "held-task-custody": ("A task of yours goes to your custodian", "Goes to them at {at} unless you cancel it.",
                           "/app/#agents"),
+    # an account's deletion (account_delete.py): it waits, told as it is placed; and it is done, told once it has
+    # committed to the devices the account had, read before its rows went, since nothing else of it is left to tell
+    "held-account-delete": ("Deleting your account waits", "Deleted at {at} unless you cancel it in Account.",
+                            "/app/#account"),
+    "account-deleted": ("Your account was deleted", "Deleted at {at}. Signing in with it no longer works.", "/app/"),
     "held-other": ("An approval waits", WAITS, "/app/"),
     "held-other-now": ("An approval was given", IN_EFFECT, "/app/"),
 }
@@ -468,6 +473,15 @@ def notice(user_id, message, now=None, post=None):
     except Exception as e:  # noqa: BLE001  the change is made; telling of it never fails the request that made it
         print(f"push: the account's devices could not be read: {type(e).__name__}", file=sys.stderr)
         return None
+    return notice_to(devices, message, now, post)
+
+
+def notice_to(devices, message, now=None, post=None):
+    """notice's sending, to `devices` read already (subscriptions' rows): those of an account whose rows are gone,
+    read before they went (account_delete.py), as well as notice's own. Returns how many it is sent toward, or None
+    when its thread could not start."""
+    if not _made(message):
+        raise TypeError("A notice is what push.words makes.")
 
     def work():
         for sub in devices:

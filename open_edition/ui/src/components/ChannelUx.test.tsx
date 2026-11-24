@@ -865,7 +865,7 @@ describe("signing, before the touch", () => {
     expect(pinsWarning(mine, false, [TOUCH, KEY], T - 3600)).toEqual(
       { refused: [{ name: "iPhone", fingerprint: PHONE }], all: false, known: true, pinned: ["Touch ID", "YubiKey"] });
     expect(pinsWarning(mine, false, ["9".repeat(32)], T - 3600)?.all).toBe(true);
-    expect(pinsWarning(mine, false, [], T - 3600)).toEqual(
+    expect(pinsWarning(mine, false, null, T - 3600)).toEqual(
       { refused: [{ name: "iPhone", fingerprint: PHONE }], all: false, known: false, pinned: [] });
     expect(pinsWarning(mine, false, null, null)).toBeNull();                       // nothing to tell it by
     expect(pinsWarning(mine, false, [TOUCH, PHONE, KEY], T - 3600)).toBeNull();     // it takes them all
@@ -874,7 +874,7 @@ describe("signing, before the touch", () => {
       { refused: [{ name: "YubiKey", fingerprint: KEY }], all: true, known: true, pinned: [] });
   });
 
-  const signRoutes = (pins: string[]) => base({
+  const signRoutes = (pins: string[] | null) => base({
     "POST /api/ade/link/nonce": () => [200, { nonce: "n1", rp_id: "pp.example", deployment: "pp.example", account: "u", server_time: T }],
     "GET /api/account/passkeys": () => [200, { passkeys: mine.slice(0, 2), high_security: false }],
     "GET /api/ade/e2e": () => [200, { links: [{ link_id: "L1", name: "MacBook Pro", key_id: null, last_required_at: null, pins }] }],
@@ -906,7 +906,7 @@ describe("signing, before the touch", () => {
 
   it("where the session reports no pins, names the passkeys added since it was linked", async () => {
     useStore.setState({ links: { links: [link()], questions: [], public_url: "https://pp.example" } });
-    serve(signRoutes([]));
+    serve(signRoutes(null));
     await reviewed();
     expect(screen.getByRole("note", { name: "Before you sign" }).textContent)
       .toContain("iPhone was added after MacBook Pro was linked: unless you gave MacBook Pro its pin line, it refuses what that key signs.");

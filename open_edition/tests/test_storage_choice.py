@@ -605,7 +605,7 @@ def test_a_move_away_from_a_repository_or_a_machine_says_what_stays_and_deletes_
 
 
 def test_a_move_away_names_the_approvals_and_hook_tokens_that_stay_and_one_connection_as_one(client, monkeypatch):
-    """The commands held for approval stay whatever the choice, since nothing deletes one, and the hook
+    """The commands held for approval stay whatever the choice, since no choice deletes one, and the hook
     tokens until they are revoked; and a single connection is said as one."""
     from proofpane_open.ade import approvals
     monkeypatch.setenv("OPEN_EDITION_KEYSTORE_KEY", KEY)

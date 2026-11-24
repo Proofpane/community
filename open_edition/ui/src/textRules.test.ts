@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allShown, eventText, hides, historyFields, MARKS_MAX, questionRule, refusalWords, stackedMarks, talkText, type Checked, type Refusal } from "./textRules";
+import { allShown, charactersRule, eventText, hides, historyFields, MARKS_MAX, questionRule, refusalWords, stackedMarks, talkText, withinRule, type Checked, type Refusal } from "./textRules";
 
 // Characters that do not show as themselves are written by code point, so no editor or transport turns them into
 // themselves; the expected outcomes are those of the server's own functions on the same values (link._history_row,
@@ -127,6 +127,92 @@ describe("a question's words, as the server's check_text holds them", () => {
       expect(questionRule(`may I merge x${cp(code)}?`), code.toString(16)).toEqual({ why: "rule", rule: "it holds a mark drawn over or around a character, which could change how it reads" });
     }
     for (const code of [0x0301, 0x0323, 0x20e1, 0x0e48]) expect(questionRule(`x${cp(code)} now?`), code.toString(16)).toBeNull();
+  });
+});
+
+const HIDDEN_WHY = { why: "hidden" };
+const DRAWN_WHY = { why: "rule", rule: "it holds a mark drawn over or around a character, which could change how it reads" };
+const FORM_WHY = { why: "rule", rule: "it is not in Unicode normal form C" };
+
+describe("a text's characters, as the server's check_characters holds them", () => {
+  it("are asked nothing of the text's size, of whether it begins as an envelope does, or of the shapes", () => {
+    for (const t of ["", "  ", "x".repeat(4001), "e2e1.abc", "which key, sk-ant-1?", "tab\tand\nline", `ship it ${HEART}${VS16}`, `a${NBSP}b`,
+      `caf${cp(0xe9)}`, cp(0x1f600), cp(0x0301), `x${cp(0x0323)}`]) {
+      expect(charactersRule(t), JSON.stringify(t.slice(0, 12))).toBeNull();
+    }
+  });
+
+  it("refuse what the rule refuses, each by its clause, as a question's words do", () => {
+    for (const t of ["a\rb", `a${cp(0x85)}b`, "a\u{0007}b", "\u{0000}", `a${cp(0x7f)}b`, `a${ZWSP}b`, `a${String.fromCharCode(0xd800)}b`, `a${cp(0x202e)}b`,
+      `${VS16}x`, VS16, `x${VS16}${VS16}`, `a${cp(0x2028)}b`, cp(0xe000), cp(0xfe00)]) {
+      expect(charactersRule(t), JSON.stringify(t)).toEqual(HIDDEN_WHY);
+      expect(questionRule(t), JSON.stringify(t)).toEqual(HIDDEN_WHY);
+    }
+    for (const code of [0x0336, 0x0338, 0x20dd, 0x0488]) {
+      expect(charactersRule(`x${cp(code)}`), code.toString(16)).toEqual(DRAWN_WHY);
+      expect(charactersRule(cp(code)), code.toString(16)).toEqual(DRAWN_WHY);
+    }
+    expect(charactersRule("cafe\u{0301}")).toEqual(FORM_WHY);
+    expect(charactersRule(`${cp(0x1100)}${cp(0x1161)}`)).toEqual(FORM_WHY);
+    // the first clause a text breaks is the one said, in the rule's order
+    expect(charactersRule(`e${cp(0x0301)}${cp(0x0338)}${ZWSP}`)).toEqual(HIDDEN_WHY);
+    expect(charactersRule(`e${cp(0x0301)}${cp(0x0338)}`)).toEqual(DRAWN_WHY);
+  });
+});
+
+describe("the texts and names within what an item's JSON holds", () => {
+  const bad = `x${cp(0x0338)}`;
+
+  it("are each held to the rule on characters, a name as much as a text, at any depth, in a list or in an object", () => {
+    for (const v of [bad, [bad], { a: bad }, { [bad]: 1 }, { a: [1, { b: [[bad]] }] }, { a: { b: { [bad]: null } } }, [[], {}, [{ a: 1, b: "ok", c: [bad] }]],
+      { tool: "Bash", input: { command: "ls" }, session_id: bad }, { __proto__: null, a: bad }, JSON.parse(`{"__proto__":{"a":"x\\u0338"}}`),
+      JSON.parse(`{"a":"ok","a":"x\\u0338"}`)]) {
+      expect(withinRule(v), JSON.stringify(v)).toEqual(DRAWN_WHY);
+    }
+    expect(withinRule({ a: "ok", b: ["cafe\u{0301}"] })).toEqual(FORM_WHY);
+    expect(withinRule({ [`${VS16}a`]: "ok" })).toEqual(HIDDEN_WHY);
+    expect(withinRule(["a\rb"])).toEqual(HIDDEN_WHY);
+  });
+
+  it("are held as the texts they are: one that begins with a selector is refused wherever it stands, and an accent is not joined to the text before it", () => {
+    expect(withinRule([HEART, VS16])).toEqual(HIDDEN_WHY);
+    expect(withinRule({ [HEART]: `${VS16}x` })).toEqual(HIDDEN_WHY);
+    expect(withinRule([`${HEART}${VS16}`, `a${VS16}`])).toBeNull();
+    expect(withinRule(["cafe", cp(0x0301)])).toBeNull();
+    expect(withinRule({ e: cp(0x0301) })).toBeNull();
+  });
+
+  it("ask nothing of what is no text, of an empty text or name, nor of what the rule lets through", () => {
+    for (const v of [null, undefined, 7, 1.5, true, false, [], {}, "", [""], { "": "" }, { a: [1, 2, { b: null }] }, "x".repeat(5000), ["e2e1.abc", "sk-ant-1"],
+      { command: "printf 'a\\tb'\n\tdone", description: `caf${cp(0xe9)} ${HEART}${VS16} ${cp(0x1f600)}` }]) {
+      expect(withinRule(v), JSON.stringify(v)?.slice(0, 40)).toBeNull();
+    }
+  });
+
+  it("say the first text or name that breaks the rule, in the order the value gives them", () => {
+    expect(withinRule(["cafe\u{0301}", bad])).toEqual(FORM_WHY);
+    expect(withinRule([bad, "cafe\u{0301}"])).toEqual(DRAWN_WHY);
+    expect(withinRule({ a: { [`${VS16}k`]: bad }, b: "cafe\u{0301}" })).toEqual(HIDDEN_WHY);
+    expect(withinRule({ a: [bad], [`${VS16}k`]: 1 })).toEqual(DRAWN_WHY);
+  });
+
+  it("are read at the deepest a text of 4,000 characters nests one that breaks the rule", () => {
+    // an opened text is at most 4,000 characters (eventText). A list takes two of them and an object, its name empty,
+    // five; a text that breaks the rule takes three, its quotation marks with it: so 1,998 lists or 799 objects
+    // around one, and one more of either is past 4,000
+    const mark = cp(0x0338);
+    const lists = (n: number, inner: string) => `${"[".repeat(n)}${inner}${"]".repeat(n)}`;
+    const objects = (n: number, inner: string) => `${'{"":'.repeat(n)}${inner}${"}".repeat(n)}`;
+    expect(lists(1998, `"${mark}"`)).toHaveLength(3999);
+    expect(lists(1999, `"${mark}"`).length).toBeGreaterThan(4000);
+    expect(objects(799, `"${mark}"`)).toHaveLength(3998);
+    expect(objects(800, `"${mark}"`).length).toBeGreaterThan(4000);
+    expect(withinRule(JSON.parse(lists(1998, `"${mark}"`)))).toEqual(DRAWN_WHY);
+    expect(withinRule(JSON.parse(lists(1998, `"ok"`)))).toBeNull();
+    expect(withinRule(JSON.parse(objects(799, `"${mark}"`)))).toEqual(DRAWN_WHY);
+    expect(withinRule(JSON.parse(objects(799, `"ok"`)))).toBeNull();
+    // and a name at the bottom, written as an escape
+    expect(withinRule(JSON.parse(objects(797, `{"x\\u0338":1}`)))).toEqual(DRAWN_WHY);
   });
 });
 

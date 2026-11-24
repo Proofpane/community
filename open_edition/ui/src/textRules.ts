@@ -190,12 +190,12 @@ export function historyFields(value: unknown, withheld: boolean): Checked<RowFie
 
 const QUESTION_MAX = 4000;
 
-/** The server's link_commands.check_text, which holds a question's words (an answer carries their digest): why `value`
- *  breaks it, or null. Not empty, at most 4,000 characters, no lone surrogate, no control character but a line break
- *  and a tab, nothing HIDDEN finds, no mark DRAWN_OVER finds, in Unicode normal form C, nothing shaped like a secret. */
-export function questionRule(value: string): Refusal | null {
-  if (PY_BLANK.test(value)) return { why: "rule", rule: "it is empty" };
-  if ([...value].length > QUESTION_MAX) return { why: "rule", rule: `it is longer than ${lengthWords(QUESTION_MAX)} characters` };
+/** The server's link_commands.check_characters, what its check_text asks of a text's characters and nothing of its
+ *  size, of whether it begins as an envelope does or of the shapes: why `value` breaks it, or null. No lone
+ *  surrogate, no control character but a line break and a tab, nothing HIDDEN finds, no mark DRAWN_OVER finds,
+ *  Unicode normal form C. A text may be empty. Asked of a question's whole words (questionRule) and of each text and
+ *  name within an item (withinRule), whose JSON may write such a character as an escape. */
+export function charactersRule(value: string): Refusal | null {
   for (const ch of value) {
     const code = ch.codePointAt(0) ?? 0;
     if ((code >= 0xd800 && code <= 0xdfff) || (code < 0x20 && ch !== "\n" && ch !== "\t") || (code >= 0x7f && code <= 0x9f)) return HIDES;
@@ -203,7 +203,41 @@ export function questionRule(value: string): Refusal | null {
   if (HIDDEN.test(value)) return HIDES;
   if (DRAWN_OVER.test(value)) return { why: "rule", rule: "it holds a mark drawn over or around a character, which could change how it reads" };
   if (value.normalize("NFC") !== value) return { why: "rule", rule: "it is not in Unicode normal form C" };
-  return secretRule(value);
+  return null;
+}
+
+/** The server's link_commands.check_text, which holds a question's words (an answer carries their digest): why `value`
+ *  breaks it, or null. Not empty, at most 4,000 characters, its characters charactersRule's (no lone surrogate, no
+ *  control character but a line break and a tab, nothing HIDDEN finds, no mark DRAWN_OVER finds, Unicode normal form
+ *  C), nothing shaped like a secret. */
+export function questionRule(value: string): Refusal | null {
+  if (PY_BLANK.test(value)) return { why: "rule", rule: "it is empty" };
+  if ([...value].length > QUESTION_MAX) return { why: "rule", rule: `it is longer than ${lengthWords(QUESTION_MAX)} characters` };
+  return charactersRule(value) ?? secretRule(value);
+}
+
+/** Why a value read from JSON is not shown as the texts it holds: the first of its texts and of its objects' names,
+ *  at any depth and in the order the value gives them, that breaks charactersRule; null where none does. Each is held
+ *  as the text it is, as the server holds each text within an item in the clear (link.post_event) and a session's
+ *  client each string of an item before it seals it (ade_link.prompt_text_refusal): the JSON may write as an escape
+ *  what its whole text would be refused for, and a selector that begins a text begins it wherever the text stands.
+ *  What is no text (a number, true, false, null) is asked nothing. Read from a list of its own, not on the call
+ *  stack. */
+export function withinRule(value: unknown): Refusal | null {
+  const left: unknown[] = [value];
+  while (left.length) {
+    const v = left.pop();
+    if (typeof v === "string") {
+      const broken = charactersRule(v);
+      if (broken) return broken;
+    } else if (Array.isArray(v)) {
+      for (let i = v.length - 1; i >= 0; i--) left.push(v[i]);
+    } else if (isRecord(v)) {
+      const parts = Object.entries(v);
+      for (let i = parts.length - 1; i >= 0; i--) left.push(parts[i][1], parts[i][0]);
+    }
+  }
+  return null;
 }
 
 const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/;

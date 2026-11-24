@@ -158,6 +158,7 @@ CONFIRM_PURPOSES = (CONFIRM, "e2e-cancel", "e2e-enrol-touch", "e2e-enrol-own", "
 # removing one, renaming one, turning high security on or off, signing every device out, making a link ticket (for a new session, or
 # to re-pair a link), revoking a link, approving a session's request to be linked (and the link it replaces), turning
 # on the account's switch for apps, allowing an app's request (with ade.propose or without: "propose" or "read"),
+# letting sessions link through a connected app (ade/connector_link.py: the app's connection),
 # approving a held command, and making a ticket to pair a signer (ade/signers.py). A change to a thing that does not
 # exist yet (a passkey to add, a new session's ticket, a signer's) is named by its kind alone, so its confirmation is
 # spent on one such change, whichever. A device's sign-in is
@@ -179,11 +180,11 @@ CONFIRM_PURPOSES = (CONFIRM, "e2e-cancel", "e2e-enrol-touch", "e2e-enrol-own", "
 _ID = r"[0-9a-f]{32}"
 CHANGE = re.compile(r"passkey-add|passkey-remove:{i}|passkey-rename:{i}|high-security-(?:on|off)|sign-out-everywhere"
                     r"|link-ticket:(?:new|{i})|link-revoke:{i}|link-approve:{i}(?::{i})?|connector-on"
-                    r"|connector-allow:{i}:(?:propose|read)|request-approve:{i}|signer-ticket"
+                    r"|connector-allow:{i}:(?:propose|read)|connector-links:{i}|request-approve:{i}|signer-ticket"
                     r"|e2e-upgrade:{i}"
                     r"|task-account-own:{i}|task-cross:{i}|task-custody-cross:{i}|task-offer:{i}|task-custody:{i}"
                     r"|task-custody-accept:{i}|task-custody-confirm:{i}|task-account-record:{i}"
-                    r"|task-secret-lift:{i}:{i}|workspace-delete".replace("{i}", _ID))
+                    r"|task-secret-lift:{i}:{i}|workspace-delete|account-delete|account-delete-cancel:{i}".replace("{i}", _ID))
 BAD_CHANGE = "That is not a change a confirmation is made for: reload the page and try again."
 _FLAG_UP, _FLAG_UV, _FLAG_BE, _FLAG_BS, _FLAG_AT, _FLAG_ED = 0x01, 0x04, 0x08, 0x10, 0x40, 0x80
 
@@ -798,7 +799,9 @@ def insert_passkey(db, values):
 
 
 def for_user(user_id):
-    """The account's passkeys as the Account page lists them: no key material; the fingerprint a session pins; its
+    """The account's passkeys as the Account page lists them: no key material; the fingerprint a session pins; the
+    names of the connected apps whose linking of sessions it turned on and that its removal leaves connected
+    (`linking`), and of those it allowed whose linking is on, which its removal disconnects (`disconnects`); its
     kind (kind_of); the tier, the model's AAGUID and maker, for a device passkey why, and for a hardware key whether its working with a
     phone rests on the browser's word and why it is reported, when it is kept as a hardware key all the same
     (reconsider). One waiting for the FIDO metadata is judged again first, when a valid blob is kept, and the hardware
@@ -809,11 +812,16 @@ def for_user(user_id):
     if waiting:
         judge_again(user_id=user_id)
     reconsider()                            # a blob put here by hand, with no refresher to bring it
+    from .ade import connector_link
     with store.connect() as db:
         rows = db.execute("SELECT id, name, created_at, last_used_at, backed_up, backup_eligible, attachment, "
                           "public_key, tier, aaguid, maker, tier_why, judge_again, phone_by_browser, tier_report "
                           "FROM passkeys WHERE user_id = ? ORDER BY created_at", (user_id,)).fetchall()
+        # the apps still connected whose linking is on: those each turned it on for, which its removal turns it off
+        # for, and those each allowed, which its removal disconnects (ade/connector_link.py)
+        linking, disconnects = connector_link.linking_of(db, user_id, int(time.time()))
     return [{"id": r["id"], "name": r["name"], "created_at": r["created_at"], "last_used_at": r["last_used_at"],
+             "linking": linking.get(r["id"], []), "disconnects": disconnects.get(r["id"], []),
              "backed_up": bool(r["backed_up"]), "fingerprint": fingerprint(r["public_key"]), "tier": r["tier"],
              "aaguid": r["aaguid"], "maker": r["maker"],
              "why": None if r["tier"] == HARDWARE else r["tier_why"] or OLD_PASSKEY,
@@ -951,15 +959,17 @@ def remove(user_id, passkey_id, confirmation=None, now=None):
     confirmed that no session has used is voided (ade/link.py void_tickets); and each approval of the account still
     held that names no passkey (a request to link a session, whose confirmation does not record which way gave it) is
     cancelled (ade/holds.cancel_all), since it may have been confirmed with that passkey; and every app connection it
-    allowed, in effect or waiting, is revoked (oauth.passkeys_going); and each version of a task's grant it signed is
+    allowed, in effect or waiting, is revoked (oauth.passkeys_going), which ends the sessions linked through it and
+    deletes their posts and checkpoints (ade/connector_link.py); and each version of a task's grant it signed is
     withdrawn (ade/task_grants.passkeys_going). So a lost device's passkey, once removed, leaves nothing it signed or
     confirmed for a session to act on, nothing it approved to take effect, no grant it signed standing, and no app it
     connected. While high security is on, the account's last hardware key is not removed. While end-to-end encryption
     is on, a passkey is removed only by a revocation (ade/e2e_keys.py), which replaces the master key so the removed
-    one opens nothing: 409 here. {removed, withdrawn, stopped, cancelled, disconnected: the connections revoked, apps:
-    what that says of the account's connected apps (oauth.lost_device_words)}."""
+    one opens nothing: 409 here. {removed, withdrawn, stopped, cancelled, disconnected: the connections revoked,
+    unlinked: the apps still connected whose linking it had turned on, now off, apps: what that says of the account's
+    connected apps, and of the sessions linked through them that ended (oauth.lost_device_words)}."""
     from . import oauth
-    from .ade import e2e_keys, holds
+    from .ade import connector_link, e2e_keys, holds
     now = _now(now)
     holds.settle(user_id, now)          # what has taken effect has; what has not is cancelled below
     with store.connect() as db:
@@ -967,10 +977,12 @@ def remove(user_id, passkey_id, confirmation=None, now=None):
         if e2e_keys.on(db, user_id):
             raise PasskeyError(409, REVOKES_ONLY)
         _use_confirmation(db, user_id, confirmation, now, subject=f"passkey-remove:{passkey_id}")
-        withdrawn, stopped, disconnected = remove_in(db, user_id, passkey_id, now)
+        withdrawn, stopped, disconnected, unlinked = remove_in(db, user_id, passkey_id, now)
+        linked = connector_link.linked_among(db, disconnected)      # of the apps revoked, those with linking on
         cancelled = holds.cancel_all(db, user_id, now)
     return {"removed": passkey_id, "withdrawn": withdrawn, "stopped": stopped, "cancelled": cancelled,
-            "disconnected": disconnected, "apps": oauth.lost_device_words(len(disconnected))}
+            "disconnected": disconnected, "unlinked": unlinked,
+            "apps": oauth.lost_device_words(len(disconnected), len(unlinked), linked)}
 
 
 def remove_in(db, user_id, passkey_id, now):
@@ -979,7 +991,7 @@ def remove_in(db, user_id, passkey_id, now):
     tickets it confirmed, revoke the app connections it allowed (oauth.passkeys_going), and end a change to end-to-end
     encryption that waits with a statement it signed (ade/e2e_keys.passkey_removed); 404 for one that is not there, 409
     for the last hardware key while high security is on. (number withdrawn, the links stopped again, the connections
-    revoked)."""
+    revoked, the apps still connected whose linking it had turned on and is now off)."""
     from . import oauth
     from .ade import e2e_keys, link, moves, task_grants
     row = db.execute("SELECT tier FROM passkeys WHERE id = ? AND user_id = ?", (passkey_id, user_id)).fetchone()
@@ -998,8 +1010,8 @@ def remove_in(db, user_id, passkey_id, now):
     link.void_tickets(db, user_id, "confirmed_by = ?", (passkey_id,))
     # and the devices its word approved: refused if they have not collected their sign-ins, ended if they have
     devices_approved_by(db, user_id, [passkey_id], now)
-    disconnected = oauth.passkeys_going(db, user_id, [passkey_id], oauth.REMOVED_WHY, now)
-    return withdrawn, stopped, disconnected
+    disconnected, unlinked = oauth.passkeys_going(db, user_id, [passkey_id], oauth.REMOVED_WHY, now)
+    return withdrawn, stopped, disconnected, unlinked
 
 
 def rename(user_id, passkey_id, name, confirmation=None, now=None):

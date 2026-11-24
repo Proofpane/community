@@ -15,7 +15,8 @@ question to the owner or to all, each request to be linked and each session a ti
 (`links`); and the agents' runs waiting for the owner (`agents`, null where the account is given no workspace).
 `stamps` holds a stamp for each list the page keeps (`sessions`, `repos`, `approvals`, `proposals`, `asks`, `links`,
 `history`): a digest of the list as its own route serves it (the linked sessions' without the server's time, which is
-in each answer), different each time the list changes, null when the list could not be read (or is not there to read,
+in each answer, and with the sessions linked through a connected app, where there are any, which the same panel
+lists), different each time the list changes, null when the list could not be read (or is not there to read,
 as a stopped workspace's sessions). The page reads a list again only when its stamp is not the one it last read.
 
 A stamp says whether a list changed and nothing of what it holds, and nothing else in the answer is a word any session,
@@ -43,7 +44,8 @@ from fastapi.responses import JSONResponse
 
 from .. import oauth, store
 from ..deps import current_user
-from . import approvals, link_asks, link_routes, proposals, task_grants, workspace_client, workspace_routes, workspaces
+from . import (approvals, connector_link, link_asks, link_routes, proposals, task_grants, workspace_client,
+               workspace_routes, workspaces)
 
 router = APIRouter(prefix="/api/ade/summary")
 NO_STORE = {"Cache-Control": "no-store"}
@@ -174,8 +176,12 @@ def summary(user):
                     + len(channel.get("waitings") or ())
                     + sum(1 for a in channel.get("asks") or () if a.get("state") == "pending"
                           or (a.get("state") == "held" and a.get("via") == link_asks.TICKET))}
-    # the server's time is in every answer and is no change of the list
-    stamps["links"] = stamp({k: v for k, v in channel.items() if k != "server_time"})
+    # the server's time is in every answer and is no change of the list. The sessions linked through a connected app
+    # (ade/connector_link.py) are listed in the same panel, from a route of their own: the stamp moves with them too,
+    # so the page reads the panel's lists again as one posts, and is the channel's own, as it was, while there is none
+    listed = {k: v for k, v in channel.items() if k != "server_time"}
+    through_apps = connector_link.for_owner(user["id"])["links"] if oauth.enabled() else []
+    stamps["links"] = stamp(dict(listed, through_apps=through_apps) if through_apps else listed)
     stamps["history"] = stamp(_served(link_routes.history(user)))
     if ws and ws.get("enabled") and ws.get("allowed") is not False:
         out["agents"] = _agents_waiting(user["id"])

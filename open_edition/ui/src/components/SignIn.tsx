@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, KeyRound, Loader2, Smartphone } from "lucide-react";
-import { APP, Api, api, DESKTOP, NO_PASSWORD, server, serverAddress, setServer, type User } from "../api";
+import { deletionDone } from "../accountDeletion";
+import { APP, Api, api, DESKTOP, NO_PASSWORD, PHONE, server, serverAddress, setServer, type User } from "../api";
+import { PRIVACY_POLICY } from "../privacyPolicy";
 import { passkeysHere, signInWithPasskey } from "../passkey";
 import { LOCAL } from "../places";
 import { useStore } from "../store";
+import { dayTime } from "../when";
 import { Licenses } from "./Licenses";
 import { DEFAULT_SERVER, Logo, switchPlace } from "./TitleBar";
 
@@ -25,6 +28,10 @@ export function SignIn({ invite, onInviteDone }: { invite?: string | null; onInv
   // refuses it, until the tray asks for the account's password
   const after = useRef(onInviteDone);
   after.current = onInviteDone;
+  // the deletion of the account this browser placed, done since: said once, from the server's record of its id alone
+  // (accountDeletion.ts), since the phone app shows no notifications
+  const [deleted, setDeleted] = useState<number | null>(null);
+  useEffect(() => { void deletionDone().then((at) => { if (at !== null) setDeleted(at); }); }, []);
 
   useEffect(() => {
     if (!invite) return;
@@ -107,6 +114,9 @@ export function SignIn({ invite, onInviteDone }: { invite?: string | null; onInv
           await signIn(email.trim(), password);
         });
       }} className="panel space-y-3 p-5">
+        {deleted !== null && (
+          <div role="status" className="rounded-md border border-line bg-panel px-3 py-2 text-[12px] text-fg-dim">Your account was deleted at {dayTime(deleted)}. Signing in with it no longer works.</div>
+        )}
         {noPassword && (
           <div role="status" className="rounded-md border border-line bg-panel px-3 py-2 text-[12px] text-fg-dim">
             The account you signed out of is this Mac&apos;s own, which has no password: sign in again with
@@ -253,6 +263,7 @@ function Frame({ subtitle, children }: { subtitle: string; children: React.React
         {children}
         <div className="mt-6 text-center">
           <button className="touch-target text-[11.5px] text-muted underline-offset-2 hover:text-fg hover:underline" onClick={() => setLicenses(true)}>Licenses</button>
+          {PHONE && <a className="touch-target ml-4 text-[11.5px] text-muted underline-offset-2 hover:text-fg hover:underline" href={PRIVACY_POLICY} target="_blank" rel="noopener noreferrer">Privacy</a>}
         </div>
       </div>
       {licenses && <Licenses onClose={() => setLicenses(false)} />}

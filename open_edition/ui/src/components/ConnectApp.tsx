@@ -49,7 +49,10 @@ export function cameHow(r: ConnectRequest): string {
   }
 }
 export const READS = "See your sessions as the ADE lists them, with where each ran; their conversations as the ADE keeps them; what waits for you, with the full text of the commands your sessions wait to run and their folders, and other apps' proposals without their words; and its own proposals. Not the title, conversation or waiting commands of a session its machine withholds, a conversation kept end-to-end encrypted, your workspace's files or terminals, or anything shaped like a secret.";
-export const PROPOSES = "Propose instructions, stops, resumes, answers to questions and answers to held commands. A proposal does nothing until you sign or accept it here; the app can never send, stop, resume, answer, approve, move or link anything itself.";
+export const PROPOSES = "Propose instructions, stops, resumes, answers to questions and answers to held commands. A proposal does nothing until you sign or accept it here; the app can never send, stop, resume, answer, approve or move anything itself.";
+/** Said under what it may do while Propose is asked for and ticked: only an app that may propose can be let link
+ *  sessions (the server's ade/connector_link.py), and none is let by connecting it. */
+export const LINKING = "Linking is off for a new connection. Turned on for this app in Connected apps, sessions of its Claude account can list themselves in Linked sessions under names of their own, post their steps and questions there and keep a checkpoint; any chat of that Claude account that uses this app can post under a name linked through it; they take nothing you sign, and their link carries none of your words to them.";
 
 /** The consent pane: the request read with this account's sign-in, Allow (with the account's confirmation) or
  *  Refuse, then the app's own address. */
@@ -146,6 +149,7 @@ export function ConnectApp({ id, onClose, onApps }: { id: string; onClose: () =>
                   )}
                 </ul>
               </div>
+              {asked && propose && <p aria-label="Linking sessions through it">{LINKING}</p>}
               <p>What it reads goes to that app and its servers.</p>
               <p>
                 {req.hold_seconds > 0

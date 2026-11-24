@@ -28,6 +28,18 @@ The page's, each with the sign-in:
     POST   /api/connector/proposals/{id}/refuse          {words?}: the owner refuses one
     POST   /api/connector/proposals/{id}/accept          a proposed stop, accepted with the sign-in alone
 
+The sessions linked through a connected app (ade/connector_link.py), each with the sign-in:
+
+    PUT    /api/connector/grants/{id}/links              {on, confirmation?}: let sessions link through that app (the
+                                                         account's confirmation made for it), or no longer (the sign-in
+                                                         alone, which ends every session linked through it) -> the app
+    GET    /api/connector/links                          {links, server_time}: the account's live ones, oldest first
+    GET    /api/connector/links/{id}/posts               one's posts, newest first (?before=SEQ)
+    DELETE /api/connector/links/{id}                     take one off Linked sessions: it ends, its posts with it
+    POST   /api/connector/links/{id}/questions/{seq}/close  close one of its open questions; no words are taken
+    POST   /api/connector/links/{id}/stop                ask it to stop: fixed words, read in its next call's answer
+    DELETE /api/connector/links/{id}/stop                withdraw that
+
 An instruction, an answer or a resume a connected app proposed is signed through the session channel's own routes,
 its payload's id the proposal's (ade/link_commands.py binds them); a proposed answer to a held command is given on the
 command, POST /api/ade/approvals/{id} with {proposal, confirmation} (ade/approvals.py).
@@ -46,7 +58,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .. import oauth
 from ..deps import current_user
-from . import connector, holds, proposals
+from . import connector, connector_link, holds, proposals
 
 router = APIRouter()
 METADATA_CACHE = {"Cache-Control": "max-age=300"}
@@ -76,6 +88,11 @@ class AllowIn(BaseModel):
 
 class WordsIn(BaseModel):
     words: Optional[str] = None             # the owner's, for the app to read back
+
+
+class LinksIn(BaseModel):
+    on: bool
+    confirmation: Optional[str] = None      # from /api/account/confirm, to turn it on
 
 
 @router.get("/.well-known/oauth-protected-resource/mcp")
@@ -270,3 +287,48 @@ def refuse_proposal(proposal_id: str, body: Optional[WordsIn] = None, user=Depen
 def accept_stop(proposal_id: str, user=Depends(current_user)):
     _on()
     return proposals.accept_stop(user["id"], proposal_id)
+
+
+# ---- the sessions linked through a connected app (ade/connector_link.py) --------------------------------------------
+# none of these takes the owner's words: what such a session reads of the owner's is fixed
+
+@router.put("/api/connector/grants/{grant_id}/links")
+def set_links(grant_id: str, body: LinksIn, user=Depends(current_user)):
+    _on()
+    return connector_link.set_links(user["id"], grant_id, body.on, body.confirmation)
+
+
+@router.get("/api/connector/links")
+def linked(user=Depends(current_user)):
+    _on()
+    return connector_link.for_owner(user["id"])
+
+
+@router.get("/api/connector/links/{link_id}/posts")
+def linked_posts(link_id: str, before: Optional[int] = None, user=Depends(current_user)):
+    _on()
+    return connector_link.posts(user["id"], link_id, before)
+
+
+@router.delete("/api/connector/links/{link_id}")
+def linked_remove(link_id: str, user=Depends(current_user)):
+    _on()
+    return connector_link.remove(user["id"], link_id)
+
+
+@router.post("/api/connector/links/{link_id}/questions/{seq}/close")
+def linked_close(link_id: str, seq: int, user=Depends(current_user)):
+    _on()
+    return connector_link.close_question(user["id"], link_id, seq)
+
+
+@router.post("/api/connector/links/{link_id}/stop")
+def linked_stop(link_id: str, user=Depends(current_user)):
+    _on()
+    return connector_link.stop(user["id"], link_id, True)
+
+
+@router.delete("/api/connector/links/{link_id}/stop")
+def linked_unstop(link_id: str, user=Depends(current_user)):
+    _on()
+    return connector_link.stop(user["id"], link_id, False)

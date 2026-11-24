@@ -16,9 +16,10 @@ import { Api, ApiError, APP, server, toOwner, type LinkClosedPrompt, type LinkEv
 import { useE2E, useE2EStore } from "../e2e";
 import * as K from "../e2eKeys";
 import { prepareSigned, signPrepared, textDigest, type Prepared, type Signed } from "../passkey";
+import { keptOf, phrasesOf, type StepKind } from "../phoneTake";
 import { hostLabel } from "../places";
 import { unreachable, useStore } from "../store";
-import { eventText, questionRule, refusalWords, type Checked } from "../textRules";
+import { eventText, questionRule, refusalWords, withinRule, type Checked } from "../textRules";
 import { clock, dayTime, full } from "../when";
 import { ago, closeKey, pinCheck, PinNotice, Question, SignBox, SIGN_ELSEWHERE, SIGN_OFFLINE, signsHere, UNAVAILABLE, useNeedsServer, visible, type PinWarning } from "./Channel";
 import { eventSlotOf, shown, ShownText, useAccount, useOpened, type Opener, type Shown } from "./Sealed";
@@ -69,8 +70,15 @@ export interface PromptQuestion { question: string; header: string; multiSelect:
 /** A prompt's text once opened, as its session's client writes it (JSON): the tool, its whole input, and for a
  *  question (AskUserQuestion) its questions, their options numbered as the item gives them, 1 to N in order across all
  *  of them. `asks`: a question, answered by option numbers, never the word Approve; `questions` null where they are
- *  not in that form. */
-export interface PromptItem { tool: string; input: unknown; asks: boolean; questions: PromptQuestion[] | null }
+ *  not in that form. `kept`: a call the session's guard keeps for the owner at the machine, posted to be answered here
+ *  as the owner allowed that session, at the machine, to take such steps on an Approve from the page: the kinds of its
+ *  step, as its `kept` names them by their phrases; null where it names none, or names them in no form the client
+ *  writes. `cwd`: the folder such a call runs in, as its `cwd` names it (the session's client writes it beside `kept`,
+ *  in the text the Approve signs over); null where it names none. */
+export interface PromptItem {
+  tool: string; input: unknown; asks: boolean; questions: PromptQuestion[] | null; kept: StepKind[] | null;
+  cwd: string | null;
+}
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
@@ -105,7 +113,8 @@ export function parsePrompt(text: string): PromptItem | null {
   if (!isRecord(v) || typeof v.tool !== "string" || !v.tool) return null;
   const asks = (v.questions !== undefined && v.questions !== null) || v.tool === "AskUserQuestion";
   const given = v.questions ?? (isRecord(v.input) ? v.input.questions : undefined);
-  return { tool: v.tool, input: v.input, asks, questions: asks ? readQuestions(given) : null };
+  return { tool: v.tool, input: v.input, asks, questions: asks ? readQuestions(given) : null, kept: keptOf(v.kept),
+    cwd: typeof v.cwd === "string" && v.cwd !== "" ? v.cwd : null };
 }
 
 /** An item to look at that Claude Code raised itself, not a tool call (a notification, a turn an API error ended, a
@@ -130,11 +139,12 @@ function Held({ text }: { text: string }) {
   return broken ? <span className="italic text-muted">{refusalWords(broken)}</span> : <>{visible(text)}</>;
 }
 
-/** What Claude Code raised: its event, then each of its own words by name, never as JSON. */
+/** What Claude Code raised: its event, then each of its own words by name, never as JSON; the event's name held as
+ *  each of its words is. */
 function Raised({ r }: { r: RaisedItem }) {
   return (
     <>
-      <div className="text-[12.5px]">{`Claude Code: ${visible(r.event)}`}</div>
+      <div className="text-[12.5px]">Claude Code: <Held text={r.event} /></div>
       {r.words.length > 0 && (
         <dl className="mt-1 space-y-0.5 text-[12px]">
           {r.words.map(([key, value]) => (
@@ -161,6 +171,19 @@ export function itemShown(ev: LinkEvent, linkId: string, account: string, opener
   return shown(ev.text, eventSlotOf(ev, linkId, account), check, true, opener);
 }
 
+/** A prompt's text as its card shows it: as itemShown gives it, and where it is an item (parsePrompt), each text and
+ *  each name within its JSON held to the rule's clauses on characters (withinRule), sealed or in the clear. An item's
+ *  JSON may write as an escape a character its whole text would be refused for, and the card shows the texts read
+ *  from it, never the JSON as it came. Where one breaks the clauses the item is not shown: why is said in its place,
+ *  and nothing here answers it, as for a sealed text the rules refuse whole. What Claude Code raised is held word by
+ *  word where it is shown (Raised), and a text that is no item is shown as the words it is. */
+export function promptShown(ev: LinkEvent, linkId: string, account: string, opener: Opener): Shown<string> {
+  const words = itemShown(ev, linkId, account, opener);
+  if (!words.ok || !parsePrompt(words.value)) return words;
+  const broken = withinRule(JSON.parse(words.value));
+  return broken ? { ok: false, seal: { at: "refused", refusal: broken } } : words;
+}
+
 const REPORTED: Record<string, string> = {
   PostToolUse: "the session reported that its tool ran",
   PostToolUseFailure: "the session reported that its tool failed",
@@ -184,6 +207,10 @@ export function closedWords(reason: string | null | undefined): string {
   return `Closed (${visible(reason)}).`;
 }
 
+/** Under a prompt to answer whose text was read and is not shown (the rules refuse it, whole or in a text within):
+ *  where it is answered, since nothing here answers it. */
+export const NOT_SHOWN_WORDS = "Its text is not shown, so nothing here answers it: it is answered where the session shows it.";
+
 /** A prompt out of the open list whose record names no close, as its session's conversation shows it: hidden by a
  *  Close, it is still open, answered among the hidden prompts in Approvals until its deadline. */
 export const STILL_OPEN = "Still open: it waits for your answer in Approvals until its deadline.";
@@ -196,8 +223,10 @@ export const STILL_OPEN_LOOK = "Still open: it is answered where the session sho
 export const UNANSWERED_THEN = "Unanswered by then, its session's hook refuses it and the session goes on, where that hook "
   + "is this version's and can check that with the ADE then; otherwise it stays in the session's window.";
 
-/** The note under a prompt's Close, as Close now works: it hides the prompt, which stays open. `answers`: its text is a
- *  prompt's, or is not opened yet, so the page may answer it; `inbox`: in Approvals, above the hidden ones; elsewhere
+/** The note under a prompt's Close, as Close now works: it hides the prompt, which stays open. `answers`: false where
+ *  its text is not in a prompt's form, or was read and is not shown, since nothing in the page answers it then; true
+ *  otherwise: where its text is a prompt's or is not opened yet, so the page may answer it, and also where its
+ *  envelope did not open, which keeps the words it had. `inbox`: in Approvals, above the hidden ones; elsewhere
  *  (its session's conversation) the note points to Approvals. What happens at the deadline is its session's hook's act,
  *  never the list's. An item to look at, which a Close closes as before, keeps the note it had then (its card says
  *  where it is answered). */
@@ -206,7 +235,8 @@ export function closeNoteWords(look: boolean, answers: boolean, inbox: boolean):
   const hidden = inbox ? "the hidden ones below" : "the hidden prompts in Approvals";
   const after = UNANSWERED_THEN;
   if (!answers) {
-    // its text is not a call this version's hook posted, which posts a call whole: nothing is promised of its deadline
+    // its text is not a call the page answers: not in the form this version's hook posts a call in, whole, or read
+    // and not shown. Nothing is promised of its deadline
     return `Close decides nothing: it takes this prompt out of your open list, to ${hidden}; it is answered where the session shows it.`;
   }
   return `Close decides nothing: it takes this prompt out of your open list, and the session keeps waiting for your answer until its deadline; you can still answer it among ${hidden}. ${after}`;
@@ -233,7 +263,8 @@ function Ended({ end, look, form, deadline, asks }: { end: LinkPromptEnd; look: 
   let said: ReactNode;
   switch (end.ended) {
     case "waiting":
-      // an item to look at, and a text not in a prompt's form, which no hook of this version posted: nothing promised
+      // an item to look at, and a text not in a prompt's form or read and not shown: nothing here answers it, and
+      // nothing is promised of its deadline
       said = look || !form
         ? <>Hidden{at(end.hidden_at)}: it is answered where the session shows it, and nothing here decides it.</>
         : <>Hidden{at(end.hidden_at)}, and waiting for your answer until its deadline{deadline ? <>, <At t={deadline} clockOnly /></> : null}{`: ${UNANSWERED_THEN.charAt(0).toLowerCase()}${UNANSWERED_THEN.slice(1)}`}</>;
@@ -634,10 +665,14 @@ export function PromptCard({ p, name, live = true, unlock = true, onNotice, end,
   const account = useAccount();
   const refresh = useStore((s) => s.refreshLinks);
   const opener = useOpened([{ envelope: p.text, slot: eventSlotOf(p, p.link_id, account) }]);
-  const words = itemShown(p, p.link_id, account, opener);
+  const words = promptShown(p, p.link_id, account, opener);
   const item = words.ok ? parsePrompt(words.value) : null;
   // an item to look at that is no tool call: what Claude Code raised itself
   const raised = words.ok && !item && p.look ? parseRaised(words.value) : null;
+  // a text read and not shown, the rules refusing it whole or in a text within: nothing here answers it, as nothing
+  // here answers a text that is not in a prompt's form (one that only did not open keeps the words it had)
+  const notShown = !words.ok && words.seal.at === "refused" && words.seal.why === undefined;
+  const noForm = (words.ok && !item) || notShown;
   const [answering, setAnswering] = useState<Answering | null>(null);
   const [chosen, setChosen] = useState<number[]>([]);
   // Close takes the card away at once, and brings it back with the reason if the server does not take it
@@ -712,6 +747,13 @@ export function PromptCard({ p, name, live = true, unlock = true, onNotice, end,
           ) : (
             <pre aria-label="Its input, whole" className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-bg px-2.5 py-2 font-mono text-[11.5px] text-fg">{visible(inputWords(item.input))}</pre>
           )}
+          {item.kept && item.cwd !== null && !p.look && (
+            // the folder a kept call runs in, as the text the Approve signs over names it: an Approve is of that
+            // call in that folder, never of the same words in another
+            <div role="note" aria-label="Its folder" className="mt-1 text-[11.5px] text-fg-dim">
+              in <span className="font-mono">{visible(item.cwd)}</span>
+            </div>
+          )}
           {item.asks && item.questions && (choosable && asking
             ? <Choices seq={p.seq} questions={item.questions} chosen={chosen} onChange={setChosen} />
             : <Numbered questions={item.questions} />)}
@@ -724,15 +766,26 @@ export function PromptCard({ p, name, live = true, unlock = true, onNotice, end,
       ) : (
         <div className="whitespace-pre-wrap break-words text-[12.5px]">{visible(words.value)}{words.inClear && <span className="pill ml-1 text-wait">sent in the clear</span>}</div>
       )}
+      {item?.kept && !p.look && (
+        // a step the session's guard keeps for the owner at the machine, posted to answer here as the owner allowed
+        // it; the session reads that allowance again before an Approve allows it
+        <div role="note" aria-label="Kept at the machine" className="mt-1 text-[11.5px] text-wait">
+          {`Kept for you at the machine: ${phrasesOf(item.kept)}. You allowed this session to take it on your `
+            + "Approve from the page; your Approve allows it only while that allowance stands."}
+        </div>
+      )}
       {live && p.look && (
         <div className="mt-1 text-[11.5px] text-muted">It is answered where the session shows it, its window or its page: nothing here decides it.</div>
       )}
       {live && !p.look && words.ok && !item && (
         <div className="mt-1 text-[11.5px] text-wait">Its text is not in the form a prompt takes, so nothing here answers it: it is answered where the session shows it.</div>
       )}
-      {end ? <Ended end={end} look={p.look} form={!(words.ok && !item)} deadline={p.deadline_at} asks={item?.asks ?? false} /> : !live && (
+      {live && !p.look && notShown && (
+        <div className="mt-1 text-[11.5px] text-wait">{NOT_SHOWN_WORDS}</div>
+      )}
+      {end ? <Ended end={end} look={p.look} form={!noForm} deadline={p.deadline_at} asks={item?.asks ?? false} /> : !live && (
         // how it closed; where no close is recorded, it was hidden by a Close, which leaves it open
-        <div className="mt-1 text-[11.5px] text-muted">{p.closed_reason ? closedWords(p.closed_reason) : p.look || (words.ok && !item) ? STILL_OPEN_LOOK : STILL_OPEN}</div>
+        <div className="mt-1 text-[11.5px] text-muted">{p.closed_reason ? closedWords(p.closed_reason) : p.look || noForm ? STILL_OPEN_LOOK : STILL_OPEN}</div>
       )}
       {!live && refused && <div role="alert" className="mt-1.5 text-[12px] text-fail">{refused}</div>}
       {answerable && !signsHere() && !APP && <div className="mt-2 text-[12px] text-muted">{SIGN_ELSEWHERE()}</div>}
@@ -819,7 +872,7 @@ export function PromptCard({ p, name, live = true, unlock = true, onNotice, end,
       )}
       {live && !end && (
         // what Close does now: the prompt is hidden, not given up (a text not in a prompt's form is not answered here)
-        <div id={closeNote} className="mt-1 text-[11px] text-muted">{closeNoteWords(p.look, !(words.ok && !item), inbox)}</div>
+        <div id={closeNote} className="mt-1 text-[11px] text-muted">{closeNoteWords(p.look, !noForm, inbox)}</div>
       )}
       <CameBack why={closed.failed} />
     </div>

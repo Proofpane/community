@@ -262,6 +262,17 @@ def check_text(value, what):
     if value.startswith(PREFIX):
         raise link.LinkError(422, f"The {what} begins {PREFIX}, as an encrypted text does: one in the clear may not, "
                                   "so it is never read as one.")
+    check_characters(value, what)
+    return link.check_secrets(value, what)
+
+
+def check_characters(value, what):
+    """What check_text asks of a text's characters, and nothing of its size, of how it begins or of the shapes: no
+    control character but a newline and a tab, no lone surrogate, no character that changes how the text reads
+    without showing itself, no mark drawn over or around the character before it, and Unicode normal form C. 422
+    names the character, or says the text is not in that form. Asked of the whole text there, and of each text within
+    an item to look at (link.post_event), whose JSON may write such a character as an escape; a text within may be
+    empty."""
     for ch in value:
         code = ord(ch)
         if 0xD800 <= code <= 0xDFFF:
@@ -278,7 +289,7 @@ def check_text(value, what):
                                   f"it, so it could change how the text reads.")
     if unicodedata.normalize("NFC", value) != value:
         raise link.LinkError(422, f"The {what} is not in Unicode normal form C.")
-    return link.check_secrets(value, what)
+    return value
 
 
 def command_state(row, now):

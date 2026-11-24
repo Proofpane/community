@@ -27,10 +27,10 @@ passkeys and checked by the session itself before it acts; everything else here 
 - Limits, all counted from the tables: text 4,000 characters, a checkpoint 4,000 bytes, 600 events an hour per link of
   which 12 may need another's turn, 20 questions open per link, one heartbeat a minute. Anything shaped like a secret
   is refused, by its shape's name, never its value.
-- A heartbeat moves the link's presence, and may carry what its client reads of its own session (heartbeat), which
-  replaces the last. A checkpoint is one JSON document per link, rewritten against the version the session last saw. The
-  resume document, at most 8,000 characters, gives a session back what it needs after a compaction, a restart or an
-  expiry.
+- A heartbeat moves the link's presence, and may carry what its client reads of its own session, the owner keys it
+  pinned and what its owner allowed it to take on his Approve from the page (heartbeat), each replacing the last. A
+  checkpoint is one JSON document per link, rewritten against the version the session last saw. The resume document,
+  at most 8,000 characters, gives a session back what it needs after a compaction, a restart or an expiry.
 """
 
 import base64
@@ -85,6 +85,9 @@ MIRRORS = ("owner", "session", "info", "step", "live")
 LINK_KINDS = {"cloud": 30, "local": 15}           # a link's kind and its interval in minutes
 MAX_NAME = 60
 MAX_TEXT = 4000
+# a text that is JSON (a round of the live view, an item to look at), its arrays and objects inside one another: the
+# bound a request's own body is held to (main.MAX_NESTING); a round as the link client writes one nests four
+MAX_NESTING = 64
 MAX_REF = 200
 MAX_CLIENT_ID = 100
 SEQ_MAX = 2 ** 63 - 1       # the largest seq SQLite stores: a number past it is no event, never an overflow (a 500)
@@ -123,6 +126,12 @@ REPORT_KINDS = ("shell", "agent")
 REPORT_BACKGROUND_STATES = ("running", "completed", "failed", "killed", "stopped")
 REPORT_RATE_STATES = ("ok", "limited")
 _REPORT_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")
+# the kinds of step a heartbeat may say its owner allowed its session to take on his Approve from the page
+# (_phone_take_check), in this order, which is the order it is kept and served in. A forced push and a recursive or
+# forced delete are none of them: those stay the owner's to do at the machine
+PHONE_TAKE_KINDS = ("deploy", "push", "send", "write")
+# an owner key's fingerprint, as a session pins it and its allowance names it (_phone_take_check): fullmatch only
+_KEY_FINGERPRINT = re.compile(r"[0-9a-f]{32}")
 SEEN_EVERY = 60
 FEED_LIMIT = 200
 # a link's reads of its feed in a minute, counted in this process's memory, never an event of the link's share: a
@@ -239,11 +248,90 @@ def check_secrets(value, what):
     return value
 
 
-def _text(value, what, limit, required=True):
+# a string of a JSON text, to its end when it is never closed (main._JSON_STRING, for a text)
+_JSON_STRING = re.compile(r'"(?:[^"\\]++|\\.)*+(?:"|\\?\Z)', re.S)
+_NESTED = "The {} is nested deeper than the ADE reads: at most {} arrays or objects inside one another."
+
+
+def _nests_too_deep(text, limit=MAX_NESTING):
+    """Whether `text` nests more than `limit` arrays or objects inside one another, read without parsing it, as
+    main.nests_too_deep reads a request's body: its strings taken out, then its brackets counted."""
+    if text.count("[") + text.count("{") <= limit:
+        return False
+    depth = 0
+    for ch in _JSON_STRING.sub("", text):
+        if ch in "[{":
+            depth += 1
+            if depth > limit:
+                return True
+        elif ch in "]}":
+            depth -= 1
+    return False
+
+
+def _parsed(text):
+    """`text` as the JSON it is: an object as the list of its names, each with its value, so that a name given twice
+    keeps both; a number not read at all (Python reads no whole number past its limit of digits, and says so as it
+    says a text is no JSON). ValueError for a text that is no JSON to Python, which takes NaN and the infinities as
+    the connector's reader of a round does (connector.live_said), though JSON has none and the page refuses them."""
+    return json.loads(text, object_pairs_hook=list, parse_int=_no_number, parse_float=_no_number)
+
+
+def _no_number(written):
+    return None
+
+
+def _texts_within(value, what):
+    """Each text and each name within a text that is JSON, at any depth, as the text it is; None for a text that is
+    no JSON (_parsed), which holds none. The page parses such a text (a round of the live view, an item to look at),
+    and its JSON may write any character as an escape: a line break before a secret's shape, a character that does
+    not show itself. So each is given as the text it is: _text holds it to the shapes, a round's and an item's, and
+    post_event holds an item's to the rule on characters. A text nested past MAX_NESTING is refused (422) before it
+    is parsed, since the parse nests as deep as the text does: read by its brackets alone (_nests_too_deep), so
+    whether or not it would have parsed. So is one Python still cannot read for its depth, which the page might
+    read."""
+    if _nests_too_deep(value):
+        raise LinkError(422, _NESTED.format(what, MAX_NESTING))
+    try:
+        rest = [_parsed(value)]
+    except RecursionError:
+        raise LinkError(422, _NESTED.format(what, MAX_NESTING)) from None
+    except ValueError:
+        return None
+    texts = []
+    while rest:
+        part = rest.pop()
+        if isinstance(part, (list, tuple)):
+            rest.extend(part)
+        elif isinstance(part, str):
+            texts.append(part)
+    return texts
+
+
+def _written(value):
+    """A text that is JSON as the server would write its value, as it writes a checkpoint's (put_checkpoint): on one
+    line, no character written as an escape that JSON need not write so. A shape whose parts stand in two texts,
+    in the order written (a name and its value, two elements of a list, two items of a round), is read there whatever
+    stood between them in the text as posted; of the shapes only a private key's can stand in two. A name given twice
+    is written with its last value, the one the page shows; a number is not read."""
+    return json.dumps(json.loads(value, parse_int=_no_number, parse_float=_no_number), ensure_ascii=False,
+                      separators=(",", ":"))
+
+
+def _text(value, what, limit, required=True, within=False):
+    """A text a session writes, of at most `limit` characters, held to the shapes; with `within`, a text that may be
+    JSON the page parses: once its size is held, each text within is held to them as the text it is (_texts_within),
+    then the whole as the server would write it (_written), then the whole as posted."""
     if value is None and not required:
         return None
     if not isinstance(value, str) or (required and not value.strip()) or len(value) > limit or "\x00" in value:
         raise LinkError(422, f"The {what} is text of at most {limit} characters.")
+    if within:
+        texts = _texts_within(value, what)
+        if texts is not None:
+            for part in texts:
+                check_secrets(part, what)
+            check_secrets(_written(value), what)
     return check_secrets(value, what)
 
 
@@ -830,13 +918,20 @@ def post_event(link, data, now=None):
             raise LinkError(422, str(e)) from None
         text = data["text"]
     else:
-        text = _text(data.get("text"), "text", MAX_TEXT)
+        # an item to look at (the one prompt that goes in the clear) and a round of the live view are JSON, which the
+        # page parses: the texts within are held to the shapes each as the text it is, then the whole as the server
+        # would write it, before the whole as posted
+        text = _text(data.get("text"), "text", MAX_TEXT, within=kind == "prompt" or data.get("mirror") == "live")
         if kind in ("question", "prompt"):
             # an owner's answer carries the digest of the question's words, so they are held to the commands' rules:
             # no character that changes how they read without showing itself; and an item to look at the same, as
             # the page shows it through the treatment a question's words get
-            from .link_commands import check_text
+            from .link_commands import check_characters, check_text
             check_text(text, kind)
+            if kind == "prompt":
+                # and each text within an item, as the text it is: its JSON may write such a character as an escape
+                for part in _texts_within(text, kind) or ():
+                    check_characters(part, kind)
     ref = data.get("ref")
     mirror = data.get("mirror")
     if mirror is not None and (mirror not in MIRRORS or kind != "note" or to not in (None, OWNER) or ref is not None):
@@ -1248,29 +1343,67 @@ def _report_check(db, link, value, now):
     return _report_words_json(value)
 
 
+def _phone_take_check(value, now):
+    """A heartbeat's phone_take: what the owner allowed its session to take on his Approve from the page, as its pin
+    keeps it (ade_link.py pin --phone-take), never the session it is for. Null where there is none; else exactly
+    {kinds, keys, at}: kinds one or more of PHONE_TAKE_KINDS, each once; keys the fingerprints of the owner keys whose
+    Approve counts, as the session pinned them, one to passkeys.MAX_PASSKEYS (an account's most), none twice; and at
+    when he allowed them, in unix seconds by its machine's clock, which may be ahead of the server's within the
+    signatures' skew (SKEW) and no further. The session's word, kept for the page, which the server decides nothing
+    by. As kept: JSON, its kinds in PHONE_TAKE_KINDS' order and its keys as given; None for null. 422 names what is
+    wrong."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != {"kinds", "keys", "at"}:
+        raise LinkError(422, "A heartbeat's phone_take is null or {kinds, keys, at}.")
+    kinds, keys, at = value["kinds"], value["keys"], value["at"]
+    # each a name before anything is made of it: a list or an object in it is no kind, and no set takes it
+    named = isinstance(kinds, list) and all(isinstance(k, str) and k in PHONE_TAKE_KINDS for k in kinds)
+    if not named or not kinds or len(set(kinds)) != len(kinds):
+        raise LinkError(422, f"A heartbeat's phone_take's kinds are one or more of {', '.join(PHONE_TAKE_KINDS[:-1])} "
+                             f"and {PHONE_TAKE_KINDS[-1]}, each once.")
+    # each a fingerprint before any set is made of them, as the kinds are
+    told = isinstance(keys, list) and all(isinstance(k, str) and _KEY_FINGERPRINT.fullmatch(k) for k in keys)
+    if not told or not 0 < len(keys) <= passkeys.MAX_PASSKEYS or len(set(keys)) != len(keys):
+        raise LinkError(422, f"A heartbeat's phone_take's keys are the fingerprints of the owner keys whose Approve "
+                             f"counts: one to {passkeys.MAX_PASSKEYS}, each 32 lowercase hex characters, none twice.")
+    if type(at) is not int or not 0 < at <= now + SKEW:
+        raise LinkError(422, f"A heartbeat's phone_take's at is when it was allowed: a whole number of unix seconds "
+                             f"above 0, at most {SKEW} ahead of the server's clock.")
+    return json.dumps({"kinds": [k for k in PHONE_TAKE_KINDS if k in kinds], "keys": keys, "at": at},
+                      separators=(",", ":"), sort_keys=True)
+
+
 def heartbeat(link, data=None, now=None):
     """Presence: last_heartbeat_at moves to the request's own time when that is later, and never past the server's
     clock, so a session's clock ahead of it within the skew does not make it heard in the future. A beat
     its client's keeper marked (via=keeper) moves keeper_heard_at instead, by
     the same rules: it says that the session's process runs, not that a watcher of the session's reads for it, which
-    is what the app reads last_heartbeat_at as, and a keeper never reads its session, so it carries no report. Any
-    other heartbeat may carry `reported`, what its client read of its own session (_report_check),
-    kept with when it came in its place of the last one; one with none leaves the last as it was. A report refused is
-    the heartbeat refused: neither its presence nor its report changes (a refusal for encryption noted as an event's
-    is), and the client sends presence alone again. The answer gives the link's kind and interval, which a keeper beats
-    by (the canary's merge of the two)."""
+    is what the app reads last_heartbeat_at as, and a keeper never reads its session, so it carries nothing but its
+    presence. Any other heartbeat may carry `reported`, what its client read of its own session (_report_check),
+    kept with when it came in its place of the last one; `pins`, the fingerprints of the owner keys it pinned, noted
+    where its History list notes them (e2e_keys.check_pins and note_pins: null is no report of them); and
+    `phone_take`, what its owner allowed it to take on his Approve from the page (_phone_take_check), which null
+    clears. A part left out leaves its last as it was, and each is written only where the heartbeat's presence moved.
+    A part refused is the heartbeat refused: neither its presence nor any part of it changes (a refusal for
+    encryption noted as an event's is); a client whose report is refused sends presence alone again. The answer gives
+    the link's kind and interval, which a keeper beats by (the canary's merge of the two)."""
     now = _now(now)
     if data is None:
         data = {}
     keeper = link.get("via") == "keeper"
-    if not isinstance(data, dict) or set(data) - (set() if keeper else {"reported"}):
-        raise LinkError(422, "A keeper's heartbeat is {}." if keeper else "A heartbeat is {} or {reported}.")
+    if not isinstance(data, dict) or set(data) - (set() if keeper else {"reported", "pins", "phone_take"}):
+        raise LinkError(422, "A keeper's heartbeat is {}." if keeper else
+                        "A heartbeat is {} or any of {reported, pins, phone_take}.")
     at = min(link["request_ts"], now)
     column = "keeper_heard_at" if keeper else "last_heartbeat_at"
     held = link[column]
     if held is not None and at - held < HEARTBEAT_EVERY:
         raise LinkError(429, "At most one heartbeat a minute.")
     from . import e2e_keys
+    # each part held to its form before anything is written, as the report is in the transaction
+    pins = e2e_keys.check_pins(data["pins"]) if "pins" in data else None
+    take = _phone_take_check(data["phone_take"], now) if "phone_take" in data else None
     try:
         with store.connect() as db:
             db.execute("BEGIN IMMEDIATE")
@@ -1281,6 +1414,10 @@ def heartbeat(link, data=None, now=None):
             if reported is not None and moved:
                 db.execute("UPDATE ade_links SET reported = ?, reported_at = ? WHERE id = ?",
                            (reported, at, link["id"]))
+            if pins is not None and moved:
+                e2e_keys.note_pins(db, link["id"], pins)
+            if "phone_take" in data and moved:
+                db.execute("UPDATE ade_links SET phone_take = ? WHERE id = ?", (take, link["id"]))
     except E2ERequired:
         e2e_keys.note_required(link["id"], now)
         raise
@@ -1296,6 +1433,18 @@ def put_checkpoint(link, data, now=None):
     text = json.dumps(data["document"], ensure_ascii=False, separators=(",", ":"))
     if len(text.encode("utf-8")) > MAX_CHECKPOINT:
         raise LinkError(422, f"A checkpoint is at most {MAX_CHECKPOINT} bytes.")
+    # each name and each text as the text it is: in the JSON a line break, a tab or a carriage return before a shape
+    # is a backslash and a letter, and the shape begins no word. Then the whole, for a shape whose parts stand in two
+    rest = [data["document"]]
+    while rest:
+        part = rest.pop()
+        if isinstance(part, dict):
+            rest.extend(part)
+            rest.extend(part.values())
+        elif isinstance(part, list):
+            rest.extend(part)
+        else:
+            check_secrets(part, "checkpoint")
     check_secrets(text, "checkpoint")
     with store.connect() as db:
         db.execute("BEGIN IMMEDIATE")
@@ -1607,7 +1756,9 @@ def silent(link, now):
 def sessions(user_id, now=None):
     """The account's live links with their presence and checkpoint, and the open questions, for the page. Each link
     with its key's fingerprint (link_asks.fingerprint), so the page tells a pairing that moved a link to a new key from
-    one still waiting, and whether the owner lets it propose. The open waitings to the owner that refer to no command
+    one still waiting, and whether the owner lets it propose; and with the owner keys it pinned and what it may take
+    on his Approve from the page, as it last reported them, so the page says as he signs whether the session would
+    take his answer (pins, phone_take). The open waitings to the owner that refer to no command
     (WAITING_OPEN), of the live links, which the page closes as a question. And the owner's inbox: the open
     prompts but those their Close hid (closed_prompts lists them), items to look at among them, and the open proposals,
     oldest first, each with the link that posted it, its deadline, and a proposal the link it is for, by id and by
@@ -1621,6 +1772,10 @@ def sessions(user_id, now=None):
         close_due(db, user_id, now)
         links = db.execute("SELECT * FROM ade_links WHERE user_id = ? AND revoked_at IS NULL ORDER BY created_at, name",
                            (user_id,)).fetchall()
+        # the owner keys each link pinned, as its heartbeat or its History list last reported them (e2e_keys.note_pins)
+        pinned = {r["link_id"]: r["pins"] for r in db.execute(
+            "SELECT e.link_id, e.pins FROM ade_link_e2e e JOIN ade_links l ON l.id = e.link_id WHERE l.user_id = ? AND "
+            "l.revoked_at IS NULL AND e.pins IS NOT NULL", (user_id,)).fetchall()}
         names = _names(db, user_id)
         open_q = db.execute(f"SELECT * FROM ade_link_events WHERE user_id = ? AND kind = 'question' AND "
                             f"{OPEN_QUESTION} ORDER BY seq", (user_id, now)).fetchall()
@@ -1686,6 +1841,11 @@ def sessions(user_id, now=None):
                     "checkpoint_version": r["checkpoint_version"], "checkpoint_at": r["checkpoint_at"],
                     # what its client last reported of its own session with a heartbeat (heartbeat), and when
                     "reported": json.loads(r["reported"]) if r["reported"] else None, "reported_at": r["reported_at"],
+                    # the owner keys it pinned, as it last reported them: null until it does, [] where it pins none
+                    # (which refuses every signed command); and what its owner allowed it to take on his Approve
+                    # from the page, as its heartbeat last said ({kinds, keys, at}; null where it said none)
+                    "pins": json.loads(pinned[r["id"]]) if r["id"] in pinned else None,
+                    "phone_take": json.loads(r["phone_take"]) if r["phone_take"] is not None else None,
                     "events": posted[r["id"]]["n"] if r["id"] in posted else 0, "reads_others": bool(r["reads_others"]),
                     "proposes": bool(r["proposes"]), "last_event": own(r["id"], "newest"),
                     "last_step": own(r["id"], "step"),

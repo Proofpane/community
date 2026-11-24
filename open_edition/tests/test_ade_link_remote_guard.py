@@ -586,6 +586,16 @@ def test_the_guard_s_own_files_are_kept_from_a_remote_instruction(place):
     assert ade_link._judge_call(str(inside), hook, [7], None) is None
 
 
+def test_a_word_named_as_an_interpreter_among_another_program_s_words_is_no_run_of_the_client(place):
+    """The ruling of 19:42 UTC on 2026-11-23, (1), in this guard's own judging: a word named python... among another
+    program's words is a file, so this client after it is written, not run, and held. The hold that applies always
+    denies these first in a session, so only a case of this guard alone shows its half."""
+    link, client = str(place.link), os.path.abspath(ade_link.__file__)
+    for command in (f"cp python3 {client}", f"mv ./python {client}", f"tee python3.12 {client}"):
+        assert ade_link.GUARD_FILES in (judged(place, command) or ""), command
+    assert judged(place, f"python3 {client} --dir {link} status") is None
+
+
 def test_the_ade_folder_the_interpreter_and_claude_settings_are_the_owner_s(place):
     """~/.proofpane-ade as a whole (the owner's pin, .registrar, .machine-id, other links), the interpreter's own tree
     (so a write there is not read into the next hook; pip there, or python -m pip, cannot change it) and Claude Code's
@@ -1392,14 +1402,17 @@ def _taken_at(seq):
 def test_nothing_is_held_while_no_remote_command_is_carried_out(linked, monkeypatch):
     (linked.d / "remote_policy.json").write_text("not json")            # a list that cannot be read: nothing changes
     assert linked.hook() == ("allow", "")
-    assert linked.hook("fly deploy && rm -rf /") == ("allow", "")
+    # (the root given to rm names a parent of the link's folder to a program that writes: held always, the ruling of
+    # 21:58 UTC on 2026-11-23, M2)
+    assert linked.hook("fly deploy && rm -rf build") == ("allow", "")
     assert linked.hook("/etc/hosts", tool="Write") == ("allow", "")
     assert not (linked.d / "carrying.json").exists()
-    # nothing more is read: where the stop's decision did not read the call, the guard does not read it either
+    # read once: where the stop's decision did not read the call, the hold that applies always reads it on the path
+    # without a link as well (the ruling of 21:58 UTC on 2026-11-23, M3), and the guard reads it no more
     (linked.d / "config.json").write_text("{}")
     read = []
     monkeypatch.setattr(ade_link, "_hook_input", lambda: read.append(1) or {})
-    assert linked.hook() == ("allow", "") and read == []
+    assert linked.hook() == ("allow", "") and read == [1]
 
 
 def test_a_take_holds_the_owner_s_steps_until_the_turn_of_its_reply_ends(linked):

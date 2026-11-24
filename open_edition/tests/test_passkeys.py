@@ -258,7 +258,7 @@ def test_a_removed_passkey_signs_in_no_more(client, owner):
     (listed,) = client.get("/api/account/passkeys", headers=owner).json()["passkeys"]
     assert remove(client, owner, listed["id"]).json() == {"removed": listed["id"], "withdrawn": 0, "stopped": [],
                                                           "cancelled": [], "disconnected": [],
-                                                          "apps": ""}    # the password confirms it
+                                                          "unlinked": [], "apps": ""}    # the password confirms it
     r = sign_in(client, device)
     assert r.status_code == 401 and r.json()["detail"] == passkeys.SIGN_IN_FAILED
 
@@ -764,7 +764,7 @@ def test_a_missing_passkey_leaves_the_confirmation_unused(client, owner):
     assert r.status_code == 403 and r.json()["detail"] == passkeys.CONFIRM_OTHER
     assert remove(client, owner, listed["id"]).json() == {"removed": listed["id"], "withdrawn": 0,
                                                          "stopped": [], "cancelled": [],
-                                                         "disconnected": [], "apps": ""}
+                                                         "disconnected": [], "unlinked": [], "apps": ""}
 
 
 @pytest.fixture

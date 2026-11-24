@@ -16,6 +16,8 @@ system `python3`.
     ade_link.py --dir DIR post KIND TEXT [--to NAME] [--ref SEQ]      KIND: step question waiting done note; ask the
                                                                        owner with question --to owner; a waiting to
                                                                        them says only that you are blocked on them
+    ade_link.py --dir DIR post question TEXT --to owner --step FILE   a question for one step the guard keeps for
+                                                                       the owner at the machine: FILE its command
     ade_link.py --dir DIR checkpoint FILE|- [--force]                 a JSON object of at most 4,000 bytes
     ade_link.py --dir DIR next [--ack] [--turn]
     ade_link.py --dir DIR ack SEQ
@@ -43,6 +45,11 @@ say so and stop: for a session on claude.ai the one setting that lets it through
 The owner's signed commands (stage 2a; proofpane_open/ade/link_commands.py):
 
     ade_link.py --dir DIR pin                       fetch the owner's passkeys and pin them
+    ade_link.py --dir DIR pin --phone-take KINDS --key FINGERPRINT --session ID   (or --phone-take off)
+                                                    at a terminal of the owner's own: session ID may take a step of
+                                                    KINDS the guard keeps for him on his Approve from the page, signed
+                                                    with a key named, the one it asked (post question --step) and he
+                                                    approved, once; without --session, the live sessions are listed
     ade_link.py --dir DIR show SEQ                  verify a command offline against the pinned keys and preview its
                                                     words; it does not take the command, but it records it carried out
                                                     until this turn ends (the words are revealed), so the guard holds
@@ -124,9 +131,20 @@ object store the work not committed is read through, deleted after, or at the ne
 The guard of what a remote command may do adds carrying.json (each command taken or shown, for the session it ran in,
 until the turn in which it is replied to, or the showing turn, ends; with its lock carrying.lock and a marker
 carrying.held cleared only when the record empties) and reads remote_policy.json (this machine's own additions to the
-guard, which this client never writes). A carrying.json that cannot be read, or gone with its marker left, holds every
-session and refuses every take; a remote_policy.json that cannot be read leaves the defaults alone, and every denial
-says so.
+guard, which this client never writes). An answer taken to the session's own step question (posted.json keeps the step
+beside the question's sha256), the owner's Approve of a step his allowance covers (pin --phone-take, kept in
+owner_keys.json), holds that step on its entry, for the guard to let through once. A tool call that writes
+owner_keys.json is held in every session wired to the hook, whether or not a command is carried out: only this client
+writes it (pin, and pair and setup as they pin), run by the owner at this machine. So is one that writes another file
+the link reads to let a call through, carrying.json or its marker, posted.json or remote_policy.json, or this client:
+this client writes the first three as it runs, and the owner the policy and the client. The hold reads a shell command's
+words and a file tool's path, with or without a server in the link's config, and holds a write naming the link's
+directory or this client's folder, or a parent of either, too, and one into either whose name is put together as the
+command runs; where it cannot finish reading a shell command, it holds one whose text names that directory, this client
+or one of those files. So a program a session starts, another tool, or a path the hold does not join to the file can
+still write any of them, which the manual says stays open. A carrying.json that cannot be read, or gone with its marker
+left, holds every session and refuses every take; a remote_policy.json that cannot be read leaves the defaults alone,
+and every denial says so.
 
 The mirror's Stop hook (mirror reply) also sends, once the turn's notes are posted, the usage of each reply the
 session's own transcript holds since the last it sent (_send_usage): the reply's request id, the session's id, its
@@ -1172,6 +1190,8 @@ HOOK_PYTHON = "/absolute/path/to/venv/bin/python"
 HOOK_CLIENT = "/absolute/path/to/home/.proofpane-ade/ade_link.py"
 HOOK_DIR = "/absolute/path/to/home/.proofpane-ade/NAME"
 HOOK_LINK_ID = "LINK_ID"
+PRETOOL_TIMEOUT = 15        # seconds the link's block gives each of its PreToolUse hooks (setup_link_block), past which
+                            # Claude Code stops waiting on it: no hook of a call still decides that long after the call
 # the values a task's attempt pins (settings.HOOK_ENV, LOADER_ENV, OPENSSL_ENV and RESOLVER_ENV), as the block's env
 HOOK_ENV = {"CLAUDE_CODE_SHELL_PREFIX": "", "CLAUDE_CODE_SIMPLE": "0", "LD_PRELOAD": "", "LD_LIBRARY_PATH": "",
             "LD_AUDIT": "", "DYLD_INSERT_LIBRARIES": "", "DYLD_LIBRARY_PATH": "", "DYLD_FRAMEWORK_PATH": "",
@@ -1189,12 +1209,14 @@ def _hook_line(tail, timeout):
     return {"type": "command", "command": _HOOK_LINE + tail, "timeout": timeout}
 
 
+# the code the permission hook runs the client with: runpy, so that the client is run as its main module, isolated
+HOOK_RUNPY = "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')"
+
+
 def _hook_permission(timeout):
     # a program, so no shell nor prefix starts it; runpy so that the client is run as its main module, isolated
     return {"type": "command", "command": HOOK_PYTHON,
-            "args": ["-I", "-X", "utf8", "-c",
-                     "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')",
-                     HOOK_CLIENT, "--dir", HOOK_DIR, "permission"],
+            "args": ["-I", "-X", "utf8", "-c", HOOK_RUNPY, HOOK_CLIENT, "--dir", HOOK_DIR, "permission"],
             "timeout": timeout}
 
 
@@ -1204,8 +1226,8 @@ def setup_link_block():
     owner's inbox on eight events."""
     stop = {"type": "command", "command": HOOK_PYTHON,
             "args": ["-I", "-X", "utf8", HOOK_CLIENT, "--dir", HOOK_DIR, "pretool", "--link", HOOK_LINK_ID],
-            "timeout": 15}
-    fallback = {"type": "command", "timeout": 15,
+            "timeout": PRETOOL_TIMEOUT}
+    fallback = {"type": "command", "timeout": PRETOOL_TIMEOUT,
                 "command": _HOOK_LINE + f"pretool --link {HOOK_LINK_ID}; rc=$?; {{ [ $rc -eq 0 ] || [ $rc -eq 2 ]; }} "
                                         "&& exit $rc; " + _HOOK_HELD}
     hooks = {"SessionStart": [{"matcher": "startup|resume|compact|clear|fork", "hooks": [_hook_line("resume", 20)]}],
@@ -2416,21 +2438,59 @@ def _session_report(link):
     return report or None, mode
 
 
+HEARTBEAT_OLD = "A heartbeat is {} or {reported}."     # an older ADE's refusal of a heartbeat's pins and phone_take
+_HEARTBEAT_PLAIN = set()    # the ADEs, by their address, that refused them so in this process: sent neither again
+
+
+def _heartbeat(link, body):
+    """POST /heartbeat of `body` with the fingerprints of the owner's keys this link pinned (_e2e_pins) and what it
+    holds of his allowance (_heartbeat_phone_take). Any 422 the ADE answers that with has the heartbeat sent again as
+    it went before them, `body` alone, so a link whose pins the ADE refuses is never left silent; one in the older
+    shape's words (HEARTBEAT_OLD) has them left out, too, for the rest of the process, to that ADE."""
+    config = getattr(link, "config", None)
+    address = config.get("url") if isinstance(config, dict) else None
+    if address in _HEARTBEAT_PLAIN:
+        return link.request("POST", "/heartbeat", body)
+    try:
+        return link.request("POST", "/heartbeat", dict(body, pins=_e2e_pins(link),
+                                                       phone_take=_heartbeat_phone_take(link)))
+    except Refused as e:
+        if e.status != 422:
+            raise
+        if str(e) == HEARTBEAT_OLD:
+            _HEARTBEAT_PLAIN.add(address)
+    return link.request("POST", "/heartbeat", body)
+
+
+def _heartbeat_phone_take(link):
+    """What a heartbeat says of the owner's allowance (pin --phone-take): its kinds, the keys whose Approve counts and
+    when he gave it, never the session it names; None where there is none, the pin cannot be read, or that session is
+    not live on this machine (_live_sessions, Claude Code's own record of its running processes)."""
+    try:
+        allowance = _allowance(pinned(link))
+    except PinDamaged:
+        return None
+    if allowance is None or allowance["session"] not in _live_sessions(_take_sessions_dir()):
+        return None
+    return {"kinds": list(allowance["kinds"]), "keys": list(allowance["keys"]), "at": allowance["at"]}
+
+
 def _beat(link):
     """One heartbeat, with what this command reads of its session (_session_report), built within REPORT_WITHIN
-    seconds or left out; one the ADE refuses for its report, but for a key it no longer takes or a rate limit, is sent
-    once more as presence alone, so presence waits on a report at most that long. Refused because encryption is
-    required, the refusal is kept as the ADE's word and the statements read again once presence has gone
-    (_e2e_refused), so the next heartbeat's lists go sealed to the newest key, or stay here."""
+    seconds or left out, and the owner's pins and allowance (_heartbeat); one the ADE refuses for its report, but for a
+    key it no longer takes or a rate limit, is sent once more as presence alone, so presence waits on a report at most
+    that long. Refused because encryption is required, the refusal is kept as the ADE's word and the statements read
+    again once presence has gone (_e2e_refused), so the next heartbeat's lists go sealed to the newest key, or stay
+    here."""
     finished, got, _ = _within(REPORT_WITHIN, lambda: _session_report(link))
     report, mode = got if finished and isinstance(got, tuple) and len(got) == 2 else (None, None)
     if report:
         try:
-            return link.request("POST", "/heartbeat", {"reported": report})
+            return _heartbeat(link, {"reported": report})
         except Refused as e:
             if e.status in (401, 429):
                 raise
-            answer = link.request("POST", "/heartbeat", {})
+            answer = _heartbeat(link, {})
             if _e2e_required(e):
                 try:
                     _e2e_refused(link, e, mode or ("clear",), timeout=10)
@@ -2442,7 +2502,7 @@ def _beat(link):
             except (OSError, ValueError):
                 pass
             return answer
-    return link.request("POST", "/heartbeat", {})
+    return _heartbeat(link, {})
 
 
 def cmd_heartbeat(link, args):
@@ -2461,7 +2521,21 @@ def cmd_heartbeat(link, args):
 
 
 def cmd_post(link, args):
-    body = {"client_id": uuid.uuid4().hex, "kind": args.kind, "text": args.text}
+    """One event, posted. With --step FILE, a question to the owner for one step the guard keeps for him at the
+    machine, its block after the words (_step_question); posted.json then keeps the step beside the digest, for take
+    to record his Approve by (_take_step)."""
+    text, step = args.text, None
+    if getattr(args, "step", None) is not None:
+        made = _step_question(link, args)
+        if not isinstance(made, tuple):
+            return made
+        text, step = made
+    elif args.kind == "question" and STEP_HEAD in text:
+        # the page shows a step's block, with Approve beside it, only for the block post --step writes
+        print(f"ADE: not posted: the question's words hold \"{STEP_HEAD}\", which begins a step's block: a question "
+              "for a step goes with --step FILE.", file=sys.stderr)
+        return 2
+    body = {"client_id": uuid.uuid4().hex, "kind": args.kind, "text": text}
     if args.to:
         body["to"] = args.to
     if args.ref is not None:
@@ -2487,9 +2561,125 @@ def cmd_post(link, args):
                   file=sys.stderr)
         else:
             # one character more than an answer shows, so a question cut there is printed marked as cut
-            posted[str(seq)] = {"digest": digest, "text": args.text[:QUESTION_SHOWN + 1]}
+            posted[str(seq)] = {"digest": digest, "text": text[:QUESTION_SHOWN + 1]}
+            if step is not None:
+                posted[str(seq)]["step"] = step
         link.keep("posted.json", json.dumps(posted))
     return 0
+
+
+STEP_HEAD = "The step, as it will run ("        # the step block's first words: in a step question, at its block alone
+
+
+def _minute(ts):
+    """A time as the step block says it, YYYY-MM-DD HH:MM (in UTC)."""
+    if not _int(ts) or not 0 <= ts < 2 ** 40:
+        return "an unknown time"
+    return time.strftime("%Y-%m-%d %H:%M", time.gmtime(ts))
+
+
+def _step_question(link, args):
+    """post question TEXT --to owner --step FILE: a question to the owner for one step the guard keeps for him at the
+    machine, FILE holding the exact shell command the session will run with its Bash tool from the folder this runs
+    in (read as UTF-8, its trailing newlines removed). The command is judged as the guard judges a Bash call while a
+    remote command is carried out, and its block goes after TEXT and a blank line: the phrases of its kinds, the
+    command as it is, its folder, and whether the owner allowed this session to take them on his Approve from the
+    page. The working folder it is judged by is the one the hook will judge it by: CLAUDE_PROJECT_DIR where it is set,
+    else the folder Claude Code's record of the session that asks says it started in. (The text, the step as
+    posted.json keeps it: {"command", "cwd" (as _key gives it), "match" (_step_hash), "kinds", "session": the session
+    that asks it (_taking_record), "said": "allowed" or "not", as the block's last line says}), or the exit code of a
+    refusal, said, with nothing posted: --step with anything but a question to the owner; the second screen's rule on;
+    a file that cannot be read, an empty one, a NUL, a command longer than the guard reads; the session this runs in,
+    or the working folder, that cannot be told; the block's first words anywhere but at its head, or a folder whose
+    name breaks its lines, so the block can be read only one way; a command not judged in time, or judged while this
+    machine's remote_policy.json cannot be read, or of which the guard keeps no step, or a step of no kind; a text past
+    a question's rules (_event_refusal)."""
+    def refused(why):
+        print(f"ADE: not posted: {why}", file=sys.stderr)
+        return 2
+    if args.kind != "question" or args.to != "owner":
+        return refused("--step goes only with a question to the owner (post question TEXT --to owner --step FILE).")
+    try:
+        keys = pinned(link)
+    except PinDamaged:
+        keys = None                                 # nothing verifies against it: allowed for nothing
+    if isinstance(keys, dict) and keys.get("second_screen") is True:
+        return refused(f"{SECOND_SCREEN_TAKES}: no Approve on the page lets a step run here.")
+    try:
+        with open(args.step, encoding="utf-8", newline="") as fh:
+            command = fh.read().rstrip("\n")
+    except (OSError, ValueError) as e:
+        return refused(f"the step's file {_flat(args.step, 200)} cannot be read ({type(e).__name__}).")
+    if not command:
+        return refused("the step's file holds no command.")
+    if "\x00" in command:
+        return refused("the step's command holds a NUL character.")
+    if len(command) > GUARD_COMMAND_MOST:
+        return refused(f"the step's command is longer than the guard reads ({GUARD_COMMAND_MOST} characters).")
+    try:
+        cwd = os.getcwd()
+    except OSError as e:
+        return refused(f"the folder this runs in cannot be told ({type(e).__name__}).")
+    record = _taking_record()
+    if record is None:
+        return refused("the Claude Code session this runs in cannot be told, so the step could not be bound to the "
+                       "session asking it.")
+    session = record["sessionId"]
+    project = os.environ.get("CLAUDE_PROJECT_DIR") or ""
+    folder = project if os.path.isabs(project) else record.get("cwd")
+    if not isinstance(folder, str) or not os.path.isabs(folder):
+        return refused("the working folder the guard judges the step by cannot be told: CLAUDE_PROJECT_DIR is not set, "
+                       "and Claude Code's record of this session names no folder it started in.")
+    if any(STEP_HEAD in part for part in (args.text, command, cwd)):
+        return refused(f"the question's words, the step's command or its folder hold \"{STEP_HEAD}\", which begins "
+                       "the step's own block, so the page could show the step wrongly.")
+    if "\n" in cwd or "\r" in cwd:
+        return refused("the folder this runs in holds a line break, which the step's block cannot show.")
+    hook = {"tool_name": "Bash", "tool_input": {"command": command}, "cwd": cwd}
+
+    def judge():
+        j = _Judging(link.dir, hook, _policy(link.dir), folder=folder)
+        _judge_text(j, command, 0)
+        return j
+    finished, j, error = _within(GUARD_DEADLINE, judge)
+    if not finished:
+        return refused("the guard could not judge the step's command in time.")
+    if error is not None:
+        return refused("the guard met an error judging the step's command.")
+    if j.policy.damaged:
+        return refused(f"this machine's {REMOTE_POLICY} cannot be read ({j.policy.damaged}): what it denies cannot be "
+                       "told, so no step is taken on an answer from the page until it is mended, at this machine.")
+    if not j.steps:
+        return refused("the guard keeps no step of this command for the owner at the machine: nothing to approve.")
+    unkinded = next((s for s, k in zip(j.steps, j.kinds) if k is None), None)
+    if unkinded is not None:
+        return refused(f"{unkinded} stays the owner's to do in person, at this machine: no answer from the page lets "
+                       "a session take it.")
+    kinds = [k for k in PHONE_TAKE_KINDS if k in j.kinds]
+    allowance = _allowance(keys)
+    said = "allowed" if _allows(allowance, session, kinds) else "not"
+    if said == "allowed":
+        # whose Approve counts, as take counts it (_key_refusal): a key he named, for a deployment or a push one that
+        # cannot be backed up
+        bound = " that cannot be backed up" if any(k in PHONE_TAKE_BOUND for k in kinds) else ""
+        last = (f"You allowed this session, at the machine at {_minute(allowance['at'])} UTC, to take "
+                f"{_phrases(kinds)} on your Approve from the page, signed with a key you named there{bound}: Approve "
+                "lets it run this once, before your answer expires.")
+    else:
+        left = kinds if allowance is None or allowance["session"] != session \
+            else [k for k in kinds if k not in allowance["kinds"]]
+        last = (f"You have not allowed this session to take {_phrases(left)} on your answer from the page: an Approve "
+                "here will not let it run.")
+    text = "\n".join((args.text, "", f"The step, as it will run (kept for you at the machine: {_phrases(kinds)}):",
+                      command, f"in {cwd}", last))
+    refusal = _event_refusal("question", text)
+    if refusal:
+        return refused(refusal)
+    key = _key(cwd)
+    match = _step_hash(command, key)
+    if match is None:
+        return refused("the step's command and its folder cannot be written as canonical JSON.")
+    return text, {"command": command, "cwd": key, "match": match, "kinds": kinds, "session": session, "said": said}
 
 
 def _doing(document):
@@ -3214,10 +3404,52 @@ class PinDamaged(ValueError):
     """owner_keys.json is there but is not a pin this client wrote."""
 
 
+# the kinds of step a session may take on the owner's Approve from the page where he allowed it (pin --phone-take), in
+# this order, each with the phrase the client and the page show it by; every other step the guard holds has none (a
+# forced push, a recursive or forced delete, a deployment's removal among them), and is never taken on an answer from
+# the page
+PHONE_TAKE_KINDS = ("deploy", "push", "send", "write")
+PHONE_TAKE_PHRASES = {"deploy": "a deployment", "push": "a push to a protected branch", "send": "sending data out",
+                      "write": "a write outside the working folder"}
+# the kinds whose Approve counts only from a key that says it cannot be backed up (_key_refusal)
+PHONE_TAKE_BOUND = ("deploy", "push")
+PHONE_TAKE_KEYS_MOST = 20               # the keys an allowance names at most, as the ADE takes them in a heartbeat
+BACKUP_ELIGIBLE = 0x08                  # the authenticator data's flag that the credential may be backed up (BE)
+
+
+def _phrases(kinds):
+    """The phrases of `kinds`, each once, in the table's order, joined with ", "."""
+    return ", ".join(PHONE_TAKE_PHRASES[k] for k in PHONE_TAKE_KINDS if k in kinds)
+
+
+def _kinds_shape(value):
+    """A list of kinds of step as this client writes one: at least one, each a kind it knows, none twice."""
+    return isinstance(value, list) and bool(value) \
+        and all(k in PHONE_TAKE_KINDS for k in value) and len(set(value)) == len(value)   # none but text is one
+
+
+def _keys_shape(value):
+    """A list of the fingerprints of passkeys as an allowance names them: at least one, at most PHONE_TAKE_KEYS_MOST,
+    each 32 lowercase hex digits, none twice."""
+    return isinstance(value, list) and 0 < len(value) <= PHONE_TAKE_KEYS_MOST \
+        and all(isinstance(f, str) and bool(_FINGERPRINT.fullmatch(f)) for f in value) and len(set(value)) == len(value)
+
+
+def _phone_take_shape(value):
+    """The allowance pin --phone-take keeps beside the pinned keys: exactly {"session": the Claude Code session it
+    names, "kinds": the kinds of step it allows (_kinds_shape), "keys": the fingerprints of the pinned keys whose
+    Approve counts (_keys_shape), "at": when the owner gave it, in unix seconds}."""
+    return isinstance(value, dict) and set(value) == {"session", "kinds", "keys", "at"} \
+        and isinstance(value["session"], str) and bool(_SESSION_FILE.fullmatch(value["session"] + ".jsonl")) \
+        and _kinds_shape(value["kinds"]) and _keys_shape(value["keys"]) and _int(value["at"]) and value["at"] > 0
+
+
 def _pin_shape(value):
-    # second_screen, where there, is the rule pin --second-screen sets: the JSON true or false and nothing else
+    # second_screen, where there, is the rule pin --second-screen sets: the JSON true or false and nothing else; and
+    # phone_take, where there, the allowance pin --phone-take sets, of its shape and nothing else
     return isinstance(value, dict) and isinstance(value.get("account"), str) and bool(value["account"]) \
         and type(value.get("second_screen", False)) is bool \
+        and ("phone_take" not in value or _phone_take_shape(value["phone_take"])) \
         and isinstance(value.get("keys"), list) and all(
             isinstance(k, dict) and isinstance(k.get("credential_id"), str) and bool(k["credential_id"])
             and _int(k.get("alg")) and isinstance(k.get("public_key"), str)
@@ -3229,7 +3461,12 @@ def pinned(link):
     """The owner's keys pinned here, or None when no pin record is there. One that is there but is not a pin this
     client wrote (cut, empty, not JSON, nested past the reader's depth, another shape, not a regular file) is a
     PinDamaged, never read as nothing pinned: nothing verifies against it, and pin refuses it."""
-    path = os.path.join(link.dir, "owner_keys.json")
+    return _pinned_at(link.dir)
+
+
+def _pinned_at(directory):
+    """pinned, for the link's directory as a path (the guard has no more of the link)."""
+    path = os.path.join(directory, "owner_keys.json")
     try:
         text = _read(path)
         if text is None:
@@ -3244,6 +3481,45 @@ def pinned(link):
     if not _pin_shape(value):
         raise PinDamaged("not a pin this client wrote")
     return value
+
+
+def _allowance(keys):
+    """The allowance a pin as read (pinned) keeps, {"session", "kinds", "keys", "at"}, or None where it keeps none."""
+    value = keys.get("phone_take") if isinstance(keys, dict) else None
+    return value if isinstance(value, dict) else None
+
+
+def _allows(allowance, session, kinds):
+    """Whether `allowance` lets the Claude Code session `session` take steps of `kinds` on the owner's Approve from the
+    page: it names that very session, and every one of the kinds, of which there is at least one. Which keys' Approve
+    counts is _key_refusal's to say."""
+    return isinstance(allowance, dict) and isinstance(session, str) and bool(session) \
+        and allowance.get("session") == session and bool(kinds) and all(k in allowance.get("kinds", ()) for k in kinds)
+
+
+def _backup_eligible(credential):
+    """Whether a passkey's answer (`credential`, as the session verified it) says in its authenticator data that its
+    credential may be backed up (BACKUP_ELIGIBLE, the BE flag): a synced passkey's does, a key bound to its device
+    does not. An answer whose data cannot be read is taken as saying it may."""
+    try:
+        data = unb64u(credential["response"]["authenticatorData"])
+    except (KeyError, TypeError, ValueError):
+        return True
+    return len(data) < 33 or bool(data[32] & BACKUP_ELIGIBLE)
+
+
+def _key_refusal(allowance, fingerprint, kinds, credential):
+    """Why the owner's Approve, signed by the pinned key `fingerprint` in the passkey's answer `credential`, does not
+    count for steps of `kinds` under `allowance`, or None where it does: the key is one the allowance names, and for a
+    deployment or a push (PHONE_TAKE_BOUND) the answer says its key cannot be backed up (_backup_eligible). That a key
+    named is a security key is the owner's word at the machine: nothing here attests it."""
+    if fingerprint not in allowance["keys"]:
+        return f"the passkey that signed it ({_flat(fingerprint, 64)}) is not one his allowance names"
+    bound = [k for k in kinds if k in PHONE_TAKE_BOUND]
+    if bound and _backup_eligible(credential):
+        return (f"for {_phrases(bound)}, his allowance counts only a key that cannot be backed up, and the passkey "
+                "that signed it says it can be")
+    return None
 
 
 def _nothing_pinned(link):
@@ -3856,7 +4132,10 @@ def cmd_pin(link, args):
     unpinned) but not add one: a passkey added since is pinned only by its fingerprint, `--add FINGERPRINT`, which the
     owner gives in this session's own window (a server that added its own passkey cannot have it pinned by a session
     told to pin). Nothing is written, the link's own id included, until every check has passed. `--second-screen on` or
-    `off` sets the rule kept beside the pinned keys, and nothing else (_pin_second_screen); a pin keeps it."""
+    `off` sets the rule kept beside the pinned keys, and nothing else (_pin_second_screen); a pin keeps it. So does
+    `--phone-take KINDS|off` the owner's allowance (_pin_phone_take), which a pin keeps too."""
+    if getattr(args, "phone_take", None) is not None:
+        return _pin_phone_take(link, args.phone_take, args)
     if getattr(args, "second_screen", None) is not None:
         return _pin_second_screen(link, args.second_screen, args)
     try:
@@ -3947,6 +4226,8 @@ def cmd_pin(link, args):
         link.config["link_id"] = link_id
         link.keep("config.json", json.dumps(link.config))
     rule = {"second_screen": True} if (held or {}).get("second_screen") is True else {}      # a pin keeps the rule
+    if _allowance(held) is not None:
+        rule["phone_take"] = held["phone_take"]                 # and the allowance, which pin --phone-take alone sets
     link.keep("owner_keys.json", json.dumps(dict({"account": answer["account"], "keys": keep, "source": source,
                                                   "pinned_at": int(time.time())}, **rule)))
     if not _read(os.path.join(link.dir, "instance")):
@@ -3966,7 +4247,8 @@ def _pin_second_screen(link, rule, args):
     """pin --second-screen on|off: the rule kept beside the pinned keys, changed here alone and never on the ADE's word
     (nothing is asked of it); the pinned keys are left as they are. On, an instruction, an answer, a resume or a move
     this session takes must carry the marker of a program that says it is not a browser (_verify_assertion): what an
-    honest browser signs is refused. With nothing pinned there is nothing to set it on."""
+    honest browser signs is refused. With nothing pinned there is nothing to set it on. On takes the owner's allowance
+    of steps from the page away (pin --phone-take): no Approve on the page could let one run then."""
     if getattr(args, "add", None):
         print("ADE: pin --second-screen sets the rule alone: add a key with a pin of its own; nothing was changed.",
               file=sys.stderr)
@@ -3982,14 +4264,148 @@ def _pin_second_screen(link, rule, args):
               file=sys.stderr)
         return 2
     kept = {k: v for k, v in held.items() if k != "second_screen"}
+    before = _allowance(held) if rule == "on" else None
     if rule == "on":
         kept["second_screen"] = True
+        kept.pop("phone_take", None)
     link.keep("owner_keys.json", json.dumps(kept))
     if rule == "on":
         print(SECOND_SCREEN_ON)
         print(SECOND_SCREEN_LOST)
+        if before is not None:
+            print(f"ADE: the allowance is taken away: {SECOND_SCREEN_TAKES}, so session {before['session']} takes no "
+                  "step on your Approve from the page")
     else:
         print("ADE: the second screen's rule is off: this session takes what a browser signs again.")
+    return 0
+
+
+# what stays open, said where the allowance is given and wherever it is shown: the session holds the step to its own
+# question, and nothing here holds what the owner saw (the architecture's rung R1, its section 16.3). {session}: "the
+# session" where pin gives it, at the owner's own terminal; "this session" where status shows it
+PHONE_TAKE_OPEN = ("ADE: An Approve on the page is your passkey's signature over what that page composed and shows "
+                   "you. If the page, or the server or browser behind it, is not honest, it can show you one command "
+                   "while {session} runs the one it asked: the session checks that you signed its own question, "
+                   "never what you saw.")
+SECOND_SCREEN_TAKES = "the second screen takes only what ade_link.py sign signs"
+PIN_NOTHING = "Nothing was changed."            # how a refusal of the terminal's checks ends, for pin (sign_terminal)
+
+
+def _phone_take_given(text):
+    """pin --phone-take's KINDS as given: "off", or the kinds it names (PHONE_TAKE_KINDS), comma-separated, at least
+    one, none twice, given back in the table's order; None for anything else."""
+    if text == "off":
+        return "off"
+    named = text.split(",")
+    return [k for k in PHONE_TAKE_KINDS if k in named] if _kinds_shape(named) else None
+
+
+def _phone_take_keys(held, given):
+    """pin --phone-take's --key FINGERPRINT, each as given (spaces around it and its case aside): the fingerprints in
+    the order given, or why they are refused: none given, one that is not a fingerprint or not of a key pinned here,
+    one given twice, more than PHONE_TAKE_KEYS_MOST."""
+    named = [f.strip().lower() for f in (given or [])]
+    if not named:
+        return ("name the keys whose Approve counts, --key FINGERPRINT for each, one or more of the keys pinned here "
+                "(status lists them)")
+    pinned_here = {k["fingerprint"] for k in held["keys"]}
+    for f in named:
+        if not _FINGERPRINT.fullmatch(f):
+            return f"{_flat(f, 80)} is not a passkey's fingerprint ({FINGERPRINT_HEX} hex digits, as status shows it)"
+        if f not in pinned_here:
+            return f"{f} is not the fingerprint of a key pinned here (status lists them)"
+    twice = next((f for f in named if named.count(f) > 1), None)
+    if twice is not None:
+        return f"{twice} is named twice"
+    if len(named) > PHONE_TAKE_KEYS_MOST:
+        return f"an allowance names at most {PHONE_TAKE_KEYS_MOST} keys"
+    return named
+
+
+def _pin_phone_take(link, given, args):
+    """pin --phone-take KINDS --key FINGERPRINT [--key ...] --session ID, or off: the owner's allowance, kept beside
+    the pinned keys, that the Claude Code session ID may take a step of KINDS the guard keeps for him at the machine on
+    his Approve from the page, signed with one of the pinned keys named (for a deployment or a push, one that says it
+    cannot be backed up: _key_refusal), the step it asked him with post question --step and he approved, once (take,
+    _phone_taken); off takes it away. It is given at a terminal of the owner's own alone, as sign is run
+    (sign_terminal: none of its forebears a coding agent), and the PreToolUse hook holds it in every session wired to
+    it (_signing_call), so a tool call never gives it; nothing of it comes from the ADE. ID is a session live on this
+    machine as Claude Code's own record says, its start confirmed (_live_records); without --session the live ones are
+    listed and nothing is given. One per link directory: a later one replaces it, and a pin keeps it. Refused, nothing
+    written, where no owner key is pinned, where the pin cannot be read, and while the second screen's rule is on."""
+    if getattr(args, "add", None) or getattr(args, "second_screen", None) is not None:
+        print("ADE: pin --phone-take sets the allowance alone: add a key, or set the second screen's rule, with a pin "
+              "of its own; nothing was changed.", file=sys.stderr)
+        return 2
+    kinds = _phone_take_given(given)
+    if kinds is None:
+        print(f"ADE: {_flat(given, 80)} is not off or a list of the kinds of step a session may take on your Approve "
+              f"from the page ({', '.join(PHONE_TAKE_KINDS)}), comma-separated, at least one, none twice; nothing was "
+              "changed.", file=sys.stderr)
+        return 2
+    try:
+        held = pinned(link)
+    except PinDamaged as e:
+        print(f"ADE: owner_keys.json is there but cannot be read ({_flat(e, 80)}); nothing was changed. It holds the "
+              "owner's keys: mend or remove it in person, at this machine, then pin again.", file=sys.stderr)
+        return 2
+    before = _allowance(held)
+    if kinds == "off":
+        if before is None:
+            print("ADE: no session here takes a step on your Approve from the page; nothing was changed.")
+            return 0
+        link.keep("owner_keys.json", json.dumps({k: v for k, v in held.items() if k != "phone_take"}))
+        print(f"ADE: the allowance is taken away: session {before['session']} takes no step on your Approve from the "
+              "page; each stays yours, at the machine")
+        return 0
+    try:
+        os.close(sign_terminal(nothing=PIN_NOTHING).fd)
+    except SignRefused as e:
+        print(f"ADE: {_flat(e, 400)}", file=sys.stderr)
+        return 2
+    if not held or not held.get("keys"):
+        print("ADE: no owner keys are pinned here: pin them first, then allow a step from the page; nothing was "
+              "changed.", file=sys.stderr)
+        return 2
+    if held.get("second_screen") is True:
+        print(f"ADE: {SECOND_SCREEN_TAKES}: no Approve on the page lets a step run here; nothing was changed.",
+              file=sys.stderr)
+        return 2
+    keys = _phone_take_keys(held, getattr(args, "key", None))
+    if isinstance(keys, str):
+        print(f"ADE: {keys}; nothing was changed.", file=sys.stderr)
+        return 2
+    session = getattr(args, "session", None)
+    live = _live_records()
+    if session is None:
+        if not live:
+            print("ADE: no Claude Code session is live on this machine to name; nothing was changed.", file=sys.stderr)
+            return 2
+        print("ADE: the Claude Code sessions live on this machine (id, folder, name):")
+        for r in live:
+            where = r["cwd"] if isinstance(r.get("cwd"), str) else "a folder its record does not name"
+            print(f"ADE:   {r['sessionId']} in {_flat(where, 200)} ({_flat(r.get('name') or 'unnamed', 80)})")
+        print("ADE: name the session with --session ID; nothing was changed.", file=sys.stderr)
+        return 2
+    if not any(r["sessionId"] == session for r in live):
+        print(f"ADE: {_flat(session, 120)} is not a Claude Code session live on this machine, as Claude Code's own "
+              "record of it says with its start confirmed (pin --phone-take without --session lists them); nothing "
+              "was changed.", file=sys.stderr)
+        return 2
+    allowance = {"session": session, "kinds": kinds, "keys": keys, "at": int(time.time())}
+    link.keep("owner_keys.json", json.dumps(dict(held, phone_take=allowance)))
+    print(f"ADE: session {session} may take {_phrases(kinds)} on your Approve from the page, signed with a key named "
+          f"here ({', '.join(keys)}): the one command it asked you, from the folder it asked from, once, before your "
+          "answer expires; until pin --phone-take off, or another session's allowance replaces this one")
+    bound = [k for k in kinds if k in PHONE_TAKE_BOUND]
+    if bound:
+        print(f"ADE: for {_phrases(bound)}, an Approve counts only where the key that signed it says it cannot be "
+              "backed up, as a security key does and a synced passkey does not; that a key named here is a security "
+              "key is your word, not attested")
+    if before is not None and before["session"] != session:
+        print(f"ADE: this replaces the allowance of session {before['session']}, which takes no step on your Approve "
+              "from the page now")
+    print(PHONE_TAKE_OPEN.format(session="the session"))
     return 0
 
 
@@ -4296,7 +4712,9 @@ def cmd_take(link, args):
     the ADE is asked, the command is recorded as carried out (carrying.json), for the Claude Code session the take runs
     in where that can be told, so the guard of what a remote command may do holds before its words are printed; a take
     that prints nothing to act on takes the entry out again, and one whose entry cannot be written is refused. After
-    the block and the passkey's name, one line says what the guard holds, and until when (TAKE_GUARD)."""
+    the block and the passkey's name, one line says what the guard holds, and until when (TAKE_GUARD); after it, for an
+    answer to the session's own step question, one line says whether the owner's Approve lets it take that step
+    (_take_step)."""
     seq = int(args.seq)
     code, _, event, payload, key, took = _claim(link, seq, COMMAND_KINDS, _say, carry=True)
     if code:
@@ -4309,9 +4727,13 @@ def cmd_take(link, args):
         print(f"ADE: not acted on: [{seq}] its life ended at {_when(payload['expires_at'])}, before the ADE answered "
               "the take; it is recorded here as taken")
         return 2
+    # his Approve of a step recorded before anything is printed: the session reads of it once the guard holds it
+    step = _take_step(link, seq, payload, took, event, key) if payload["purpose"] == "answer" else None
     _emit([RULE2] + _print_verified(link, event, payload, key, taken_at=took) + [RULE2])
     _print_key_name(key)
     print(TAKE_GUARD.format(seq=seq))
+    if step is not None:
+        print(step)
     return 0
 
 
@@ -4320,6 +4742,88 @@ TAKE_GUARD = ("ADE: while you carry out [{seq}], and until your turn ends after 
               "takes at this machine are held: a push to main or master, a forced push, a deploy, a recursive or "
               "forced delete outside your folder, sending data out, writing outside your folder, launching another "
               "agent, choosing the owner's keys (pin, pair, e2e --reset), and changing the guard's own files")
+
+
+def _take_step(link, seq, payload, took, event, key):
+    """For answer `seq`, taken at `took` (the event as verified, signed by the pinned `key`), to the session's own step
+    question (post question --step, its step kept in posted.json): the owner's Approve recorded on the answer's entry
+    in carrying.json, {"match", "kinds", "until": the answer's expiry, "used": null, "key": the fingerprint of the key
+    that signed it}, for the guard to let that one call through once (_phone_taken), where the answer's text is
+    exactly Approve and its life has not ended, and _approve_step's conditions hold; else nothing is recorded. The
+    line take prints after its block, saying which; None for an answer to a question that asked no step."""
+    ref = payload["ref"]
+    asked = _mapping(link, "posted.json").get(str(ref))
+    step = asked.get("step") if isinstance(asked, dict) else None
+    if step is None:
+        return None
+    if not _step_record_ok(step):
+        why = "this link's record of the question (posted.json) does not hold its step as post wrote it"
+    elif prompt_answer_form(payload["text"]) != "approve":
+        why = "his answer is not Approve"
+    elif payload["expires_at"] <= took:
+        why = f"his answer's life ended at {_when(payload['expires_at'])}, before this take"
+    else:
+        try:
+            why = _approve_step(link, seq, step, payload["expires_at"], key, event.get("signature"))
+        except (OSError, ValueError) as e:
+            why = f"{CARRYING} cannot be read or written ({type(e).__name__})"
+    if why is not None:
+        return f"ADE: the step your question [{ref}] asked stays the owner's, at the machine: {why}"
+    return (f"ADE: the owner approved the step your question [{ref}] asked: run it exactly as asked, once, in "
+            f"{_flat(step['cwd'], 200)}, before {_when(payload['expires_at'])}; the guard lets that one command "
+            "through then, once")
+
+
+def _step_record_ok(step):
+    """Whether a question's step in posted.json is as post wrote it: exactly its command, its folder (as _key gives
+    it), its kinds in the table's order, the hash of the command and the folder (_step_hash), the session that asked
+    it, and what its block's last line said ("allowed" or "not")."""
+    return isinstance(step, dict) and set(step) == {"command", "cwd", "match", "kinds", "session", "said"} \
+        and isinstance(step["command"], str) and isinstance(step["cwd"], str) and _kinds_shape(step["kinds"]) \
+        and step["kinds"] == [k for k in PHONE_TAKE_KINDS if k in step["kinds"]] \
+        and step["match"] == _step_hash(step["command"], step["cwd"]) \
+        and isinstance(step["session"], str) and bool(_SESSION_FILE.fullmatch(step["session"] + ".jsonl")) \
+        and step["said"] in ("allowed", "not")
+
+
+def _approve_step(link, seq, step, until, key, credential):
+    """The owner's Approve of `step` recorded on the entry take wrote for answer `seq`, under the carry lock and on a
+    fresh read, where all hold: that entry names its session, the session that asked the question; the question's
+    block said an Approve lets it run; the owner's allowance names that session and covers the step's kinds; and the
+    pinned `key` that signed it, in the passkey's answer `credential`, counts (_key_refusal). None, else why not. An
+    OSError or a ValueError where carrying.json cannot be read or written."""
+    lock = _carry_lock(link.dir)
+    try:
+        record = _carrying(link.dir)
+        entry = record.get(str(seq))
+        if entry is None:
+            return f"its entry in {CARRYING} is gone"
+        session = entry["session"]
+        if session is None:
+            return "this take could not tell the Claude Code session it runs in, so no allowance can name it"
+        if session != step["session"]:
+            return f"the question was asked by session {step['session']}, not by this one"
+        try:
+            allowance = _allowance(pinned(link))
+        except PinDamaged:
+            return "the pin of the owner's keys (owner_keys.json) cannot be read"
+        if step["said"] != "allowed":
+            return "the question said an Approve would not let it run: he had not allowed it when it was asked"
+        left = step["kinds"] if allowance is None or allowance["session"] != session \
+            else [k for k in step["kinds"] if k not in allowance["kinds"]]
+        if left:
+            return f"he has not allowed this session to take {_phrases(left)} on his Approve from the page"
+        fingerprint = key["fingerprint"]               # the pinned key verify_command found
+        why = _key_refusal(allowance, fingerprint, step["kinds"], credential)
+        if why is not None:
+            return why
+        entry["step"] = {"match": step["match"], "kinds": list(step["kinds"]), "until": until, "used": None,
+                         "key": fingerprint}
+        link.keep(CARRYING, json.dumps(record))
+        return None
+    finally:
+        if lock is not None:
+            os.close(lock)
 
 
 def _post_about(link, kind, seq, text):
@@ -4336,7 +4840,8 @@ def cmd_reply(link, args):
     """The command's answer: a done referring to it, its words from a file, never the command line. Once the ADE has
     it, its entry in carrying.json is marked replied, and the guard of what a remote command may do (below) holds on
     until the turn of the session that took it ends: a command's words that ask for a reply first and a push after are
-    held in that same turn. A reply the ADE did not take leaves the command carried out, unreplied."""
+    held in that same turn. A reply the ADE did not take leaves the command carried out, unreplied. Where the guard let
+    a step the owner approved in this answer through and he is not told yet, the reply tells him (_tell_taken)."""
     with open(args.file, encoding="utf-8") as fh:
         words = fh.read()
     code = _post_about(link, "done", args.seq, f"{args.status}: {words}")
@@ -4346,6 +4851,12 @@ def cmd_reply(link, args):
         except (OSError, ValueError) as e:
             print(f"ADE: replied, but {CARRYING} cannot be read or written ({type(e).__name__}): what a remote command "
                   "may do stays held until it is mended in person, at this machine", file=sys.stderr)
+        for seq, note in _tell_taken(link, lambda s, entry: s == str(args.seq)):
+            if note is None:
+                print(f"ADE: the owner is not told yet that the step he approved in [{seq}] was taken: the turn's end "
+                      "tells him", file=sys.stderr)
+            else:
+                print(f"ADE: told the owner the step he approved in [{seq}] was taken (posted as seq {_n(note)})")
     return code
 
 
@@ -4382,6 +4893,23 @@ CLIENT_FILE = "ade_link.py"             # this client's file name, as any copy o
 GUARD_FILES = ("changing the guard's own files (anything in ~/.proofpane-ade or the link's directory, "
                "remote_policy.json or carrying.json, this client or the Python that runs it, or Claude Code's "
                "settings)")
+PIN_FILE = "owner_keys.json"            # in the link's directory: the owner's pin of his keys, his allowance beside
+                                        # them, which a call writing it is held for in every session (_signing_call)
+POSTED = "posted.json"                  # in the link's directory: each question post wrote, a step question's step
+# the files the link reads to let a call through, beside the owner's pin, in the link's directory: a carried command's
+# record, which holds a step the owner approved, and its marker, which makes the record's removal by other means read
+# as damaged; a step question's step as post keeps it, which take reads; and this machine's own additions to the guard.
+# A call writing one, or writing this client (_Judging.client), is held in every session wired to the hook too, as the
+# hold reads a call (_grant_written, _signing_call)
+GRANT_FILES = (CARRYING, CARRYING_MARKER, POSTED, REMOTE_POLICY)
+# the programs that write no file of their own, whatever their words, and run none: one naming the owner's pin among
+# its words only reads it, or names it (_pin_written)
+PIN_READERS = frozenset(("cat", "head", "tail", "wc", "grep", "jq", "ls", "stat", "test", "[", "echo", "printf"))
+# the programs that only read, for the parent clause alone (the ruling of 00:32 UTC on 2026-11-24; rg taken off at
+# 01:46 UTC, as its --pre runs a command for each file): none with a word put together as the command runs, and find
+# only without an action that runs a command or deletes (_reads_for_parents)
+PARENT_READERS = frozenset(("du", "df", "tree", "realpath", "find"))
+PARENT_FIND_ACTIONS = frozenset(("-exec", "-execdir", "-ok", "-okdir", "-delete"))
 GUARD_PY = re.compile(r"python[0-9.]*")                     # a Python interpreter's program name
 GUARD_PIP = re.compile(r"pip[0-9.]*")                       # pip's program name, beside an interpreter
 # what Python reads at start in the folder of an interpreter it runs as (getpath): a virtual environment's pyvenv.cfg,
@@ -4396,17 +4924,58 @@ AGENT_CLIS = frozenset(("claude", "claude-code", "codex", "gemini", "qwen", "gro
 GUARD_FAILED = ("Held while a remote command is carried out: the guard of what it may do met an error judging this "
                 "call. Leave this step for the owner, at this machine, and say so in your reply.")
 _SEQ_TEXT = re.compile(r"[1-9][0-9]{0,18}")                 # whole-text only: fullmatch, never match
+# the id of a tool call, as a PreToolUse hook's input names it (tool_use_id): letters, digits, _ and -, as Claude
+# Code's are ("toolu_..."), at a length none of them nears
+_TOOL_USE_ID = re.compile(r"[A-Za-z0-9_-]{1,128}")          # whole-text only: fullmatch, never match
 
 
 class CarryRefused(ValueError):
     """carrying.json holds CARRY_MAX commands already."""
 
 
+def _step_shape(value):
+    """A step the owner approved, as take records it on his answer's entry (_approve_step): exactly {"match": its
+    hash (_step_hash), "kinds": its kinds (_kinds_shape), "until": the answer's expiry, "used": None, or the time the
+    guard let it through, "key": the fingerprint of the key that signed his Approve}, and once used "noted": whether
+    the owner was told (_tell_taken), and "call": the tool call it was let through for, the tool_use_id its hook
+    named, or None where that hook named none (_hook_call)."""
+    return isinstance(value, dict) and set(value) - {"noted", "call"} == {"match", "kinds", "until", "used", "key"} \
+        and isinstance(value["match"], str) and bool(_DIGEST.fullmatch(value["match"])) \
+        and _kinds_shape(value["kinds"]) and _int(value["until"]) and value["until"] > 0 \
+        and isinstance(value["key"], str) and bool(_FINGERPRINT.fullmatch(value["key"])) \
+        and (value["used"] is None or (_int(value["used"]) and value["used"] > 0)) \
+        and ("noted" in value) == (value["used"] is not None) and type(value.get("noted", False)) is bool \
+        and ("call" in value) == (value["used"] is not None) and _call_shape(value.get("call"))
+
+
+def _call_shape(value):
+    """A tool call's id as a step's record names it: None, or text of its form (_TOOL_USE_ID)."""
+    return value is None or isinstance(value, str) and bool(_TOOL_USE_ID.fullmatch(value))
+
+
+def _step_hash(command, key):
+    """What binds a step to the call that runs it: "sha256:" and the hex sha256 of the canonical JSON of the command
+    and its folder (`key`, a path as _key gives it); None where either cannot be so written."""
+    try:
+        return "sha256:" + hashlib.sha256(canonical({"command": command, "cwd": key})).hexdigest()
+    except (TypeError, ValueError):
+        return None
+
+
+def _step_match(command, cwd):
+    """_step_hash for a call: its command (a judged Bash call's, so text), and its folder as the hook gives it, an
+    absolute path read with _key; None where the folder is not there."""
+    if not isinstance(cwd, str) or not os.path.isabs(cwd):
+        return None
+    return _step_hash(command, _key(cwd))
+
+
 def _carrying(directory):
     """carrying.json: {a seq, as text: {"id": the payload's id, "session": the Claude Code session it was taken for,
     or None where that could not be told, "at": the time of its take, "replied": the time the ADE took its reply, or
-    None}}; {} where there is none. One that is there but is not that record (empty, cut, not JSON, of another shape, a
-    link to nothing, not a regular file) is an OSError or a ValueError, never read as nothing carried out."""
+    None, and for an answer whose Approve of a step the owner allowed, "step" (_step_shape)}}; {} where there is none.
+    One that is there but is not that record (empty, cut, not JSON, of another shape, a link to nothing, not a regular
+    file) is an OSError or a ValueError, never read as nothing carried out."""
     path = os.path.join(directory, CARRYING)
     text = _read(path)
     if text is None:
@@ -4423,7 +4992,7 @@ def _carrying(directory):
         raise ValueError(f"{CARRYING} is nested past the reader") from None
     if not isinstance(value, dict) or not all(
             isinstance(k, str) and _SEQ_TEXT.fullmatch(k) and isinstance(v, dict)
-            and set(v) == {"id", "session", "at", "replied"}
+            and set(v) - {"step"} == {"id", "session", "at", "replied"} and ("step" not in v or _step_shape(v["step"]))
             and isinstance(v["id"], str) and _HEX_ID.fullmatch(v["id"]) and _int(v["at"]) and v["at"] > 0
             and (v["session"] is None
                  or (isinstance(v["session"], str) and _SESSION_FILE.fullmatch(v["session"] + ".jsonl")))
@@ -4486,9 +5055,12 @@ def _turn_ended(directory, session):
     """A Stop hook's word that the turn of `session` (its id, from the hook's input; None where it names none) has ended:
     each command replied to and taken for that session, or for every session where the take could not tell its own, is
     let go, its entry out of carrying.json, the file removed once it holds none. A command not replied to stays,
-    whatever turn it is. Never raises: a record that cannot be read or written stays as it was, and holds."""
+    whatever turn it is, and so does one whose step the guard let through while the owner is not told yet (noted
+    false), until a turn's end tells him (turn_quietly). Never raises: a record that cannot be read or written stays
+    as it was, and holds."""
     def ends(entry):
-        return entry["replied"] is not None and (entry["session"] is None or entry["session"] == session)
+        return entry["replied"] is not None and (entry["session"] is None or entry["session"] == session) \
+            and (entry.get("step") or {}).get("noted") is not False
     try:
         if not any(ends(v) for v in _carrying(directory).values()):
             return False                        # read without the lock: most turns end with nothing to let go
@@ -4512,13 +5084,22 @@ def _turn_ended(directory, session):
 
 
 def turn_quietly(directory):
-    """`turn end`, the Stop hook ade_link.settings.json runs at the end of each turn: the session's commands replied to
-    in it are let go (_turn_ended). It reads the hook's input within HOOK_DEADLINE, prints nothing and exits 0 whatever
-    happens, since a Stop hook that fails, or exits 2, holds the turn."""
+    """`turn end`, the Stop hook ade_link.settings.json runs at the end of each turn: the owner is told of each step the
+    guard let through for the session that he is not told of yet (_tell_taken, within NOTE_DEADLINE), and the session's
+    commands replied to in it are let go (_turn_ended). It reads the hook's input within HOOK_DEADLINE, prints nothing
+    on its standard output and exits 0 whatever happens, since a Stop hook that fails, or exits 2, holds the turn."""
     try:
         finished, hook, _ = _within(HOOK_DEADLINE, _hook_input)
         hook = hook if finished and isinstance(hook, dict) else {}
-        _turn_ended(os.path.abspath(os.path.expanduser(directory)), hook.get("session_id"))
+        where, session = os.path.abspath(os.path.expanduser(directory)), hook.get("session_id")
+        if isinstance(session, str) and session:
+            try:
+                link = Link(where)
+                if link.config.get("url"):
+                    _within(NOTE_DEADLINE, lambda: _tell_taken(link, lambda seq, entry: entry["session"] == session))
+            except Exception:  # noqa: BLE001  not told now: the next turn's end tells him
+                pass
+        _turn_ended(where, session)
     except BaseException:  # noqa: BLE001
         pass
     return 0
@@ -4600,11 +5181,18 @@ def _confirm_start(pid, started):
 
 def _taking_session():
     """The Claude Code session a take runs for, or None where that cannot be told, when every session of the link's
-    directory is held while the command is carried out: the session Claude Code's own record (in the password
-    database's home) names for the nearest of this process's forebears it has (_session_process), that record being
-    the running process's (its pid, and its start, which must be there and confirmed by /bin/ps, since a record
-    without a confirmed start could have been planted), and no other named in this process's environment
-    (CLAUDE_CODE_SESSION_ID, which a program could set, so it can only make the answer None)."""
+    directory is held while the command is carried out: the session of _taking_record."""
+    record = _taking_record()
+    return None if record is None else record["sessionId"]
+
+
+def _taking_record():
+    """Claude Code's own record (in the password database's home) of the session this process runs in, or None where
+    that cannot be told: the record of the nearest of this process's forebears it has (_session_process), that record
+    being the running process's (its pid, and its start, which must be there and confirmed by /bin/ps, since a record
+    without a confirmed start could have been planted), and no other session named in this process's environment
+    (CLAUDE_CODE_SESSION_ID, which a program could set, so it can only make the answer None). Its sessionId is the
+    session's; its cwd, where it has one, the folder the session started in."""
     try:
         folder = _take_sessions_dir()
         if not os.path.isdir(folder):
@@ -4622,9 +5210,36 @@ def _taking_session():
         said = os.environ.get("CLAUDE_CODE_SESSION_ID")
         if said and said != data["sessionId"]:
             return None
-        return data["sessionId"]
+        return data
     except Exception:  # noqa: BLE001  what cannot be told holds every session
         return None
+
+
+def _live_records(folder=None):
+    """Claude Code's records of the sessions running on this machine, as _live_sessions reads them (in the password
+    database's home, as the take reads them), of those whose start is confirmed (_confirm_start) and whose id is one an
+    allowance can name: each {"sessionId", "cwd", "name", ...} as Claude Code wrote it, by their file's name."""
+    folder = folder or _take_sessions_dir()
+    live = _live_sessions(folder)
+    out = []
+    try:
+        names = sorted(os.listdir(folder))
+    except OSError:
+        return out
+    for name in names:
+        if not name.endswith(".json"):
+            continue
+        try:
+            data = json.loads(_read(os.path.join(folder, name)) or "null")
+        except (OSError, ValueError, RecursionError):
+            continue
+        # a session id not in `live` is not text Claude Code's record names a running process by
+        if not isinstance(data, dict) or data.get("sessionId") not in live \
+                or not _SESSION_FILE.fullmatch(data["sessionId"] + ".jsonl") or not _int(data.get("pid")) \
+                or not isinstance(data.get("procStart"), str) or not _confirm_start(data["pid"], data["procStart"]):
+            continue
+        out.append(data)
+    return out
 
 
 class _Policy:
@@ -4673,8 +5288,23 @@ def _policy(directory):
 class _Word(str):
     """A shell word as the guard reads it, its quotes and escapes gone, and $HOME and a leading ~ read as the home
     folder; `dyn` when a part of it is put together as the command runs (any other variable, a command's output),
-    which its words cannot tell."""
+    which its words cannot tell, and then `fixed`, the part its words fix before the first such part (None where the
+    reading kept none); `unreadable` where a ~ or a value in it names what no system call can take (a lone
+    surrogate), which holds the call (paths)."""
     dyn = False
+    fixed = None
+    unreadable = False
+
+
+def _home_word(text):
+    """`text` as a word, a leading ~ read as the home folder; where the name after the ~ is one no system call can take
+    (a lone surrogate), the text kept as it is and the word marked unreadable (the ruling of 01:46 UTC)."""
+    try:
+        return _Word(os.path.expanduser(text))
+    except ValueError:  # a lone surrogate, which pwd cannot take: read where paths reads it, held
+        word = _Word(text)
+        word.unreadable = True
+        return word
 
 
 def _dyn_word(text):
@@ -4703,7 +5333,8 @@ _ANSI_C_LETTERS = {"n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "e": "
 
 
 def _ansi_c(raw):
-    """A $'...' string's text, its common escapes read as the shell reads them."""
+    """A $'...' string's text, its common escapes read as the shell reads them, and ended at a NUL as bash ends it (the
+    ruling of 01:46 UTC on 2026-11-24)."""
     def one(m):
         s = m.group(1)
         try:
@@ -4714,7 +5345,7 @@ def _ansi_c(raw):
         except (ValueError, OverflowError):
             return m.group(0)
         return _ANSI_C_LETTERS.get(s, s)
-    return _ANSI_C.sub(one, raw)
+    return _ANSI_C.sub(one, raw).split("\x00", 1)[0]
 
 
 def _closing(text, start):
@@ -4852,7 +5483,7 @@ class _ShellReader:
         self.text, self.i, self.n = text, 0, len(text)
         self.simples, self.scope, self.opened = [], [], 0      # the subshells open, and how many were opened
         self.cmd = _Simple()
-        self.cur, self.dyn, self.quoted, self.tilde = None, False, False, False
+        self.cur, self.dyn, self.quoted, self.tilde, self.fixed_end = None, False, False, False, 0
         # what the next word is: "redirect" (a file a redirection names), "string" (a here string), or a here
         # document's delimiter, ("heredoc", whether its lines' leading tabs go)
         self.target = None
@@ -4916,6 +5547,8 @@ class _ShellReader:
         self.cur.append(chars)
 
     def _dynamic(self, chars):
+        if self.cur is None or not self.dyn:            # its first part put together as it runs
+            self.fixed_end = 0 if self.cur is None else sum(len(c) for c in self.cur)
         self._add(chars, quoted=True)
         self.dyn = True
 
@@ -4923,8 +5556,11 @@ class _ShellReader:
         if self.cur is None:
             return
         text = "".join(self.cur)
-        word = _Word(os.path.expanduser(text) if self.tilde else text)
+        word = _home_word(text) if self.tilde else _Word(text)
         word.dyn = self.dyn
+        if self.dyn:                                    # the part its words fix, a leading ~ read as the home
+            fixed = _home_word(text[:self.fixed_end]) if self.tilde else _Word(text[:self.fixed_end])
+            word.fixed, word.unreadable = str(fixed), word.unreadable or fixed.unreadable
         quoted, target = self.quoted, self.target
         self.cur, self.target = None, None
         if target == "redirect":
@@ -4942,7 +5578,7 @@ class _ShellReader:
                 self.cmd.words.append(word)
             else:
                 for piece in pieces:
-                    self.cmd.words.append(_Word(os.path.expanduser(piece)))
+                    self.cmd.words.append(_home_word(piece))
 
     def _end_command(self):
         self._end_word()
@@ -5180,13 +5816,15 @@ def _interpreter_tree():
 class _Judging:
     """One tool call judged: the session's working folder (as _key gives a path; None where the call does not say
     it), the folders the command's words run in as cd moves them (None for one that cannot be told), the guard's own
-    files, the machine's list, and the steps found that are the owner's alone."""
+    files, the machine's list, and the steps found that are the owner's alone, each with its kind (PHONE_TAKE_KINDS;
+    None for a step of no kind, which is never taken on an answer from the page) in `kinds`, beside `steps`."""
 
-    def __init__(self, directory, hook, policy):
+    def __init__(self, directory, hook, policy, folder=None):
         cwd = hook.get("cwd")
         cwd = cwd if isinstance(cwd, str) and os.path.isabs(cwd) else None
-        # the folder Claude Code started in, which it gives its hooks; else the folder of the call
-        project = os.environ.get("CLAUDE_PROJECT_DIR") or ""
+        # the folder Claude Code started in, which it gives its hooks; else the folder of the call. `folder`, where
+        # given, in its place: a step question's, judged as the hook will judge it (_step_question)
+        project = (os.environ.get("CLAUDE_PROJECT_DIR") or "") if folder is None else folder
         folder = project if os.path.isabs(project) else cwd
         self.folder = _key(folder) if folder else None
         self.dirs = [cwd or folder]
@@ -5199,6 +5837,16 @@ class _Judging:
             if home and f.startswith(home + os.sep):
                 forms |= {h + f[len(home):] for h in ("~", "$HOME", "${HOME}")}
         self.link_forms = sorted(_fold(f) + "/" for f in forms)       # the directory written out, with a name after it
+        self.pin_key = _key(os.path.join(directory, PIN_FILE))         # the owner's pin, as _key gives a path
+        # the files the link reads to let a call through (GRANT_FILES) and this client, which a call writing one is
+        # held for always too (_grant_written); and the client's path written out, in the forms a command may give it
+        self.grant_keys = frozenset(_key(os.path.join(directory, name)) for name in GRANT_FILES) | {self.client}
+        client = os.path.abspath(__file__)
+        client_forms = {client, os.path.realpath(client)}
+        for f in list(client_forms):
+            if home and f.startswith(home + os.sep):
+                client_forms |= {h + f[len(home):] for h in ("~", "$HOME", "${HOME}")}
+        self.client_forms = sorted(_fold(f) for f in client_forms)
         # the user's home, by HOME and by the password database (which a changed HOME does not move): ~/.proofpane-ade,
         # which holds the links, the client, the owner-keys pin, .registrar and .machine-id, is the owner's alone
         raw_homes = [h for h in (os.environ.get("HOME"), os.path.expanduser("~")) if isinstance(h, str)
@@ -5218,8 +5866,22 @@ class _Judging:
         self.guard_parents = self._parents_inside_folder()
         self.policy = policy
         self.steps = []
-        # this client's sign or signer, named by its words: the hook holds it always (_signing_call)
+        self.kinds = []                     # each step's kind, or None, in the steps' order
+        # this client's sign or signer, or its pin giving the owner's allowance ("pin"), named by its words: the hook
+        # holds it always (_signing_call)
         self.signing = None
+        # whether the call may write the owner's pin (_pin_written, or a file tool's path): held always, the same way
+        self.pin_write = False
+        # whether it may write another file the link reads to let a call through, or this client (_grant_written, or
+        # a file tool's path): held always too
+        self.grant_write = False
+        # whether reading stopped short, nesting past GUARD_NESTING_MOST: the hold that applies always then holds a
+        # command naming what it guards (_held_unjudged)
+        self.unjudged = False
+        # whether a word holds what no path can carry (a lone surrogate) or its links run too deep, read as a path the
+        # words cannot tell (paths): the hold that applies always holds the call, judging gone on (the ruling of 00:32
+        # UTC on 2026-11-24; a NUL ends a $'...' string since 01:46 UTC, as bash reads it)
+        self.unreadable = False
 
     def _parents_inside_folder(self):
         """The folders between the working folder (exclusive) and the link's directory: deleting or writing one of
@@ -5270,8 +5932,9 @@ class _Judging:
             or bool(_CLAUDE_SETTINGS.search(key))
 
     def _is_client(self, word):
-        """Whether `word`, as a path, is this client: so a command running it (`ade_link.py ... reply`), and its --dir
-        value, are let through where the same path named any other way is held."""
+        """Whether `word`, as a path, is this client: so a command that runs it (`ade_link.py ... reply`), its own
+        program a Python interpreter or the client itself (_runs_script), and its --dir value, are let through where the
+        same path named any other way, a run through a wrapper such as env or nohup among them, is held."""
         if word.dyn:
             return False
         return any(key == self.client for key in self.paths(word))
@@ -5313,18 +5976,30 @@ class _Judging:
                         return True
         return False
 
-    def held(self, step):
+    def held(self, step, kind=None):
         self.steps.append(step)
+        self.kinds.append(kind)
 
     def paths(self, word):
         """Where `word`, read as a path, leads: its key from each folder the command may run in; None among them where
-        that cannot be told (a part put together as the command runs, or a relative path from a folder unknown)."""
+        that cannot be told (a part put together as the command runs, or a relative path from a folder unknown); only
+        None for a word no path can carry, or one whose links run too deep to follow, which marks the call held
+        (unreadable); nothing for an empty word, which names no path."""
+        if word.unreadable:
+            self.unreadable = True
+            return [None]
         if word.dyn:
             return [None]
         text = str(word)
-        if os.path.isabs(text):
-            return [_key(text)]
-        return [None if d is None else _key(os.path.join(d, text)) for d in self.dirs]
+        if not text:
+            return []
+        try:
+            if os.path.isabs(text):
+                return [_key(text)]
+            return [None if d is None else _key(os.path.join(d, text)) for d in self.dirs]
+        except (ValueError, RecursionError):  # a lone surrogate, or links too deep: read as None, held
+            self.unreadable = True
+            return [None]
 
     def outside(self, key):
         return self.folder is None or key is None or not _inside(key, self.folder)
@@ -5341,9 +6016,10 @@ class _Judging:
     def names_guard(self, word, script=False, program=False):
         """Whether `word` names one of the guard's own files (GUARD_FILES): remote_policy.json, carrying.json or its
         marker anywhere in it, a path in the link's directory however it is written, a glob that could reach a guarded
-        folder, this client (but where a command runs it, `script`), ~/.proofpane-ade, the interpreter's tree (but the
-        interpreter itself, run as the program, `program`), .registrar/.machine-id, a parent of the link's directory
-        inside the working folder, or Claude Code's settings."""
+        folder, this client (but where the command's own program runs it, `script`, as _runs_script reads it),
+        ~/.proofpane-ade, the interpreter's tree (but the interpreter itself, run as the program, `program`),
+        .registrar/.machine-id, a parent of the link's directory inside the working folder, or Claude Code's
+        settings."""
         text = str(word)
         if REMOTE_POLICY in text or CARRYING in text or CARRYING_MARKER in text:
             return True
@@ -5384,6 +6060,7 @@ class _Judging:
         for key in self.paths(word):
             if self.outside(key):
                 where = "a path its words cannot tell" if key is None else "outside your working folder"
+                # of no kind, its path told or not: it stays the owner's at the machine (PHONE_TAKE_KINDS)
                 self.held(f"a recursive or forced delete ({how}) of {_flat(word, 200)}, {where},")
                 return
 
@@ -5532,7 +6209,10 @@ def _pairs_this_link(j, args):
         return False
     if getattr(name, "dyn", False):
         return True
-    return _key(os.path.join(os.path.expanduser("~"), ADE_HOME, str(name))) == j.link_dir
+    try:
+        return _key(os.path.join(os.path.expanduser("~"), ADE_HOME, str(name))) == j.link_dir
+    except (ValueError, RecursionError):  # a name no path carries: one the words cannot tell
+        return True
 
 
 def _hold_key_commands(j, args, may):
@@ -5568,6 +6248,29 @@ def _note_signing(j, args):
     signing = _client_subcommand(args)
     if signing in ("sign", "signer"):
         j.signing = signing                         # held in every session wired to the hook (_signing_call)
+    elif _gives_phone_take(args):
+        j.signing = "pin"                           # the allowance, held the same way
+
+
+# pin's --phone-take and each abbreviation of it argparse takes (no other option of pin begins --p)
+_PHONE_TAKE_OPTIONS = tuple("--phone-take"[:n] for n in range(3, len("--phone-take") + 1))
+
+
+def _gives_phone_take(args):
+    """Whether this client's words (those after it) give the owner's allowance: pin with --phone-take, or an
+    abbreviation of it argparse takes, of anything but off, its value as a word of its own or after "=", one put
+    together as it runs counted as not off. Taking it away (off) is not held: it gives nothing."""
+    if _client_subcommand(args) != "pin":
+        return False
+    for k, w in enumerate(args):
+        head, eq, value = str(w).partition("=")
+        if head not in _PHONE_TAKE_OPTIONS:
+            continue
+        given = (value, getattr(w, "dyn", False)) if eq else \
+            (str(args[k + 1]), getattr(args[k + 1], "dyn", False)) if k + 1 < len(args) else ("", False)
+        if given != ("off", False):
+            return True
+    return False
 
 
 def _judge_python_code(j, words, parts):
@@ -5689,6 +6392,7 @@ def _judge_text(j, text, depth, scoped=True):
     """Judge every command a shell runs for `text`, in order, each from the folder cd has moved it to (a subshell's cd
     stays in it); `scoped` for a shell of its own, whose cd ends with it, and not for eval, whose does not."""
     if depth > GUARD_NESTING_MOST:
+        j.unjudged = True
         j.held("a command nested in shells deeper than the guard reads")
         return
     outer = j.dirs
@@ -5710,11 +6414,13 @@ def _judge_simple(j, simple, depth, prev):
     for sub in simple.subs:                     # a substitution runs before the command it is in, in its own shell
         _judge_text(j, sub, depth + 1)
     words = simple.words
-    script = _script_index(words)
-    is_client = script is not None and script < len(words) and j._is_client(words[script])
-    dir_words = _dir_value_indices(words) if is_client else frozenset()    # this client's --dir value: let through
     prog_words, _ = _command_words(words)
     prog_word = prog_words[0] if prog_words else None
+    script = _script_index(words)
+    if not _runs_script(words, prog_word, script):
+        script = None                               # a word named as an interpreter among another program's words
+    is_client = script is not None and script < len(words) and j._is_client(words[script])
+    dir_words = _dir_value_indices(words) if is_client else frozenset()    # this client's --dir value: let through
     hit = any(j.names_guard(w, script=(k == script), program=(w is prog_word))
               for k, w in enumerate(words) if k not in dir_words)
     # the value a word gives a name or an option (D=<path>, --dir=<path>) is read as a path too: so a path given that
@@ -5723,13 +6429,21 @@ def _judge_simple(j, simple, depth, prev):
     hit = hit or any(j.names_guard(w) for w in simple.redirects)
     if hit:
         j.held(GUARD_FILES)
+    if _pin_written(j, simple, words, prog_word):
+        j.pin_write = True                          # held in every session wired to the hook (_signing_call)
+    run_i = _client_run_index(j, words, script, is_client, prog_word)
+    # this client's --dir value, in the script form or the runpy form, is no write of the link's folder; the guard of a
+    # remote command keeps its own reading (dir_words, the script form alone)
+    grant_dirs = _dir_value_indices(words) if run_i is not None else frozenset()
+    if _grant_written(j, simple, words, prog_word, run_i, grant_dirs):
+        j.grant_write = True                        # held in every session wired to the hook (_signing_call)
     if any("ADE_OWNER_KEYS" in str(w) for w in words):
         j.held("setting ADE_OWNER_KEYS, which chooses the keys that sign the owner's commands")
     if any("ADE_LINK_DIR" in str(w) for w in words):
         j.held("setting ADE_LINK_DIR, which points a client run by other means at a link's directory without naming "
                "it")
     if any(str(r).startswith(("/dev/tcp/", "/dev/udp/")) for r in simple.redirects):
-        j.held("sending data out (a bash /dev/tcp or /dev/udp redirection)")
+        j.held("sending data out (a bash /dev/tcp or /dev/udp redirection)", "send")
     _judge_words(j, simple.words, simple, depth, prev)
 
 
@@ -5749,7 +6463,7 @@ def _values_given(word):
     m = _GIVEN.fullmatch(str(word))
     if not m:
         return []
-    return [_Word(os.path.expanduser(m.group(1)))]
+    return [_home_word(m.group(1))]
 
 
 def _dir_value_indices(words):
@@ -5770,11 +6484,200 @@ def _dir_value_indices(words):
     return out
 
 
+def _writes_out_pin(j, text):
+    """Whether `text` holds the owner's pin written out: the link's directory in any of the forms its words may give
+    it (_Judging.link_forms), then the pin's name (PIN_FILE)."""
+    folded = _fold(text)
+    return any(form + PIN_FILE in folded for form in j.link_forms)
+
+
+def _names_pin(j, word):
+    """Whether `word` names the owner's pin, owner_keys.json in the link's directory, as names_guard finds the guard's
+    own files: written out anywhere in it (_writes_out_pin), read as a path from each folder the command may run in, a
+    glob that could match it, or a file of its name in a folder the words cannot tell (a part put together as the
+    command runs, or a cd to one)."""
+    import fnmatch
+    text = str(word)
+    if _writes_out_pin(j, text):
+        return True
+    keys = j.paths(word)
+    if j.pin_key in keys:
+        return True
+    if None in keys and _fold(os.path.basename(text)) == PIN_FILE:
+        return True
+    return not word.dyn and bool(GUARD_GLOB.search(text)) \
+        and any(key is not None and fnmatch.fnmatchcase(j.pin_key, key) for key in keys)
+
+
+def _pin_written(j, simple, words, prog_word):
+    """Whether the simple command `words` (its program `prog_word`, None where it runs none) may write the owner's pin
+    (_names_pin): it names it as a redirection's file, whichever way the redirection points; writes it out in a here
+    document or a here string; gives it as a name's or an option's value; or names it among the words of a program
+    that is not one that only reads (PIN_READERS). The hook holds such a call in every session (_signing_call)."""
+    if any(_names_pin(j, w) for w in simple.redirects):
+        return True
+    if any(_writes_out_pin(j, body) for body, _ in simple.heredocs):
+        return True
+    if any(_names_pin(j, v) for w in words for v in _values_given(w)):
+        return True
+    return any(_names_pin(j, w) for w in words) and (prog_word is None or _program(prog_word) not in PIN_READERS)
+
+
+def _runs_script(words, prog_word, script):
+    """Whether the word at `script` (_script_index) is a script the command runs: the command's own program, its first
+    word past its assignments and the shell's own words (_command_words), is a Python interpreter (GUARD_PY), or that
+    word is the program itself. A word named python... among another program's words is read as a file, and the word
+    after it as no script: `mv python3 <the client>` writes the client. A wrapper (env, nohup and the like) is such a
+    program too: this client run through one is held as a write by the wrapper's own words, whatever the command it
+    unwraps is judged as."""
+    if script is None or script >= len(words) or prog_word is None:
+        return False
+    if words[script] is prog_word:
+        return True
+    return bool(GUARD_PY.fullmatch(os.path.basename(str(prog_word))))
+
+
+def _client_run_index(j, words, script, is_client, prog_word=None):
+    """The index of the word that is this client run as a command's script, not written: the script the command runs
+    (`script`, as _judge_simple finds it: only where the command's own program is a Python interpreter or that word,
+    _runs_script) where it is this client or a file named as it (`is_client`; and _names_the_client, a folder put
+    together as it runs among them), or, where the command's own program `prog_word` is a Python interpreter, in the
+    runpy form the product's own hooks use (python -c code that is HOOK_RUNPY as Python parses it, _is_runpy_form),
+    the word after the code where it names this client (_names_the_client); None for any other, so -c code naming this
+    client in any other form is counted as writing it."""
+    if script is not None and script < len(words) and (is_client or _names_the_client(j, words[script])):
+        return script
+    parts = _python_parts(words) if prog_word is not None and GUARD_PY.fullmatch(
+        os.path.basename(str(prog_word))) else None
+    if isinstance(parts, tuple) and parts[0] == "-c":
+        _flag, code, after = parts
+        if after < len(words) and not code.dyn and _is_runpy_form(str(code)) and _names_the_client(j, words[after]):
+            return after
+    return None
+
+
+def _is_runpy_form(code):
+    """Whether -c code is the runpy form the product's hooks start this client with (HOOK_RUNPY), as Python parses
+    it: the same statements, whatever their quotes, spacing or comments (which Python drops); any other statement
+    makes it another."""
+    import ast
+    try:
+        return ast.dump(ast.parse(code)) == ast.dump(ast.parse(HOOK_RUNPY))
+    except (SyntaxError, ValueError):
+        return False
+
+
+def _writes_out_grant(j, text, client=True):
+    """Whether `text` holds one of the files the link reads to let a call through written out: one of GRANT_FILES in
+    the link's directory, in any of the forms its words may give it (_Judging.link_forms), or, where `client`, this
+    client's own path (_Judging.client_forms)."""
+    folded = _fold(text)
+    return any(form + name in folded for form in j.link_forms for name in GRANT_FILES) \
+        or (client and any(form in folded for form in j.client_forms))
+
+
+def _names_grant(j, word, script=False):
+    """Whether `word` names one of the files the link reads to let a call through (GRANT_FILES in the link's
+    directory) or this client, as _names_pin finds the pin: written out (_writes_out_grant), read as a path from each
+    folder the command may run in, a glob that could match one, or a file of one of their names in a folder the words
+    cannot tell; this client not where the word is the script a command runs (`script`)."""
+    import fnmatch
+    text = str(word)
+    if _writes_out_grant(j, text, client=not script):
+        return True
+    grant = j.grant_keys - {j.client} if script else j.grant_keys
+    keys = j.paths(word)
+    if any(key in grant for key in keys):
+        return True
+    names = GRANT_FILES if script else GRANT_FILES + (CLIENT_FILE,)
+    if None in keys and _fold(os.path.basename(text)) in names:
+        return True
+    return not word.dyn and bool(GUARD_GLOB.search(text)) \
+        and any(key is not None and any(fnmatch.fnmatchcase(g, key) for g in grant) for key in keys)
+
+
+def _names_grant_folder(j, word, parents=True):
+    """Whether `word` names a folder holding a file the link reads to let a call through, or, where `parents`, a parent
+    of one: the link's directory, in any of its forms or as a path from each folder the command may run in, the folder
+    holding this client, or a folder either is inside (the ruling of 21:58 UTC on 2026-11-23, M2)."""
+    folders = (j.link_dir, os.path.dirname(j.client))
+    if _fold(str(word).rstrip("/")) + "/" in j.link_forms:
+        return True
+    return any(key is not None and (key == folder or parents and _inside(folder, key))
+               for key in j.paths(word) for folder in folders)
+
+
+def _reads_for_parents(prog_word, words):
+    """Whether the command's program only reads, for the clause holding a parent of the folders alone
+    (PARENT_READERS): none of its words put together as the command runs, and find only without an action that runs a
+    command or deletes (PARENT_FIND_ACTIONS), a word that as a glob could match one counted as one (the ruling of
+    01:46 UTC on 2026-11-24)."""
+    import fnmatch
+    name = None if prog_word is None else _program(prog_word)
+    if name not in PARENT_READERS or any(w.dyn for w in words):
+        return False
+    return name != "find" or not any(fnmatch.fnmatchcase(action, str(w))
+                                     for w in words for action in PARENT_FIND_ACTIONS)
+
+
+def _fixed_inside_grant_folder(j, word):
+    """Whether `word`, put together as the command runs, lands inside the link's directory or the folder holding this
+    client whatever that part turns out to be: the part its words fix (_Word.fixed), read as a path from each folder
+    the command may run in, is one of those folders or inside one (the ruling of 21:58 UTC on 2026-11-23, M2); a fixed
+    part no path can carry counts as inside."""
+    if not word.dyn:
+        return False
+    fixed = word.fixed or ""
+    folders = (j.link_dir, os.path.dirname(j.client))
+    bases = [fixed] if os.path.isabs(fixed) else [None if d is None else os.path.join(d, fixed) for d in j.dirs]
+    for base in bases:
+        if base is None:
+            continue
+        try:
+            key = _key(base)
+        except (ValueError, RecursionError):  # what no path carries, or links too deep: inside, failing safe
+            return True
+        if any(_inside(key, folder) for folder in folders):
+            return True
+    return False
+
+
+def _grant_written(j, simple, words, prog_word, script, dir_words=frozenset()):
+    """Whether the simple command `words` (its program `prog_word`) may write one of the files the link reads to let a
+    call through, or this client (_names_grant), as _pin_written finds a write of the pin: a redirection's file, one
+    written out in a here document or a here string, a name's or an option's value, or one named among the words of a
+    program that is not one that only reads (PIN_READERS); the word at `script`, an index where the command runs this
+    client as its script (_client_run_index), not counted as a write of the client. A folder holding one, the link's
+    directory or this client's folder, or a parent of either (_names_grant_folder; a parent not for a program that only
+    reads, PARENT_READERS), counts the same where a program that is neither one that only reads nor cd, pushd or popd
+    names it among its words or as a value, past the program's own word and this client's own --dir value (`dir_words`);
+    so does a word of such a program, or a redirection, put together as the command runs whose fixed part is inside
+    either folder (_fixed_inside_grant_folder). The hook holds such a call in every session wired to it
+    (_signing_call)."""
+    if any(_names_grant(j, w) or _fixed_inside_grant_folder(j, w) for w in simple.redirects):
+        return True
+    if any(_writes_out_grant(j, body) for body, _ in simple.heredocs):
+        return True
+    if any(_names_grant(j, v) for w in words for v in _values_given(w)):
+        return True
+    writer = prog_word is None or _program(prog_word) not in PIN_READERS | {"cd", "pushd", "popd"}
+    parents = not _reads_for_parents(prog_word, words)
+    if writer and any(_names_grant_folder(j, w, parents) or _fixed_inside_grant_folder(j, w)
+                      for k, w in enumerate(words) if k not in dir_words and w is not prog_word):
+        return True
+    if writer and any(_names_grant_folder(j, v, parents) for k, w in enumerate(words) if k not in dir_words
+                      for v in _values_given(w)):
+        return True
+    return any(_names_grant(j, w, script=(k == script)) for k, w in enumerate(words)) \
+        and (prog_word is None or _program(prog_word) not in PIN_READERS)
+
+
 def _judge_words(j, words, simple, depth, prev):
     """Judge one command, as its words: the machine's list first, then the defaults, then the command it runs. The
     allow list is checked only at the written level (depth 0), on the words as written (assignments kept), so a
     wrapper around an allowed command is not itself allowed; deny is checked at every level."""
     if depth > GUARD_NESTING_MOST:
+        j.unjudged = True
         j.held("a command nested in shells deeper than the guard reads")
         return
     if depth == 0 and _allowed(j.policy, _keyword_free(words)):
@@ -6178,7 +7081,7 @@ def _push_current(j, dirs, git_dir):
             return
         hit = next((b for b in found if b and j.protected(b)), None)
         if hit:
-            j.held(f"a push to {_flat(hit, 120)}")
+            j.held(f"a push to {_flat(hit, 120)}", "push")
             return
 
 
@@ -6215,9 +7118,9 @@ def _judge_push(j, args, dirs, git_dir, c_opts=()):
                     break
         k += 1
     if forced:
-        j.held("a forced push")
+        j.held("a forced push")                         # of no kind: the owner's at the machine (PHONE_TAKE_KINDS)
     if every:
-        j.held("a push of every branch, main and master among them")
+        j.held("a push of every branch, main and master among them", "push")
     refspecs = operands[1:]
     remote = str(operands[0]) if operands and not operands[0].dyn else None
     if remote is not None and _remote_is_url(remote):
@@ -6243,13 +7146,13 @@ def _judge_push(j, args, dirs, git_dir, c_opts=()):
         src, colon, dst = s.partition(":")
         dst = dst if colon else src                     # a branch deleted (--delete NAME) is named as one pushed
         if colon and not src and not dst:
-            j.held("a push of every matching branch")
+            j.held("a push of every matching branch", "push")
         elif dst in ("HEAD", "@"):
             _push_current(j, dirs, git_dir)
         else:
             name = _norm_ref(dst)
             if name and j.protected(name):
-                j.held(f"a push to {_flat(name, 120)}")
+                j.held(f"a push to {_flat(name, 120)}", "push")
 
 
 def _rule_git(j, words, assigns, simple, depth):
@@ -6311,6 +7214,9 @@ def _rule_git(j, words, assigns, simple, depth):
 _DEPLOYS = {"fly": ("deploy",), "flyctl": ("deploy",), "vercel": ("deploy",), "netlify": ("deploy",),
             "kubectl": ("apply", "delete"), "terraform": ("apply", "destroy"),
             "helm": ("install", "upgrade", "uninstall")}
+# of those, the words that take a deployment away, held as one but of no kind (PHONE_TAKE_KINDS); and terraform's
+# apply -destroy, which destroy stands for
+_DEPLOY_REMOVALS = {"kubectl": ("delete",), "terraform": ("destroy",), "helm": ("uninstall",)}
 
 
 def _rule_deploy(j, words, assigns, simple, depth):
@@ -6319,7 +7225,9 @@ def _rule_deploy(j, words, assigns, simple, depth):
     if hit is None and prog == "vercel" and all(w.startswith("-") for w in said):
         hit = ""                                        # vercel with no command of its own deploys
     if hit is not None:
-        j.held(f"a deployment ({prog}{' ' + hit if hit else ''})")
+        removal = hit in _DEPLOY_REMOVALS.get(prog, ()) or (
+            prog == "terraform" and any(w.partition("=")[0] in ("-destroy", "--destroy") for w in said))
+        j.held(f"a deployment ({prog}{' ' + hit if hit else ''})", None if removal else "deploy")
 
 
 def _rule_rm(j, words, assigns, simple, depth):
@@ -6406,7 +7314,7 @@ _CURL_VALUES = frozenset("AbcCdDeEFhHKmoPQrtTuUwxXyYz")          # its short opt
 
 def _method(j, prog, method):
     if method.dyn or str(method).upper() in _SENDING:
-        j.held(f"sending data out ({prog} with the method {_flat(method, 40)})")
+        j.held(f"sending data out ({prog} with the method {_flat(method, 40)})", "send")
         return True
     return False
 
@@ -6421,14 +7329,14 @@ def _rule_curl(j, words, assigns, simple, depth):
         elif t.startswith("--"):
             name, eq, value = t.partition("=")
             if name in _CURL_DATA:
-                j.held(f"sending data out (curl {name})")
+                j.held(f"sending data out (curl {name})", "send")
                 return
             if name == "--request" and _method(j, "curl", (_Word(value) if eq else nxt)):
                 return
         else:
             for pos, letter in enumerate(t[1:], 1):
                 if letter in "dFT":
-                    j.held(f"sending data out (curl -{letter})")
+                    j.held(f"sending data out (curl -{letter})", "send")
                     return
                 if letter == "X":
                     if _method(j, "curl", _Word(t[pos + 1:]) if t[pos + 1:] else nxt):
@@ -6444,7 +7352,7 @@ def _rule_wget(j, words, assigns, simple, depth):
     for k, w in enumerate(words[1:], 1):
         name, eq, value = str(w).partition("=")
         if name in ("--post-data", "--post-file", "--body-data", "--body-file"):
-            j.held(f"sending data out (wget {name})")
+            j.held(f"sending data out (wget {name})", "send")
             return
         if name == "--method":
             given = _Word(value) if eq else words[k + 1] if k + 1 < len(words) else _Word("")
@@ -6459,7 +7367,7 @@ def _to_remote(j, prog, operands):
     """A copy whose destination (an operand after the first) is on another host: host:path, user@host:path,
     host::module, rsync:// or scp://, or a word that cannot be told."""
     if any(o.dyn or _HOST_PATH.match(str(o)) for o in operands[1:]):
-        j.held(f"sending data out ({prog} to a remote host)")
+        j.held(f"sending data out ({prog} to a remote host)", "send")
 
 
 def _rule_scp(j, words, assigns, simple, depth):
@@ -6477,20 +7385,20 @@ def _rule_rsync(j, words, assigns, simple, depth):
 
 def _rule_sftp(j, words, assigns, simple, depth):
     if _options_and_operands(words[1:], "BbcDFiJloPRSsX")[0]:
-        j.held("sending data out (sftp to a remote host)")
+        j.held("sending data out (sftp to a remote host)", "send")
 
 
 def _rule_nc(j, words, assigns, simple, depth):
-    j.held(f"sending data out ({_program(words[0])})")
+    j.held(f"sending data out ({_program(words[0])})", "send")
 
 
 def _rule_gh(j, words, assigns, simple, depth):
     said = [str(w) for w in words[1:] if not str(w).startswith("-")]
     flat = [str(w) for w in words[1:]]
     if said[:2] in (["gist", "create"], ["gist", "new"], ["release", "upload"]):
-        j.held(f"sending data out (gh {said[0]} {said[1]})")
+        j.held(f"sending data out (gh {said[0]} {said[1]})", "send")
     elif said[:2] == ["release", "create"] and len(said) > 3:       # a tag plus at least one file to upload
-        j.held("sending data out (gh release create with files)")
+        j.held("sending data out (gh release create with files)", "send")
     elif said[:1] == ["api"]:
         method = None
         for i, f in enumerate(flat):
@@ -6499,7 +7407,7 @@ def _rule_gh(j, words, assigns, simple, depth):
                 method = val if eq else (flat[i + 1] if i + 1 < len(flat) else "")
         sends = any(f.partition("=")[0] in ("-f", "-F", "--field", "--raw-field", "--input") for f in flat)
         if sends or (method and method.upper() in _SENDING):
-            j.held("sending data out (gh api, which sends a body or a mutating method)")
+            j.held("sending data out (gh api, which sends a body or a mutating method)", "send")
 
 
 _RULES = dict({"git": _rule_git, "rm": _rule_rm, "find": _rule_find, "curl": _rule_curl, "wget": _rule_wget,
@@ -6516,7 +7424,7 @@ def _judge_write(j, given):
     if j.names_guard(word):
         j.held(GUARD_FILES)
     elif any(j.outside(key) for key in j.paths(word)):
-        j.held(f"writing {_flat(path, 200)}, outside your working folder,")
+        j.held(f"writing {_flat(path, 200)}, outside your working folder,", "write")
 
 
 def _named(seqs):
@@ -6552,14 +7460,17 @@ def _guard_reason(seqs, damaged, step, policy, replied=()):
     return reason
 
 
-def _judge_call(directory, hook, seqs, damaged, replied=()):
+def _judge_call(directory, hook, seqs, damaged, replied=(), found=None):
     """The denial's reason for this call while commands `seqs` are carried out, those `replied` to until this turn ends
     (or while carrying.json cannot be read: `damaged`), or None to let it go on: a shell command judged by its words, a
-    file tool by where it writes, any other tool let through."""
+    file tool by where it writes, any other tool let through. `found`, a list, is given the call's judging (_Judging:
+    the steps it holds, and their kinds) as it is made."""
     if not isinstance(hook, dict) or not isinstance(hook.get("tool_name"), str):
         return _guard_reason(seqs, damaged, "a tool call the hook could not read", None, replied)
     policy = _policy(directory)
     j = _Judging(directory, hook, policy)
+    if found is not None:
+        found.append(j)
     tool = hook["tool_name"]
     given = hook.get("tool_input") if isinstance(hook.get("tool_input"), dict) else {}
     if tool == "Bash":
@@ -6579,43 +7490,120 @@ _UNREAD = object()                          # the hook's input not read yet: _gu
 
 SIGNING_HELD = ("ade_link.py sign and signer are the owner's, run at a terminal of their own: a session's tool call "
                 "never runs them. Leave the step for the owner, and say so.")
+PHONE_TAKE_HELD = ("ade_link.py pin --phone-take is the owner's, run at a terminal of their own: a session's tool call "
+                   "never gives the allowance. Leave it for the owner, and say so; ade_link.py status prints the line "
+                   "they run.")
+PIN_HELD = ("This link's owner_keys.json is the owner's pin of his keys and of what he allows from the page: only "
+            "ade_link.py pin, run by the owner at this machine, writes it, never a session's tool call. Leave it for "
+            "the owner, and say so.")
+UNJUDGED_HELD = ("The hook could not finish judging this call, which names the link's folder, this client or a file "
+                 "the link reads to let a call through, so it is held. Leave it for the owner, and say so.")
+GRANT_HELD = ("This call may write a file the link reads to let a call through: carrying.json or its marker, "
+              "posted.json, remote_policy.json, or this client, ade_link.py. This client writes the first three as "
+              "it runs, and the owner at this machine the policy and the client. Leave it for the owner, and say so.")
+
+
+def _held_unjudged(directory, hook, text):
+    """Where the hook could not finish judging a shell command (longer than it reads, nested deeper, an error or past
+    its time): hold it, printed, if its text names the link's folder, this client or a file the link reads to let a call
+    through, by the text alone with no parsing (the folder and this client by their full paths, link_forms and
+    client_forms; a file by its name anywhere); True where it was denied. Never raises."""
+    try:
+        j = _Judging(directory, hook, None)
+        folded = _fold(text)
+        names = any(form.rstrip("/") in folded for form in j.link_forms) \
+            or any(form in folded for form in j.client_forms) \
+            or any(name in folded for name in GRANT_FILES + (PIN_FILE,))
+        if names:
+            _deny(reason=UNJUDGED_HELD)
+        return names
+    except Exception:  # noqa: BLE001  the hold that applies always never stops a session by failing
+        return False
 
 
 def _signing_call(directory, hook):
-    """The PreToolUse hook's hold that applies whether or not a remote command is carried out: a shell command whose
-    words run this client's sign or signer is denied (printed), in every session wired to the hook. Only a call seen to
-    run one is held: one whose words cannot be read or judged in time is left to the guard of a remote command
-    (_guard_call), so a session works on where judging fails; sign refuses to run without a terminal of its own
-    anyway (sign_terminal). True where the call was denied; it never raises."""
+    """The PreToolUse hook's hold that applies whether or not a remote command is carried out, with or without a server
+    in the link's config (cmd_pretool, pretool_without_link): a shell command whose words run this client's sign or
+    signer, or its pin --phone-take giving the allowance (_gives_phone_take), is denied (printed), in every session
+    wired to the hook; and so is a call that writes the owner's pin, owner_keys.json in the link's directory, where his
+    allowance is kept beside his keys: a file tool by its path (read as _judge_write reads it, and keyed by _key), a
+    shell command whose words name it, but a program that only reads it (_pin_written); and so is one that may write
+    another file the link reads to let a call through, carrying.json or its marker, posted.json or remote_policy.json,
+    or this client, the same ways, or whose words name the link's directory or this client's folder or a parent of
+    either, or a redirection or word put together as the command runs whose fixed part is inside either
+    (_grant_written), this client run as a Python interpreter's script, as its own program or in the hooks' runpy form
+    not counted (_client_run_index). The client's own pin, setup and pair name the link's directory alone, as their
+    --dir value, and go on as before where the command's own program runs the client; run through a wrapper (env, nohup
+    and the like) they are held. Where the hook cannot finish judging a call (a shell command longer than
+    GUARD_COMMAND_MOST or nested deeper than GUARD_NESTING_MOST, an error, or past GUARD_DEADLINE), a shell command
+    whose text names the link's folder or this client by its full path, or one of those files, is held (_held_unjudged),
+    and any other is left to the guard of a remote command (_guard_call), so a session works on where judging fails;
+    sign and pin --phone-take refuse to run without a terminal of their own anyway (sign_terminal). The hold reads a
+    shell command's words and a file tool's path, so a program the session starts, another tool, or a path _key does not
+    join to the file can still write them, as the manual says. A word no path can carry (a lone surrogate, also after a
+    ~ or in a value) or whose links run too deep is read as a path the words cannot tell and holds the call, the rest of
+    it judged (unreadable); a $'...' string ends at a NUL, as bash reads it. True where the call was denied; it never
+    raises."""
     try:
-        if not isinstance(hook, dict) or hook.get("tool_name") != "Bash":
+        if not isinstance(hook, dict):
             return False
+        tool = hook.get("tool_name")
         given = hook.get("tool_input") if isinstance(hook.get("tool_input"), dict) else {}
-        command = given.get("command")
-        if not isinstance(command, str) or len(command) > GUARD_COMMAND_MOST:
+        if tool == "Bash":
+            command = given.get("command")
+            if not isinstance(command, str):
+                return False
+            if len(command) > GUARD_COMMAND_MOST:
+                return _held_unjudged(directory, hook, command)
+        elif tool in FILE_TOOLS:
+            path = next((given[f] for f in ("file_path", "notebook_path") if isinstance(given.get(f), str)
+                         and given[f]), None)
+            if path is None:
+                return False
+        else:
             return False
 
         def judge():
             j = _Judging(directory, hook, _policy(directory))
-            _judge_text(j, command, 0)
-            return j.signing
+            if tool == "Bash":
+                _judge_text(j, command, 0)
+            else:
+                keys = j.paths(_Word(path))
+                j.pin_write = j.pin_key in keys
+                j.grant_write = any(key in j.grant_keys for key in keys)
+            return j
 
-        finished, signing, error = _within(GUARD_DEADLINE, judge)
-        if not finished or error is not None or signing is None:
+        finished, j, error = _within(GUARD_DEADLINE, judge)
+        if not finished or error is not None or j is None:
+            return tool == "Bash" and _held_unjudged(directory, hook, command)
+        if j.signing is not None:
+            _deny(reason=PHONE_TAKE_HELD if j.signing == "pin" else SIGNING_HELD)
+        elif j.pin_write:
+            _deny(reason=PIN_HELD)
+        elif j.grant_write or j.unreadable:
+            _deny(reason=GRANT_HELD)
+        elif j.unjudged and tool == "Bash":
+            return _held_unjudged(directory, hook, command)
+        else:
             return False
-        _deny(reason=SIGNING_HELD)
         return True
     except BaseException:  # noqa: BLE001  the hold that applies always never stops a session by failing
         return False
 
 
-def _guard_call(directory, hook):
+def _guard_call(directory, hook, link=None, started=None):
     """The PreToolUse hook's second decision, once no stop holds the call: deny it (printed) where a command is
     carried out for the session the call comes from and the call is a step that is the owner's alone; else nothing,
     as without this guard. `hook` is the hook's input, None where it could not be read, or _UNREAD, when it is read
     here, within HOOK_DEADLINE, only once a command is carried out. A command taken for a session that could not be
     told or is no longer live, a call that names no session, and a carrying.json that cannot be read hold every
-    session. A call not judged within GUARD_DEADLINE is denied. Exits 0, whatever it meets."""
+    session. A call not judged within GUARD_DEADLINE is denied. The one call that goes on though the guard would deny
+    it is the step the owner approved from the page, as he allowed it, once (_phone_taken); the owner is then told,
+    by `link` within what the hook's time from `started` leaves (_tell_soon), or later (_tell_taken). Claude Code may
+    run two of these hooks for one call (ade_link.settings.json runs the program and its shell line) and takes a
+    denial from either: the one that marks the step used marks it by the call's tool_use_id and tells him; the other,
+    given that same id within PRETOOL_TIMEOUT of the mark, lets that same call on, marking and telling nothing
+    (_THIS_CALL). Exits 0, whatever it meets."""
     try:
         try:
             record, damaged = _carrying(directory), None
@@ -6639,16 +7627,205 @@ def _guard_call(directory, hook):
         if record is not None and not seqs:
             return 0                                # carried out by another session of this directory
         replied = {s for s in seqs if record[str(s)]["replied"] is not None}
-        finished, reason, error = _within(GUARD_DEADLINE, lambda: _judge_call(directory, hook, seqs, damaged, replied))
+        judged = []
+        finished, reason, error = _within(GUARD_DEADLINE, lambda: _judge_call(directory, hook, seqs, damaged, replied,
+                                                                              judged))
         if not finished or error is not None:
             step = "a tool call the guard met an error judging" if finished else \
                 "a tool call the guard could not judge in time"
             reason = _guard_reason(seqs, damaged, step, None, replied)
+        elif reason and record is not None and judged:
+            taken = _phone_taken(directory, hook, sid, record, bound, judged[0])
+            if taken is True:
+                _tell_soon(link, sid, started)      # never raises, nor waits past the hook's time
+                return 0                            # the step the owner approved from the page: it goes on, once
+            if taken is _THIS_CALL:
+                return 0                            # the same call, marked by its other hook, which tells him
+            if taken is False:
+                reason += " " + PHONE_TAKE_ASK
         if reason:
             _deny(reason=reason)
     except BaseException:  # noqa: BLE001  with a command carried out, a call the guard could not judge is held
         _deny(reason=GUARD_FAILED)
     return 0
+
+
+# what a denial adds where every step the call holds is of a kind the owner's allowance covers for its session, and no
+# step he approved matches it
+PHONE_TAKE_ASK = ("The owner allowed this session to take it on his Approve from the page; to ask him, ade_link.py "
+                  "post question TEXT --to owner --step FILE, FILE holding this exact command, from this folder.")
+STEP_MARK_DEADLINE = 2      # seconds the guard's mark of an approved step as used may take, its judging done: under the
+                            # hook's 15 with the stop's 6 and the judgings' 3 each
+_THIS_CALL = object()       # _phone_taken's word, and _step_used's: the step was marked used for the very call this
+                            # hook is run for, by another hook of that call
+
+
+def _hook_call(hook):
+    """The tool call a PreToolUse hook's input names, by its tool_use_id: Claude Code gives each hook of one call that
+    call's id, and a call made again a new one. None where the input names none of its form (_call_shape)."""
+    given = hook.get("tool_use_id")
+    return given if _call_shape(given) else None
+
+
+def _marked_by(step, call, now):
+    """Whether `step` was marked used by the tool call `call` (_hook_call), as its record names it, and that call can
+    still be deciding: `now` within PRETOOL_TIMEOUT of the mark, so that a later call naming the same id (where a
+    provider gives one again) is held, as another call is. Never where the hook named none (None): without an id, the
+    first hook's mark stands and every other hook is held."""
+    return bool(call) and step.get("call") == call and now - step["used"] <= PRETOOL_TIMEOUT
+
+
+def _phone_taken(directory, hook, sid, record, bound, j):
+    """For a call the guard would deny, judged as `j`, while `record` (carrying.json as read) holds the session `sid`
+    (`bound` reading an entry's session as _guard_call binds it): True where it goes on, the step the owner approved
+    from the page, marked used now by this call (_step_used); _THIS_CALL where it goes on as the very call that step
+    was marked used for, by another of its hooks (_guard_call), marked and told no more; False where it is held,
+    every step it holds being of a kind his allowance covers for this session but no step he approved matching it;
+    None where it is held as it is. It goes on only where all hold: a Bash call of the main thread (no agent_id) that
+    names its session; every step it holds of a kind (PHONE_TAKE_KINDS), judged with this machine's
+    remote_policy.json read (while it cannot be, a step its deny list names, of no kind, cannot be told from the
+    defaults' own); his allowance (pin --phone-take) naming that session and covering them; an entry carried for that
+    session with a step he approved (take, _approve_step) not used, or used by this very call within PRETOOL_TIMEOUT
+    of its mark (_marked_by), its until later than now, covering them, its hash that of the call's command and folder
+    (_step_match), the key that signed his Approve still one his allowance names; and, unused, that step marked used
+    by this call, on a fresh read under the carry lock."""
+    # a session not named, no step held, or a step of no kind, is never one the allowance covers (_allows: its kinds
+    # are known ones alone); a call whose command or folder cannot be read (no match) is never a step's, whose hash
+    # is always there
+    if not isinstance(hook, dict) or hook.get("tool_name") != "Bash" or hook.get("agent_id") is not None \
+            or j.policy.damaged:
+        return None
+    try:
+        allowance = _allowance(_pinned_at(directory))
+    except PinDamaged:
+        return None
+    if not _allows(allowance, sid, j.kinds):
+        return None
+    # a call judged to hold steps of a kind alone was a Bash command whose words were read (_judge_call)
+    match = _step_match(hook["tool_input"]["command"], hook.get("cwd"))
+    call = _hook_call(hook)
+    now = int(time.time())
+    for seq in sorted(record, key=int):
+        entry = record[seq]
+        step = entry.get("step")
+        if bound(entry) != sid or step is None or step["used"] is not None and not _marked_by(step, call, now) \
+                or step["until"] <= now or step["match"] != match or not all(k in step["kinds"] for k in j.kinds) \
+                or step["key"] not in allowance["keys"]:
+            continue
+        if step["used"] is not None:
+            return _THIS_CALL                       # marked by another hook of this very call: on, not marked again
+        return _step_used(directory, seq, sid, step, call) or None
+    return False
+
+
+def _step_used(directory, seq, sid, step, call):
+    """Whether the approved `step` of entry `seq`, carried for `sid` and unused as read, goes on for the tool call
+    `call` (_hook_call), on a fresh read under the carry lock, within STEP_MARK_DEADLINE: True where that read holds
+    that very step still unused for that session, now marked used by that call, and the owner not yet told (noted
+    false, until _tell_taken tells him); _THIS_CALL where it holds the step marked since by another hook of that very
+    call (_marked_by), which marks nothing more; else False. Never raises."""
+    def mark():
+        lock = _carry_lock(directory)
+        try:
+            record = _carrying(directory)
+            entry = record.get(seq) or {}              # gone since: no session, no step
+            if entry.get("session") != sid:
+                return False
+            if entry.get("step") != step:              # marked since: on for another hook of this very call alone
+                return _THIS_CALL if _marked_by(entry.get("step") or {}, call, int(time.time())) else False
+            entry["step"] = dict(step, used=int(time.time()), noted=False, call=call)
+            _write(os.path.join(directory, CARRYING), json.dumps(record))
+            return True
+        finally:
+            if lock is not None:
+                os.close(lock)
+    _, done, _ = _within(STEP_MARK_DEADLINE, mark)     # not finished, or failed: no value, so not done
+    return done if done is True or done is _THIS_CALL else False
+
+
+# the note to the owner once the guard let a step he approved through (_tell_taken): {seq} the answer's, the command
+# and its folder as the question asked them, the time in UTC
+TOOK_NOTE = "Took the step you approved in your answer [{seq}]: {command}, in {folder}, at {when} UTC."
+TOOK_NOTE_SHORT = "Took the step you approved in your answer [{seq}], at {when} UTC."    # its question's record gone,
+                                                                                         # or the note past the rules
+NOTE_DEADLINE = 3           # seconds the hook gives the note, at most, of what its time leaves (PRETOOL_BUDGET)
+PRETOOL_BUDGET = 13         # seconds of the PreToolUse hook's 15 its run may take, the note's included, all told
+
+
+def _tell_soon(link, sid, started):
+    """The hook's note to the owner of the step it let through for `sid` (_tell_taken), given what is left of its
+    time from `started` (PRETOOL_BUDGET), NOTE_DEADLINE at most: the step never waits on it longer, and one not told in
+    that time stays noted false, for the session's reply or its turn's end. Nothing goes on its standard output, which
+    holds the hook's decision. Never raises."""
+    try:
+        if link is None:
+            return
+        left = NOTE_DEADLINE if started is None else min(NOTE_DEADLINE, started + PRETOOL_BUDGET - time.monotonic())
+        if left > 0:
+            _within(left, lambda: _tell_taken(link, lambda seq, entry: entry["session"] == sid))
+    except BaseException:  # noqa: BLE001  the step goes on whatever its note meets
+        pass
+
+
+def _tell_taken(link, which):
+    """Each step the guard let through that the owner is not yet told of (noted false), of the entries `which(seq,
+    entry)` picks, told in a note to him, sealed where encryption is on (_send_event), and marked noted once the ADE
+    has it: TOOK_NOTE, the command and folder as the question that asked it holds them (posted.json, by the step's
+    hash). Its client_id is made of the step's own, so a note posted twice is one. [(seq, the note's seq, "?" where the
+    ADE's answer names none, or None where it did not go)]. Never raises: what cannot be read or posted is not told."""
+    told = []
+    try:
+        record = _carrying(link.dir)
+    except (OSError, ValueError):
+        return told
+    for seq, entry in sorted(record.items(), key=lambda item: int(item[0])):
+        step = entry.get("step")
+        if step is None or step.get("noted") is not False or not which(seq, entry):
+            continue
+        body = {"client_id": hashlib.sha256(f"took:{link.link_id}:{seq}:{step['used']}".encode()).hexdigest()[:32],
+                "kind": "note", "to": "owner", "ref": int(seq), "text": _took_note(link, seq, step)}
+        try:
+            code, answer, _ = _send_event(link, body)
+        except Exception:  # noqa: BLE001  not told now: told by the next reply or turn's end
+            code = answer = None
+        if code is not None or not isinstance(answer, dict):
+            told.append((seq, None))
+            continue
+        try:
+            _mark_noted(link.dir, seq, step["used"])
+        except (OSError, ValueError):
+            pass                                    # told; noted on a later read, by the same note again
+        told.append((seq, answer.get("seq") or "?"))
+    return told
+
+
+def _took_note(link, seq, step):
+    """The note of a step taken: TOOK_NOTE, or TOOK_NOTE_SHORT where no question of this link's record (posted.json)
+    asked it, or its words would be past a note's rules (_event_refusal)."""
+    when = time.strftime("%H:%M:%S", time.gmtime(step["used"]))
+    asked = next((v["step"] for v in _mapping(link, "posted.json").values() if isinstance(v, dict)
+                  and isinstance(v.get("step"), dict) and v["step"].get("match") == step["match"]), None)
+    if asked is not None and isinstance(asked.get("command"), str) and isinstance(asked.get("cwd"), str):
+        text = TOOK_NOTE.format(seq=seq, command=asked["command"], folder=asked["cwd"], when=when)
+        if _event_refusal("note", text) is None:
+            return text
+    return TOOK_NOTE_SHORT.format(seq=seq, when=when)
+
+
+def _mark_noted(directory, seq, used):
+    """The step of entry `seq`, used at `used`, marked noted (the owner told), under the carry lock and on a fresh
+    read that holds it so. An OSError or a ValueError where carrying.json cannot be read or written."""
+    lock = _carry_lock(directory)
+    try:
+        record = _carrying(directory)
+        step = (record.get(seq) or {}).get("step")
+        if step is None or step["used"] != used or step.get("noted") is not False:
+            return
+        step["noted"] = True
+        _write(os.path.join(directory, CARRYING), json.dumps(record))
+    finally:
+        if lock is not None:
+            os.close(lock)
 
 
 def _status_guard(link):
@@ -6668,6 +7845,10 @@ def _status_guard(link):
         else:
             print(f"ADE: replied to remote command [{seq}] at {_when(entry['replied'])}, for {whom}: the steps the "
                   "owner takes only at this machine are held until that turn ends")
+        step = entry.get("step")
+        if step is not None and step.get("noted") is False:
+            print(f"ADE: the step the owner approved in his answer [{seq}] was taken at {_when(step['used'])}, and he "
+                  f"is not told yet: the session's reply to [{seq}], or its turn's end, tells him")
     policy = _policy(link.dir)
     if policy.damaged:
         print(f"ADE: {REMOTE_POLICY} cannot be read ({policy.damaged}): only the defaults hold")
@@ -6916,6 +8097,20 @@ def cmd_status(link, args):
         keys = None
     if isinstance(keys, dict) and keys.get("second_screen") is True:
         print(SECOND_SCREEN_ON)
+    allowance = _allowance(keys)
+    if allowance is not None:
+        print(f"ADE: session {allowance['session']} may take {_phrases(allowance['kinds'])} on the owner's Approve "
+              f"from the page, signed with a key named here ({', '.join(allowance['keys'])}), allowed at "
+              f"{_when(allowance['at'])}; pin --phone-take off takes it away")
+        print(PHONE_TAKE_OPEN.format(session="this session"))
+    session = _taking_session()
+    if session is None:
+        print("ADE: the Claude Code session this runs in cannot be told")
+    else:
+        # the line the owner runs at a terminal of his own to allow this session a step from the page
+        line = shlex.join(_pin_argv(link) + ["--phone-take", "KINDS", "--key", "FINGERPRINT", "--session", session])
+        print(f"ADE: this is Claude Code session {session}; the owner allows it a step from the page at a terminal "
+              f"of his own: {line}")
     keys = keys.get("keys") if isinstance(keys, dict) else []
     for k in keys:
         if isinstance(k, dict):
@@ -6971,7 +8166,10 @@ def _deny(link=None, reason=None):
 
 def pretool_without_link(directory, link=None):
     """The hook where the decision cannot be reached from the ADE: deny while the directory records a stop seen, and
-    deny if even that cannot be told; else the guard of what a remote command may do decides (_guard_call)."""
+    deny if even that cannot be told; else the hold that applies always (_signing_call), on the call as read within
+    HOOK_DEADLINE (the ruling of 21:58 UTC on 2026-11-23, M3: a config.json without its url, or one that cannot be
+    read, turns it off no more), and then the guard of what a remote command may do (_guard_call); where reading the
+    call here fails, the guard reads it, as before, and holds it on its own error."""
     try:
         held = seen_stop(directory) is not None
     except BaseException:  # noqa: BLE001  seen_stop does not raise; if it ever did, a stop cannot be ruled out
@@ -6979,7 +8177,14 @@ def pretool_without_link(directory, link=None):
     if held:
         _deny(link)
         return 0
-    return _guard_call(directory, _UNREAD)
+    try:
+        finished, hook, error = _within(HOOK_DEADLINE, _hook_input)
+    except BaseException:  # noqa: BLE001  the guard reads it then, and a command carried out holds on its error
+        return _guard_call(directory, _UNREAD)
+    hook = hook if finished and error is None else None             # None: not read in time, as cmd_pretool gives it
+    if _signing_call(directory, hook):
+        return 0
+    return _guard_call(directory, hook)
 
 
 def _hook_input():
@@ -7054,9 +8259,10 @@ def cmd_pretool(link, args):
     on_time = finished and error is None and isinstance(decision, tuple)
     deny, since = decision if on_time else _local_decision(link, got.get("hook") or {})
     if not deny:
-        if _signing_call(link.dir, got.get("hook")):        # sign and signer: held always
+        if _signing_call(link.dir, got.get("hook")):        # sign, signer, the allowance and the pin: held always
             return 0
-        return _guard_call(link.dir, got.get("hook"))      # its input as read; None where it was not read in time
+        # its input as read; None where it was not read in time
+        return _guard_call(link.dir, got.get("hook"), link, started)
     _deny(link)
     left = HOOK_DEADLINE - (time.monotonic() - started)
     if on_time and left > 0.2:
@@ -13793,30 +14999,30 @@ def _sign_foreground(fd):
         return None
 
 
-def sign_terminal(folder=None):
-    """The terminal of the owner's own window, or SignRefused: /dev/tty must open; standard input and output must be
-    that terminal, this process's controlling one; its foreground process group must be this process's, and this
-    process must lead that group; and no forebear may be a coding agent (sign_agent_forebear). A program a coding agent
-    starts through its tool runs with no terminal, with pipes for its input and output, or in the agent's group, and
-    so is refused."""
+def sign_terminal(folder=None, nothing="Nothing was signed."):
+    """The terminal of the owner's own window, or SignRefused, its words ending `nothing`: /dev/tty must open;
+    standard input and output must be that terminal, this process's controlling one; its foreground process group must
+    be this process's, and this process must lead that group; and no forebear may be a coding agent
+    (sign_agent_forebear). A program a coding agent starts through its tool runs with no terminal, with pipes for its
+    input and output, or in the agent's group, and so is refused."""
     try:
         fd = os.open("/dev/tty", os.O_RDWR | getattr(os, "O_NOCTTY", 0))
     except OSError:
-        raise SignRefused("Run this at a terminal of your own: it has none. Nothing was signed.") from None
+        raise SignRefused(f"Run this at a terminal of your own: it has none. {nothing}") from None
     try:
         groups = [_sign_foreground(f) for f in (0, 1, fd)]
         if None in groups:
             raise SignRefused("Run this at a terminal of your own, reading from it and writing to it: its input or "
-                              "output is not that terminal. Nothing was signed.")
+                              f"output is not that terminal. {nothing}")
         if any(g != os.getpgrp() for g in groups):
-            raise SignRefused("Run this in the foreground of a terminal of your own: it is not. Nothing was signed.")
+            raise SignRefused(f"Run this in the foreground of a terminal of your own: it is not. {nothing}")
         if os.getpgrp() != os.getpid():
             raise SignRefused("Run this from your shell, not from inside another program: it does not lead its "
-                              "process group. Nothing was signed.")
+                              f"process group. {nothing}")
         agent = sign_agent_forebear(folder)
         if agent is not None:
             raise SignRefused(f"Run this at a terminal of your own: it was started by a coding agent ({agent}). "
-                              "Nothing was signed.")
+                              f"{nothing}")
     except BaseException:
         os.close(fd)
         raise
@@ -14859,14 +16065,21 @@ def _prompt_questions(given):
     return shown if n <= PROMPT_OPTIONS_MOST else None
 
 
-def _prompt_value(hook, deadline, questions=None):
+def _prompt_value(hook, deadline, questions=None, kept=None, cwd=None):
     """The item as the hook posts it: the tool, its whole input as Claude Code gave it, Claude Code's session id and
-    agent id (null for the main thread), for AskUserQuestion its questions numbered, and the deadline. Its text is its
-    canonical JSON (RFC 8785), the client's own form, so the digest the owner signs over is of one text only."""
+    agent id (null for the main thread), for AskUserQuestion its questions numbered, the deadline, and for a step the
+    guard keeps for the owner at the machine that his allowance lets him answer from the list, the phrases of its kinds
+    (`kept`) and the folder its call runs in (`cwd`, the hook's own, absolute), so his Approve is of that call in that
+    folder. Its text is its canonical JSON (RFC 8785), the client's own form, so the digest the owner signs over is of
+    one text only."""
     value = {"tool": hook.get("tool_name"), "input": hook.get("tool_input"), "session_id": hook.get("session_id"),
              "agent_id": hook.get("agent_id"), "deadline": deadline}
     if questions is not None:
         value["questions"] = questions
+    if kept is not None:
+        value["kept"] = kept
+    if cwd is not None:
+        value["cwd"] = cwd
     return value
 
 
@@ -14944,14 +16157,19 @@ def _prompt_reason(hook, questions, refusal, mode, keys):
     return None
 
 
-def _prompt_kept(directory, hook):
+def _prompt_kept(directory, hook, found=None):
     """Whether the guard keeps this call for the owner at the machine: the steps TAKE_GUARD names, judged as the
     PreToolUse hook judges a call while a remote command is carried out (_judge_call), Claude Code's settings and the
     guard's own files among them, since a step the owner allows only in person is never taken on a remote word, and
     the passkey signs a payload a page composed. A call not judged within GUARD_DEADLINE, or whose judging meets an
-    error, is kept."""
-    finished, reason, error = _within(GUARD_DEADLINE, lambda: _judge_call(directory, hook, [0], None))
-    return not finished or error is not None or reason is not None
+    error, is kept. `found`, a list, is given the judging of a kept call (_Judging: the steps it holds, their kinds,
+    and this machine's list as read) where it ended in time."""
+    judged = []
+    finished, reason, error = _within(GUARD_DEADLINE, lambda: _judge_call(directory, hook, [0], None, (), judged))
+    kept = not finished or error is not None or reason is not None
+    if found is not None and kept and finished and error is None and judged:
+        found.append(judged[0])
+    return kept
 
 
 def _prompt_match(tool, given):
@@ -15071,11 +16289,13 @@ def _prompt_send(link, body, deadline):
     raise last
 
 
-def _prompt_post(link, hook, mode, text, deadline, look, event="PermissionRequest", questions=None):
+def _prompt_post(link, hook, mode, text, deadline, look, event="PermissionRequest", questions=None, kinds=None):
     """Post one item, kind prompt, to the owner: its text sealed where `mode` seals (the slot binds it to its kind and
     its client_id), else in the clear (only an item to look at); kept in prompts.json before it is posted, so a report
     that comes first finds it, and given its seq after. The entry, or None where it was not posted, or where a report
-    came before its seq was known (then reported here, at once)."""
+    came before its seq was known (then reported here, at once). `kinds`, for a step the guard keeps that the owner's
+    allowance lets him answer: its kinds, which the entry keeps, read against the allowance again before his Approve
+    allows it (_prompt_claim)."""
     cid = uuid.uuid4().hex
     body = {"client_id": cid, "kind": "prompt", "to": "owner", "text": text, "deadline": deadline, "look": bool(look)}
     if mode[0] == "seal":
@@ -15091,7 +16311,8 @@ def _prompt_post(link, hook, mode, text, deadline, look, event="PermissionReques
              "match": _prompt_match(tool, hook.get("tool_input")) if isinstance(tool, str) else None,
              "digest": "sha256:" + hashlib.sha256(body["text"].encode("utf-8")).hexdigest(),
              "numbering": _prompt_numbering(questions), "deadline": deadline, "look": bool(look), "reported": None,
-             "waiting": os.getpid() if event == "PermissionRequest" and not look else None, "ended": None}
+             "waiting": os.getpid() if event == "PermissionRequest" and not look else None, "ended": None,
+             "kinds": kinds}
     try:
         _prompt_update(link, lambda items: items.append(entry))
     except (OSError, ValueError):
@@ -15404,7 +16625,11 @@ def prompt_unanswered(deadline):
 
 def _prompt_claim(link, entry, text):
     """Claim the owner's answer to the item, check it (verify_prompt_answer) and decide (prompt_decision): the
-    decision, None to print nothing, or "again" where the ADE says the prompt is still open or gave no answer."""
+    decision, None to print nothing, or "again" where the ADE says the prompt is still open or gave no answer. For a
+    step the guard keeps (the entry's kinds), an Approve allows it only where it is claimed before its payload's
+    expires_at, with no grace past it (as take takes a step), the owner's allowance, read again, still names its
+    session and covers them, and the key that signed it counts (_key_refusal): else nothing is printed, and the prompt
+    stays where Claude Code shows it."""
     try:
         answer = link.request("POST", f"/prompts/{int(entry['seq'])}/claim", {"instance": _instance(link)},
                               timeout=TIMEOUT)
@@ -15418,15 +16643,36 @@ def _prompt_claim(link, entry, text):
         return "again"
     except (OSError, ValueError):
         return None
+    now = int(wall())                       # this session's own time of its claim, never the ADE's
     try:
-        payload = verify_prompt_answer(link, entry, answer)
+        payload = verify_prompt_answer(link, entry, answer, now)
         posted = json.loads(text)
     except NotVerified as e:
         _prompt_note(link, f"[{int(entry['seq'])}] not verified: {e}")
         return None
     except (OSError, ValueError, RecursionError):
         return None
-    return prompt_decision(posted, payload["text"])
+    decision = prompt_decision(posted, payload["text"])
+    if isinstance(decision, dict) and decision.get("behavior") == "allow" and entry.get("kinds") is not None:
+        if payload["expires_at"] <= now:
+            _prompt_note(link, f"[{int(entry['seq'])}] not allowed: his answer's life ended at "
+                               f"{_when(payload['expires_at'])}, before this claim")
+            return None
+        try:
+            keys = pinned(link)
+        except PinDamaged:
+            keys = None
+        allowance = _allowance(keys)
+        if not _allows(allowance, entry.get("session"), entry["kinds"]):
+            _prompt_note(link, f"[{int(entry['seq'])}] not allowed: the owner's allowance no longer covers its step")
+            return None
+        credential = answer.get("signature") if isinstance(answer.get("signature"), dict) else {}
+        signer = next((k for k in keys["keys"] if k["credential_id"] == credential.get("id")), None)
+        why = _key_refusal(allowance, signer["fingerprint"] if signer else None, entry["kinds"], credential)
+        if why is not None:
+            _prompt_note(link, f"[{int(entry['seq'])}] not allowed: {why}")
+            return None
+    return decision
 
 
 def _prompt_held(link, client_id):
@@ -15545,7 +16791,11 @@ def _prompt_request(link, hook):
 
 def _prompt_posted(link, hook):
     """The prompt posted for the owner to answer, (its entry, its text), or None where it is an item to look at (posted
-    so, at once) or could not be posted."""
+    so, at once) or could not be posted. A step the guard keeps for him at the machine is an item to look at, but where
+    every step it holds is of a kind (PHONE_TAKE_KINDS), judged with this machine's remote_policy.json read, it is the
+    main thread's, its hook names the absolute folder its call runs in (cwd), and his allowance (pin --phone-take)
+    names its session and covers them: then it goes for him to answer, saying so ("kept", the phrases of its kinds,
+    and "cwd", that folder, which the digest his Approve signs covers)."""
     tool, given = hook.get("tool_name"), hook.get("tool_input")
     if not isinstance(tool, str) or not tool:
         return None
@@ -15562,13 +16812,30 @@ def _prompt_posted(link, hook):
         keys = pinned(link)
     except PinDamaged:
         keys = None
-    why = _prompt_reason(hook, questions, refusal, mode, keys)
-    if why is None and _prompt_kept(link.dir, hook):
+    why, kinds = _prompt_reason(hook, questions, refusal, mode, keys), None
+    judged = []
+    if why is None and _prompt_kept(link.dir, hook, judged):
         why = "a step the guard keeps for the owner at the machine"
+        held = judged[0].kinds if judged else []
+        cwd = hook.get("cwd")
+        if held and None not in held and not judged[0].policy.damaged and hook.get("agent_id") is None \
+                and isinstance(cwd, str) and os.path.isabs(cwd) \
+                and _allows(_allowance(keys), hook.get("session_id"), held):
+            kinds = [k for k in PHONE_TAKE_KINDS if k in held]
+            value = _prompt_value(hook, deadline, questions, kept=[PHONE_TAKE_PHRASES[k] for k in kinds], cwd=cwd)
+            try:
+                text = canonical(value).decode("utf-8")
+                refusal = prompt_text_refusal(value, text)
+            except (TypeError, ValueError, RecursionError):
+                text, refusal = None, "an input with no canonical form"
+            if refusal:
+                why, kinds = f"its text holds {refusal}" if not refusal.startswith("The ") else refusal, None
+            else:
+                why = None
     if why is not None:
         _prompt_look(link, hook, mode, None if refusal else text, deadline, why)
         return None
-    entry = _prompt_post(link, hook, mode, text, deadline, False, questions=questions)
+    entry = _prompt_post(link, hook, mode, text, deadline, False, questions=questions, kinds=kinds)
     return None if entry is None else (entry, text)
 
 
@@ -15851,11 +17118,13 @@ def _main(argv=None):
     p.description = ("Ask the owner anything with question --to owner (post question \"...\" --to owner), which they "
                      "answer signed. A waiting to them says only that this session is blocked on them: their devices "
                      "are told once that a session waits, and it stays listed as waiting until this session posts "
-                     "again or they close it.")
+                     "again or they close it. With --step FILE, a question for one step the guard keeps for them at "
+                     "the machine, FILE holding the exact command, asked from the folder it will run in.")
     p.add_argument("kind", choices=("step", "question", "waiting", "done", "note"))
     p.add_argument("text")
     p.add_argument("--to")
     p.add_argument("--ref", type=int)
+    p.add_argument("--step", metavar="FILE")            # a question to the owner for one step (_step_question)
     p = add("checkpoint")
     p.add_argument("file")
     p.add_argument("--force", action="store_true")
@@ -15881,6 +17150,9 @@ def _main(argv=None):
     p = add("pin")
     p.add_argument("--add", action="append", metavar="FINGERPRINT")
     p.add_argument("--second-screen", choices=("on", "off"))           # the rule kept beside the pinned keys
+    p.add_argument("--phone-take", metavar="KINDS|off")                # the owner's allowance kept beside them too,
+    p.add_argument("--key", action="append", metavar="FINGERPRINT")    # the pinned keys whose Approve counts for it,
+    p.add_argument("--session", metavar="ID")                          # and the live session it names
     p = add("e2e")
     p.add_argument("--reset", action="store_true")      # on the owner's word, in the session's own window
     for name in ("show", "take", "working"):

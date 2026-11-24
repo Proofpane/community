@@ -615,6 +615,34 @@ describe("one press on Approve: a tab shown again, the panel closed, offline, an
     expect(sent("/api/ade/link/commands")).toHaveLength(0);
   });
 
+  // A locked tab's touch signs before the words are read, and Undo's window is the reading: an item whose JSON writes
+  // as an escape a character the rule on characters refuses opens to plain ASCII, and what the card would show reads
+  // otherwise than the call is. Its words are not shown, so what was signed is not sent.
+  for (const [name, command] of [
+    ["a solidus drawn over a character (U+0338)", `r${String.fromCodePoint(0x0338)}m -rf build`],
+    ["a stroke drawn over a character (U+0336)", `r${String.fromCodePoint(0x0336)}m -rf build`],
+    ["an accent after its letter, the text not in normal form C (U+0301)", `rm -rf builde${String.fromCodePoint(0x0301)}`],
+    ["a selector at the text's start (U+FE0F)", `${String.fromCodePoint(0xfe0f)}rm -rf build`],
+  ]) {
+    it(`sends nothing, and says so, where the words a locked tab's touch opened are a call whose command holds ${name}, written as an escape`, async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      fake.state = "locked";
+      await keysView();
+      const text = JSON.stringify({ ...BASH, input: { command } }).replace(/[^\x00-\x7f]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+      expect(text).toMatch(/^[\x20-\x7e]+$/);
+      showing(sessions({ prompts: [prompt({}, { text: sealedBy("L1", "prompt", PROMPT_CID, text) })] }));
+      approvals();
+      fireEvent.click(await preparedApprove());
+      await vi.waitFor(() => expect(fake.unlockFrom).toHaveBeenCalledTimes(1));
+      expect(await screen.findByText(/Its words did not open here: nothing was sent\./)).toBeTruthy();
+      await stepped(12);
+      expect(sent("/api/ade/link/commands")).toHaveLength(0);
+      expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+      expect(screen.queryByLabelText("Its input, whole")).toBeNull();
+      expect(document.body.textContent).not.toContain("rf build");
+    });
+  }
+
   for (const how of ["Escape", "a press on the backdrop"]) {
     it(`sends nothing where the panel is closed with ${how} inside Undo's window`, async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });

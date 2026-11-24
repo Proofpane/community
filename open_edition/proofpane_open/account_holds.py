@@ -3,8 +3,8 @@ encryption's rule
 (e2e_keys.cancellers): the account's rule is its own function, and a test compares the two where they govern the same
 situation (tests/test_account_hold_rule.py). A thin wrapper at the end keeps a waiting change in account_pending, the
 sets of its placement (Placed) and the change as the rule reads it in one exact form each, and reads them back for the
-rule (tests/test_account_pending.py). Nothing in the app calls this module yet; the change that places a
-held account change will keep its row through put_pending, and the cancel will read it through pending_cancellers.
+rule (tests/test_account_pending.py). Deleting the account (account_delete.py) is the one change built that waits
+here: it keeps its row through put_pending, and its cancel reads it through pending_cancellers.
 
 The credentials are the password ("password"), each passkey (its id), and the recovery code ("recovery"). The admin,
 who makes the admin's recovery, is "admin" and is no credential. In the standard tier the password, every passkey and
@@ -30,8 +30,8 @@ STANDARD, HIGH = "standard", "high"
 TIERS = (STANDARD, HIGH)
 PASSWORD, RECOVERY, ADMIN = "password", "recovery", "admin"
 
-# the changes that wait in the security slot (deleting the account is not built; it is named here so
-# that the rule can say who would cancel it)
+# the changes that wait in the security slot (deleting the account, account_delete.py, is the one built; the others
+# are named here so that the rule can say who would cancel each)
 ADD_PASSKEY = "add-passkey"
 KEEP_ONLY = "keep-only"                     # removes passkeys, and may change or remove the password and the code
 CHANGE_PASSWORD = "change-password"

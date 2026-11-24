@@ -702,6 +702,14 @@ export interface LinkView {
   /** its signing window open now, from this tab or any other, with the place of the last instruction stored under it
    *  and how many it has not taken; null for none */
   delegation?: LinkWindow | null;
+  /** the fingerprints of the owner keys it reports it pinned, with its heartbeat or its History list: [] where it pins
+   *  none, null where it has never reported them; none from an older server */
+  pins?: string[] | null;
+  /** what its client reports with its heartbeat of the owner's allowance, given at the machine, to take the steps its
+   *  guard keeps for the owner on an Approve from the page: their kinds, the fingerprints of the owner keys whose
+   *  Approve counts, and when it was given (never the session it was given for); null where it reports none, which it
+   *  does while that session is not live; none from an older server */
+  phone_take?: { kinds: string[]; keys: string[]; at: number } | null;
 }
 
 /** A link's open signing window as the links list gives it (link_commands.open_windows). */
@@ -894,6 +902,43 @@ export interface ConnectedApp {
   last_used_at: number | null;
   last_net: string | null;
   proposals_waiting: number;
+  /** whether the owner let sessions link through it (the server's ade/connector_link.py): off for a new connection */
+  links: boolean;
+}
+
+/** One post of a session linked through a connected app (the server's ade/connector_link.py): the session's own words,
+ *  held to the rules a connected app's words are held to. `ref`: the question a done or a note of its own closed;
+ *  `closed_at` and `closed_by`: when a question was closed, and by whom ("owner" on the page, or "post:SEQ", one of the
+ *  session's own posts). Times are unix seconds. */
+export interface ConnectorLinkPost {
+  seq: number;
+  at: number;
+  kind: "step" | "note" | "question" | "waiting" | "done";
+  text: string;
+  ref: number | null;
+  closed_at: number | null;
+  closed_by: string | null;
+}
+
+/** A session linked through a connected app, as Linked sessions lists it: no link of the session channel's (LinkView),
+ *  since it holds no key and takes nothing the owner signs. Its name is its own word (`named_by`), given in each of its
+ *  calls, and `app` is the connected app that carried it, by the name that app calls itself. It is heard only when it
+ *  calls (`heard_at`). `posts`: how many of its posts the server keeps; `last`: the newest; `questions`: those still
+ *  open; `stop_asked_at`: when the owner asked it to stop, a request it reads in fixed words. */
+export interface ConnectorLink {
+  id: string;
+  name: string;
+  named_by: "session";
+  app: { id: string; name: string };
+  linked_at: number;
+  heard_at: number | null;
+  checkpoint: Record<string, unknown> | null;
+  checkpoint_version: number;
+  checkpoint_at: number | null;
+  posts: number;
+  last: ConnectorLinkPost | null;
+  questions: { seq: number; at: number; text: string }[];
+  stop_asked_at: number | null;
 }
 
 /** One of the account's connector events: a use of an app's tokens, or a change to its connection. */
@@ -1320,6 +1365,23 @@ export const Api = {
   revokeApp: (id: string) => api<ConnectedApp>(`/api/connector/grants/${encodeURIComponent(id)}`, { method: "DELETE" }),
   appEvents: (id: string, before?: number | null) =>
     api<{ events: ConnectorEvent[]; before: number | null }>(`/api/connector/grants/${encodeURIComponent(id)}/events${before ? `?before=${before}` : ""}`),
+  /** Let sessions link through one connected app, which takes a confirmation made for that change (passkey.ts,
+   *  `connector-links:<id>`); or no longer, with the sign-in alone, which ends every session linked through it. */
+  setAppLinks: (id: string, on: boolean, confirmation?: string) =>
+    api<ConnectedApp>(`/api/connector/grants/${encodeURIComponent(id)}/links`, { method: "PUT", body: { on, ...(confirmation ? { confirmation } : {}) } }),
+  // the sessions linked through a connected app (the server's ade/connector_link.py): none of these requests has a
+  // body, since such a session reads nothing of the owner's but fixed words
+  connectorLinks: () => api<{ links: ConnectorLink[]; server_time: number }>("/api/connector/links"),
+  /** One such session's posts, newest first, a page at a time: `before` in the answer is where the next page starts. */
+  connectorLinkPosts: (id: string, before?: number | null) =>
+    api<{ posts: ConnectorLinkPost[]; before: number | null }>(`/api/connector/links/${encodeURIComponent(id)}/posts${before ? `?before=${before}` : ""}`),
+  removeConnectorLink: (id: string) => api<{ removed: string }>(`/api/connector/links/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  closeConnectorQuestion: (id: string, seq: number) =>
+    api<{ seq: number; closed_at: number }>(`/api/connector/links/${encodeURIComponent(id)}/questions/${seq}/close`, { method: "POST" }),
+  /** Ask one to stop (`on`), or withdraw that: a request in fixed words that the link tools' answers to its calls
+   *  carry from then on, since nothing here can hold it. */
+  stopConnectorLink: (id: string, on: boolean) =>
+    api<{ stop_asked_at: number | null }>(`/api/connector/links/${encodeURIComponent(id)}/stop`, { method: on ? "POST" : "DELETE" }),
   proposals: () => api<{ proposals: Proposal[] }>("/api/connector/proposals"),
   refuseProposal: (id: string, words?: string) =>
     api<Proposal>(`/api/connector/proposals/${encodeURIComponent(id)}/refuse`, { method: "POST", body: words ? { words } : {} }),

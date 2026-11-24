@@ -510,6 +510,50 @@ def test_owner_text_past_its_budget_is_refused_and_a_secret_in_it_holds_the_task
     assert row(task["id"])["lease_run"] is None and runs_of(task["id"]) == []
 
 
+@pytest.mark.parametrize("where", ["goal", "title", "objective"])
+@pytest.mark.parametrize("lead", ["token:\n", "\t", "\r", "a\nb\n"])
+def test_a_secret_after_a_line_break_in_the_owner_s_text_holds_the_task(client, owner, ws, lead, where):
+    """The owner's own text is held to the shapes as the text it is, not only as the packet holds it: there a line
+    break, a tab or a carriage return before a shape is written as an escape that ends in a letter or a digit, so the
+    shape begins no word. The task is held for its owner and no packet is built, whichever of its texts holds the
+    shape (its goal, its title, a step's objective); and the hold is not lifted while the text still holds it so."""
+    h, user = owner
+    own(user, ACC["A"])
+    agent_id = make_agent(client, h, ACC["A"])
+    text = "Deploy with the token" + lead + SECRET
+    body = {"agent_id": agent_id, "title": "Count lines", "goal": "Make the file two lines long.",
+            "steps": [{"objective": "Append line 1", "check": "true"}, {"objective": "Append line 2", "check": "true"}]}
+    if where == "objective":
+        body["steps"][1]["objective"] = text
+    else:
+        body[where] = text
+    r = client.post(T, headers=h, json=body)
+    if where == "title" and lead == "\r":           # a title's own rule refuses a carriage return when it is made
+        assert r.status_code == 400 and "title" in r.json()["detail"]
+        return
+    assert r.status_code == 200, r.text
+    task = r.json()["task"]
+    press(client, h, task["id"], "start")
+    held = task_of(client, h, task["id"])
+    assert held["state"] == "needs_owner" and held["cause"] == "secret" and "GitHub token" in held["reason"]
+    assert row(task["id"])["lease_run"] is None and runs_of(task["id"]) == []
+    r = press(client, h, task["id"], "resolve", what="secret", outcome="lift")
+    assert r.status_code == 412 and "still holds" in r.json()["detail"], r.text
+
+
+def test_a_shape_whose_parts_stand_in_two_of_the_owner_s_texts_holds_the_task(client, owner, ws):
+    """The packet's whole owner part is still read as it is held, beside each text as it was written: a private key's
+    first line cut between the title and the goal is one line of the packet."""
+    h, user = owner
+    own(user, ACC["A"])
+    agent_id = make_agent(client, h, ACC["A"])
+    task = make_task(client, h, agent_id, title="-----BEGIN RSA", goal="PRIVATE KEY----- and the rest")
+    press(client, h, task["id"], "start")
+    held = task_of(client, h, task["id"])
+    assert held["state"] == "needs_owner" and held["cause"] == "secret" and "private key" in held["reason"]
+    assert runs_of(task["id"]) == []
+
+
 def test_notes_past_the_model_budget_keep_the_newest_and_count_the_rest(client, owner, ws):
     h, user = owner
     task_id, first = started(client, h, user)

@@ -9,7 +9,8 @@ import { waitFor } from "./ConnectApp";
 import { dayTime } from "../when";
 
 // Account, Connected apps: the Claude app connector (the server's oauth.py). The address an app is added with, the
-// account's switch, and each connected app with where it stands, when it was last used, Revoke and its activity.
+// account's switch, and each connected app with where it stands, when it was last used, whether sessions may link
+// through it (the server's ade/connector_link.py), Revoke and its activity.
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -23,11 +24,24 @@ function Section({ title, children, note }: { title: string; children?: ReactNod
   );
 }
 
-/** What a connected app may do, in words. */
-export const mayDo = (scopes: string[]) => (scopes.includes("ade.propose") ? "May read and propose" : "May read");
+/** What a connected app may do, in words; with `links`, that the owner let sessions link through it too. */
+export const mayDo = (scopes: string[], links = false) =>
+  `${scopes.includes("ade.propose") ? "May read and propose" : "May read"}${links ? "; sessions may link through it" : ""}`;
+
+/** What an app's card says of sessions linking through it (the server's ade/connector_link.py): on, off, or why not. */
+export const LINKS_ON = "Sessions may link through it: one that asks shows in Linked sessions under the name it gives itself, posts and asks there, and takes nothing you sign. While end-to-end encryption is on, none links.";
+export const LINKS_OFF = "Sessions may not link through it. Turned on, sessions of its Claude account can list themselves in Linked sessions under names of their own, post their steps and questions there and keep a checkpoint; any chat of that Claude account that uses this app can post under a name linked through it; they take nothing you sign, and their link carries none of your words to them.";
+/** Its switch is on, and its connection is not yet in effect (waiting on its hold, or its sign-in not collected): none links yet. */
+export const LINKS_WAITING = "Sessions may link through it once it is connected: its switch is on, and none links before then.";
+export const LINKS_READS_ONLY = "It may only read, so no session links through it: connect it again with Propose to let sessions link.";
 
 /** What a lost device's steps say of connected apps, as the server says it (oauth.KEEP_WORKING). */
 export const KEEP_WORKING = "Connected apps keep working until you revoke them in Connected apps.";
+// what the second click of a revoke says where sessions may be linked through the app: revoking ends them and deletes
+// what they posted, which is not undone by connecting the app again
+export const REVOKE_ENDS = "Click again to revoke it: the sessions linked through it end, and their posts and checkpoints are deleted";
+export const ALL_REVOKED_ENDS =
+  "Click again: every connected app is revoked, and the sessions linked through them end, their posts and checkpoints deleted";
 
 /** What signing out everywhere leaves: it ends no app connection, since nothing says the device it ends allowed one, so
  *  the server answers with those allowed in the last days (oauth.recent_grants), each listed here with Revoke. */
@@ -45,7 +59,7 @@ export function StillConnected({ apps, words }: { apps: ConnectedApp[]; words: s
               <span>&ldquo;<AppName name={a.client_name} className="font-medium" />&rdquo; <span className="text-muted">(its own word)</span></span>
               <span className="text-fg-dim">Its sign-in returns to {a.returns_to}; allowed {dayTime(a.allowed_at)}.</span>
               {gone.includes(a.id) ? <span className="ml-auto text-done">Revoked.</span> : (
-                <Confirm className="ml-auto" label="Revoke" again="Click again to revoke it" icon={<Unplug size={12} />}
+                <Confirm className="ml-auto" label="Revoke" again={a.links ? REVOKE_ENDS : "Click again to revoke it"} icon={<Unplug size={12} />}
                   onConfirm={async () => { try { await Api.revokeApp(a.id); setGone((g) => [...g, a.id]); } catch (e) { setError(message(e)); } }} />
               )}
             </li>
@@ -79,6 +93,8 @@ export function eventWords(e: ConnectorEvent): string {
 export function ConnectedAppsPane() {
   const [setup, setSetup] = useState<ConnectorSetup | null>(null);
   const [apps, setApps] = useState<ConnectedApp[]>([]);
+  // an app still connected (or waiting on its hold) that sessions may link through: what turning the account off ends
+  const linksOn = apps.some((a) => a.links && a.revoked_at === null && a.state !== "ended");
   const [error, setError] = useState("");
   const [turningOn, setTurningOn] = useState<ConfirmWays | null>(null);
   const load = useCallback(async () => {
@@ -119,7 +135,7 @@ export function ConnectedAppsPane() {
         {setup.account_on ? (
           <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
             <span>Apps may connect to this account.</span>
-            <Confirm label="Turn off" again="Click again: every connected app is revoked"
+            <Confirm label="Turn off" again={linksOn ? ALL_REVOKED_ENDS : "Click again: every connected app is revoked"}
               onConfirm={async () => { try { await Api.setConnectorAccount(false); await load(); } catch (e) { setError(message(e)); } }} />
           </div>
         ) : (
@@ -152,7 +168,10 @@ function AppCard({ app, onChanged }: { app: ConnectedApp; onChanged: () => Promi
   const [events, setEvents] = useState<ConnectorEvent[] | null>(null);
   const [before, setBefore] = useState<number | null>(null);
   const [error, setError] = useState("");
+  // letting sessions link through it: the account's word, asked for as the pane asks it to let apps connect
+  const [linking, setLinking] = useState<ConfirmWays | null>(null);
   const live = app.state === "connecting" || app.state === "waiting" || app.state === "active";
+  const proposes = app.scopes.includes("ade.propose");
   const more = async (from: number | null) => {
     try {
       const r = await Api.appEvents(app.id, from);
@@ -164,16 +183,42 @@ function AppCard({ app, onChanged }: { app: ConnectedApp; onChanged: () => Promi
     <div className="rounded-lg border border-line p-3 text-[12.5px]" aria-label={`Connected app ${app.client_name}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span>&ldquo;<AppName name={app.client_name} className="font-medium" />&rdquo; <span className="text-muted">(its own word)</span></span>
-        <span className="text-muted">{mayDo(app.scopes)}</span>
+        {/* a connection that is over lets nothing link, whatever its switch was left at */}
+        <span className="text-muted">{mayDo(app.scopes, app.state === "active" && app.links)}</span>
       </div>
       <div className="mt-1 text-fg-dim">
         Its sign-in returns to {app.returns_to}{app.described_at ? `; it is described at ${app.described_at}` : ""}.
       </div>
       <div className={`mt-1 ${app.state === "waiting" ? "text-wait" : "text-fg-dim"}`}>{standing(app)}</div>
+      {live && (
+        <div role="group" aria-label="Linking sessions through it" className="mt-1">
+          {!proposes ? <span className="text-fg-dim">{LINKS_READS_ONLY}</span> : app.links ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-fg-dim">{app.state === "active" ? LINKS_ON : LINKS_WAITING}</span>
+              <Confirm label="Turn linking off" again="Click again: every session linked through it ends, and its posts and checkpoint are deleted"
+                onConfirm={async () => { setError(""); try { await Api.setAppLinks(app.id, false); await onChanged(); } catch (e) { setError(message(e)); } }} />
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-fg-dim">{LINKS_OFF}</span>
+              {!linking && (
+                <button className="btn btn-sm" onClick={async () => { setError(""); try { setLinking(await confirmWays()); } catch (e) { setError(message(e)); } }}>
+                  Let sessions link through it
+                </button>
+              )}
+            </div>
+          )}
+          {linking && (
+            <ConfirmIt change={{ what: "links", label: "Letting sessions link through this app", action: "Turn on", subject: `connector-links:${app.id}`, ways: linking }}
+              onConfirmed={async (confirmation) => { await Api.setAppLinks(app.id, true, confirmation); setLinking(null); await onChanged(); }}
+              onCancel={() => setLinking(null)} />
+          )}
+        </div>
+      )}
       {app.proposals_waiting > 0 && <div className="mt-1 text-wait">{app.proposals_waiting} of its proposals wait for you in Approvals.</div>}
       <div className="mt-2 flex flex-wrap gap-2">
         {live && (
-          <Confirm label={app.state === "waiting" ? "Cancel" : "Revoke"} again={app.state === "waiting" ? "Click again to cancel it" : "Click again to revoke it"}
+          <Confirm label={app.state === "waiting" ? "Cancel" : "Revoke"} again={app.state === "waiting" ? "Click again to cancel it" : app.links ? REVOKE_ENDS : "Click again to revoke it"}
             icon={<Unplug size={12} />}
             onConfirm={async () => { try { await Api.revokeApp(app.id); await onChanged(); } catch (e) { setError(message(e)); } }} />
         )}

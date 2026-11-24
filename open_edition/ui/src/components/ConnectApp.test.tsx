@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ConnectRequest } from "../api";
 import { useStore } from "../store";
-import { ACCOUNT_OFF, CLICKED, ConnectApp, ENDED, leaving, OTHER_BROWSER } from "./ConnectApp";
+import { ACCOUNT_OFF, CLICKED, ConnectApp, ENDED, leaving, LINKING, OTHER_BROWSER, PROPOSES } from "./ConnectApp";
 
 type Route = (body: Record<string, unknown> | undefined) => [number, unknown];
 type Call = { path: string; method: string; body: Record<string, unknown> | undefined };
@@ -194,5 +194,42 @@ describe("connecting an app", () => {
     expect(screen.getByText(/It calls itself/).textContent).toContain("It is described at claude.ai.");
     expect(screen.getByText(/takes effect at once/)).toBeTruthy();
     expect(screen.queryByRole("checkbox")).toBeNull();                    // read only was asked
+  });
+
+  it("no longer says the app can never link anything, and says the rest of what it may propose as before", async () => {
+    expect(PROPOSES).not.toContain("link anything");
+    expect(PROPOSES).toBe("Propose instructions, stops, resumes, answers to questions and answers to held commands. A proposal does "
+      + "nothing until you sign or accept it here; the app can never send, stop, resume, answer, approve or move anything itself.");
+    serve(routes());
+    render(<ConnectApp id={R} onClose={() => {}} />);
+    expect((await screen.findByRole("checkbox")).closest("label")?.textContent).toBe(`Propose. ${PROPOSES}`);
+  });
+
+  it("says what linking would let its sessions do while Propose is ticked, and nothing of it for an app that would only read", async () => {
+    // said of the link, which carries none of the owner's words, not of the page, where the app's other tools read
+    for (const said of ["any chat of that Claude account that uses this app can post under a name linked through it", "carries none of your words to them"]) expect(LINKING).toContain(said);
+    expect(LINKING).not.toContain("nothing you write on this page reaches them");
+    serve(routes());
+    render(<ConnectApp id={R} onClose={() => {}} />);
+    const said = await screen.findByLabelText("Linking sessions through it");
+    expect(said.textContent).toBe(LINKING);
+    // right after what it may do, before where what it reads goes
+    const list = screen.getByRole("list");
+    const goes = screen.getByText(/What it reads goes to that app and its servers/);
+    expect(list.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(said.compareDocumentPosition(goes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // an app let only read can never be let link: cleared, the words go, and come back with the box
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(screen.queryByLabelText("Linking sessions through it")).toBeNull();
+    expect(screen.queryByText(LINKING)).toBeNull();
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(screen.getByLabelText("Linking sessions through it").textContent).toBe(LINKING);
+    // a request that asked only to read is told nothing of linking
+    cleanup();
+    serve(routes({ [`GET /api/connector/requests/${R}`]: () => [200, request({ scopes: ["ade.read", "offline_access"] })] }));
+    render(<ConnectApp id={R} onClose={() => {}} />);
+    expect(await screen.findByText(/What it reads goes to that app and its servers/)).toBeTruthy();
+    expect(screen.queryByLabelText("Linking sessions through it")).toBeNull();
+    expect(screen.queryByText(LINKING)).toBeNull();
   });
 });

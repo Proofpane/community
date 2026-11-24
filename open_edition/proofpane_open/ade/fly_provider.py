@@ -554,11 +554,32 @@ def _row(user_id):
     return dict(r) if r else None
 
 
+ACCOUNT_GONE = "This account was deleted while its workspace was being made; what was made for it is being destroyed."
+
+
 def _save(user_id, **fields):
+    """The account's workspace row given `fields`, then read back. Where the row is gone because the account was deleted
+    while a start ran (account_delete.py, which takes no lock of the provider's), a machine or volume the start made at
+    Fly and saves here is written nowhere else: a save carrying its id keeps the id in account_deleted_fly, for the
+    deletion's cleanup and the meter to destroy, and refuses the start (WorkspaceAccess 410). Any other save finds no row
+    and gives None, on which the start fails as it did before."""
     cols = ", ".join(f"{k} = ?" for k in fields)
+    now = int(time.time())
+    made = [(kind, fields.get(key)) for kind, key, shape in (("machines", "machine_id", _MACHINE),
+                                                             ("volumes", "volume_id", _VOLUME))
+            if fields.get(key) and shape.match(str(fields.get(key)))]
+    gone = False
     with store.connect() as conn:
-        conn.execute(f"UPDATE ade_workspaces SET {cols}, updated_at = ? WHERE user_id = ?",
-                     (*fields.values(), int(time.time()), user_id))
+        n = conn.execute(f"UPDATE ade_workspaces SET {cols}, updated_at = ? WHERE user_id = ?",
+                         (*fields.values(), now, user_id)).rowcount
+        if n == 0 and made and conn.execute("SELECT 1 FROM users WHERE id = ?", (user_id,)).fetchone() is None:
+            app = settings().app
+            for kind, fly_id in made:
+                conn.execute("INSERT OR IGNORE INTO account_deleted_fly (app, kind, fly_id, created_at) VALUES "
+                             "(?, ?, ?, ?)", (app, kind, fly_id, now))
+            gone = True
+    if gone:
+        raise WorkspaceAccess(410, ACCOUNT_GONE)
     return _row(user_id)
 
 
@@ -744,10 +765,12 @@ def meter_tick(s, now=None):
         row = conn.execute("SELECT last_tick FROM ade_workspace_meter WHERE id = 1").fetchone()
         seen = min(max(0.0, now - row[0]), float(s.idle_seconds)) if row else 0.0
         for m in started:
-            conn.execute("INSERT INTO ade_workspace_spend (month, machine_id, seconds, user_id) VALUES (?, ?, ?, ?) "
+            # whose machine it is, read in this transaction: an account deleted since `owner` was read names none
+            conn.execute("INSERT INTO ade_workspace_spend (month, machine_id, seconds, user_id) VALUES (?, ?, ?, "
+                         "(SELECT user_id FROM ade_workspaces WHERE machine_id = ? AND app = ?)) "
                          "ON CONFLICT (month, machine_id) DO UPDATE SET seconds = seconds + excluded.seconds, "
                          "user_id = COALESCE(excluded.user_id, ade_workspace_spend.user_id)",
-                         (month, m["id"], int(round(seen)), owner.get(m["id"])))
+                         (month, m["id"], int(round(seen)), m["id"], s.app))
         conn.execute("INSERT INTO ade_workspace_meter (id, last_tick, storage_gb) VALUES (1, ?, ?) "
                      "ON CONFLICT (id) DO UPDATE SET last_tick = excluded.last_tick, storage_gb = excluded.storage_gb",
                      (now, storage_gb))
@@ -777,6 +800,10 @@ def meter_tick(s, now=None):
         sweep_left(s, now)
     except Exception as e:  # noqa: BLE001  a removal that fails is tried again at the next reading
         print(f"workspace removal: {type(e).__name__}: {e}", file=sys.stderr)
+    try:
+        sweep_deleted(s, now)
+    except Exception as e:  # noqa: BLE001  a destroy that fails is tried again at the next reading
+        print(f"deleted account's workspace: {type(e).__name__}", file=sys.stderr)
     return spend
 
 
@@ -897,6 +924,96 @@ def sweep_left(s, now=None):
         except Exception as e:  # noqa: BLE001  tried again at the next reading; the others go on
             print(f"workspace removal: {r['user_id']}: {type(e).__name__}: {e}", file=sys.stderr)
     return removed
+
+
+LIST_WAITS = (5, 15)            # seconds between destroy_deleted's tries at Fly's listing, after the first
+
+
+def destroy_deleted(user_id, app=None, now=None):
+    """Once a deleted account's rows are gone (account_delete.py): under the account's lock, so a start under way for it
+    ends first, what such a start or a removal under way wrote for it since (its workspace's row, a hook token, a
+    removal's record) is deleted at once, needing no answer of Fly's; then its machines and volumes at Fly, those its row
+    named, kept in account_deleted_fly as it went, and any made for it that its row did not name (a start's under way,
+    whose row was not written yet), found by the label and the volume name this app gave them, kept there too, are each
+    destroyed (sweep_deleted). Fly's listing is tried again LIST_WAITS apart; where it never answers, what was kept is
+    destroyed by the meter's readings, the log says the listing failed, and a machine only the listing would have found
+    can stay. The account's id is used here and written nowhere (the provider's locks keep it in memory, as a key).
+    Nothing on a deployment that is not Fly's, or for a workspace in another
+    app (`app`, its row's; None when it had none), where this app's calls never reach it: its ids stay kept for the
+    operator."""
+    try:
+        s = settings()
+    except RuntimeError:
+        return
+    if app is not None and app != s.app:
+        return
+    now = int(now if now is not None else clock())
+    api = Machines(s)
+    label = account_label(user_id)
+    with _provider()._user_lock(user_id):
+        with store.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            # the ids a start under way wrote into its row since, kept before the row goes
+            for kind, column in (("machines", "machine_id"), ("volumes", "volume_id")):
+                conn.execute(f"INSERT OR IGNORE INTO account_deleted_fly (app, kind, fly_id, created_at) SELECT app, ?, "
+                             f"{column}, ? FROM ade_workspaces WHERE user_id = ? AND {column} IS NOT NULL AND "
+                             f"{column} != ''", (kind, now, user_id))
+            for table in ("ade_workspaces", "ade_hook_tokens", "ade_workspace_removals"):
+                conn.execute(f"DELETE FROM {table} WHERE user_id = ?", (user_id,))
+        _provider()._states.pop(user_id, None)
+        listed = None
+        for wait in (0,) + tuple(LIST_WAITS):
+            time.sleep(wait)
+            try:
+                listed = (_live(api.call("GET", "/machines")), api.call("GET", "/volumes") or [])
+                break
+            except FlyError as e:
+                print(f"deleted account's workspace: Fly's listing: {e.status}", file=sys.stderr)
+        if listed is not None:
+            machines = [m.get("id") for m in listed[0]
+                        if _dict(_dict(m.get("config")).get("metadata")).get("proofpane_workspace") == label]
+            volumes = [v.get("id") for v in listed[1] if isinstance(v, dict)
+                       and v.get("name") == volume_name(label) and v.get("state") not in GOING]
+            with store.connect() as conn:
+                conn.execute("BEGIN IMMEDIATE")
+                for kind, ids, shape in (("machines", machines, _MACHINE), ("volumes", volumes, _VOLUME)):
+                    for fly_id in ids:
+                        if shape.match(str(fly_id)):
+                            conn.execute("INSERT OR IGNORE INTO account_deleted_fly (app, kind, fly_id, created_at) "
+                                         "VALUES (?, ?, ?, ?)", (s.app, kind, fly_id, now))
+        else:
+            print("deleted account's workspace: Fly never listed its machines; those kept are destroyed by the meter",
+                  file=sys.stderr)
+        sweep_deleted(s, now)
+
+
+def sweep_deleted(s, now=None):
+    """Destroy each machine, then each volume, of this app that account_deleted_fly keeps for a deleted account, each
+    kept until Fly destroys it (one Fly no longer has counts as destroyed); one that fails is said and tried again at
+    the meter's next reading, and holds up none of the others. Returns how many were destroyed."""
+    with store.connect() as conn:
+        rows = conn.execute("SELECT kind, fly_id FROM account_deleted_fly WHERE app = ? ORDER BY kind, created_at, "
+                            "fly_id", (s.app,)).fetchall()
+    if not rows:
+        return 0
+    api = Machines(s)
+    destroyed = 0
+    for r in rows:
+        try:
+            if r["kind"] == "machines" and _MACHINE.match(r["fly_id"]):
+                _destroy(api, "machines", r["fly_id"], {"force": "true"})
+            elif r["kind"] == "volumes" and _VOLUME.match(r["fly_id"]):
+                _destroy(api, "volumes", r["fly_id"])
+            else:
+                continue
+        except Exception as e:  # noqa: BLE001  tried again at the next reading; the others go on
+            print(f"deleted account's workspace: {r['kind']} {r['fly_id']}: {type(e).__name__}", file=sys.stderr)
+            continue
+        with store.connect() as conn:
+            conn.execute("DELETE FROM account_deleted_fly WHERE app = ? AND kind = ? AND fly_id = ?",
+                         (s.app, r["kind"], r["fly_id"]))
+        destroyed += 1
+    return destroyed
 
 
 def start_meter(every=METER_EVERY):

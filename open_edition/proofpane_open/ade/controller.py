@@ -409,7 +409,8 @@ def journal(db, user_id, kind, payload, *, requirement_id=None, task_id=None, no
     JSON (ValueError past it, never cut). `now` is when the app recorded it, by the app's clock, which the day's budgets
     count by; `at` is when it happened, `now` unless given: an action of the controller's by the time the record gives
     it, held as take says. The seq is the order the app recorded them. The only writer of ade_controller_events, which
-    has no UPDATE path and no DELETE path."""
+    has no UPDATE path and no DELETE path but an account's deletion, which removes the account's rows whole
+    (account_delete.py)."""
     if kind not in JOURNAL_KINDS:
         raise ValueError(f"{kind} is not a kind of the Manager's journal")
     if not isinstance(payload, dict):

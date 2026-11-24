@@ -25,17 +25,25 @@ const WAIT_MS = 4000;       // not started by then: say what it waits for
 const FIRST_MS = 10000;     // no words by then: stop
 const PAUSE_MS = 3000;      // this long after the last words: stop
 const END_MS = 2000;        // asked to stop and not ended by then: done anyway
-export const NOTE = "The browser's speech service (Apple's in Safari, Google's in Chrome) hears what you say, not Proofpane.";
+// The phone app's words name Apple's speech recognition, which its web view's is (Info.ios.plist's
+// NSSpeechRecognitionUsageDescription); a browser's name the browser's, as before.
+const PHONE = import.meta.env.MODE === "phone";
+const SERVICE = PHONE ? "Apple's speech recognition" : "the browser's speech service";
+const Service = SERVICE[0].toUpperCase() + SERVICE.slice(1);
+export const NOTE = PHONE ? "Apple's speech recognition hears what you say, not Proofpane."
+  : "The browser's speech service (Apple's in Safari, Google's in Chrome) hears what you say, not Proofpane.";
 const HOME_SCREEN = "On an iPhone, Apple gives speech recognition to Safari, not to an app added to the Home Screen: open this page in Safari for the microphone, or use the keyboard's own dictation here.";
-const NOT_STARTED = "The browser's speech service did not start: try again, or use your keyboard's own dictation.";
+const NOT_STARTED = `${Service} did not start: try again, or use your keyboard's own dictation.`;
 const COULD_NOT = "Voice input could not start here. Your keyboard's own dictation works here too.";
-const ERRORS: Record<string, string> = {
-  "not-allowed": "The microphone is not allowed for this page: allow it in the browser's settings, or use your keyboard's own dictation.",
-  "service-not-allowed": "The browser's speech service is off here (on an iPhone or a Mac, Siri or Dictation must be on); your keyboard's own dictation, or typing, still works.",
+export const ERRORS: Record<string, string> = {
+  "not-allowed": PHONE ? "The microphone is not allowed for this app: allow it in Settings, then Proofpane Community, or use your keyboard's own dictation."
+    : "The microphone is not allowed for this page: allow it in the browser's settings, or use your keyboard's own dictation.",
+  "service-not-allowed": PHONE ? "Apple's speech recognition is off here (Siri or Dictation must be on); your keyboard's own dictation, or typing, still works."
+    : "The browser's speech service is off here (on an iPhone or a Mac, Siri or Dictation must be on); your keyboard's own dictation, or typing, still works.",
   "no-speech": "Nothing was heard: tap the microphone and speak.",
   "audio-capture": "No microphone was found.",
-  network: "The browser's speech service could not be reached: try again, or type.",
-  "language-not-supported": "The browser's speech service does not take this language here: try the other one.",
+  network: `${Service} could not be reached: try again, or type.`,
+  "language-not-supported": `${Service} does not take this language here: try the other one.`,
 };
 
 const homeScreen = () => (navigator as Navigator & { standalone?: boolean }).standalone === true;
@@ -122,7 +130,7 @@ export function useVoice(get: () => string, set: (text: string) => void) {
       stop();
     });
     r.onend = mine(finish);
-    later("wait", WAIT_MS, () => setLine("Waiting for the browser's speech service: allow the microphone if it asks." + (homeScreen() ? " " + HOME_SCREEN : "")));
+    later("wait", WAIT_MS, () => setLine(`Waiting for ${SERVICE}: allow the microphone if it asks.` + (homeScreen() ? " " + HOME_SCREEN : "")));
     later("quiet", FIRST_MS, () => { setLine(homeScreen() ? HOME_SCREEN : NOT_STARTED); stop(); });
     try { r.start(); } catch { setLine(COULD_NOT); finish(); return; }
     setListening(true);
